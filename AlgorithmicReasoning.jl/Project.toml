@@ -1,0 +1,7 @@
+name = "AlgorithmicReasoning"
+uuid = "b083ac24-8593-4793-a8a6-d7f197083586"
+authors = ["Ronald Albert <ronaldalbert1609@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
