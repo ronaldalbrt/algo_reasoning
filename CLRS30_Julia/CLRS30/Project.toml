@@ -1,0 +1,7 @@
+name = "CLRS30"
+uuid = "bfd6ff34-28e3-4a4a-82ca-b93efa252b71"
+authors = ["ronaldalbert <ronaldalbert@ibm.com>"]
+version = "0.1.0"
+
+[deps]
+PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"

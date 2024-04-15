@@ -1,0 +1,20 @@
+{
+  "configName": "bfs_train",
+  "fileFormat": "tfrecord",
+  "moduleName": "clrs._src.dataset",
+  "name": "clrs_dataset",
+  "releaseNotes": {
+    "1.0.0": "Initial release."
+  },
+  "splits": [
+    {
+      "filepathTemplate": "{DATASET}-{SPLIT}.{FILEFORMAT}-{SHARD_X_OF_Y}",
+      "name": "train",
+      "numBytes": "2492000",
+      "shardLengths": [
+        "1000"
+      ]
+    }
+  ],
+  "version": "1.0.0"
+}
