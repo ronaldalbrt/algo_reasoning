@@ -32,8 +32,11 @@ import networkx as nx
 from tqdm import trange
 from scipy.spatial import Delaunay
 
-from .specs import SPECS
-from .algorithms import get_algorithm
+from clrs._src.specs import SPECS
+from clrs._src import algorithms
+
+def get_algorithm(name):
+  return getattr(algorithms, name)
 
 _Array = np.ndarray
 _DataPoint = probing.DataPoint

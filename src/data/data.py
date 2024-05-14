@@ -3,77 +3,55 @@ Further it provides a custom dataloader that automatically pads hints to the max
 
 
 import clrs
+import numpy as np
 from typing import Any, Optional, List, Union
 from torch_geometric.data import Data
 from torch_geometric.utils.convert import from_scipy_sparse_matrix
 from scipy.sparse import coo_matrix
 import numpy as np
-import os.path as osp
 import os
 from torch_geometric.data import Data, Dataset, Batch
 import multiprocessing as mp
 from collections import defaultdict
-from huggingface_hub import hf_hub_download
-import zipfile
-import math
-
+from tensorflow_datasets.core.registered import DatasetNotFoundError
+import tensorflow_datasets as tfds
 from tqdm.auto import tqdm, trange
-
 import lightning.pytorch as pl
-
 from loguru import logger
-
 import torch
-
+from clrs._src import specs
 from .sampler import build_sampler, SAMPLERS
 
-def er_probabilities(n):
-    base = math.log(n) / n
-    return (base * 1, base * 3)
+SPLITS = ["train", "val", "test"]
 
-__ws_k = [
-    4,6,8
-]
+def _preprocess(data_point, algorithm=None):
+    """Convert sampled inputs into DataPoints."""
+    inputs = CLRSData()
+    outputs = CLRSData()
+    hints = CLRSData()
+    lengths = None
 
+    for name, data in data_point.items():
+        if name == 'lengths':
+            lengths = data
+            continue
+        data_point_name = name.split('_')
+        name = '_'.join(data_point_name[1:])
+        stage = data_point_name[0]
 
-SALSA_CLRS_DATASETS = {
-    "test": {
-        "er_16": { "p_range": er_probabilities(16), "n": 16 },
-        "er_80": { "p_range": er_probabilities(80), "n": 80 },
-        "er_160": { "p_range": er_probabilities(160), "n": 160 },
-        "er_800": { "p_range": er_probabilities(800), "n": 800 },
-        "er_1600": { "p_range": er_probabilities(1600), "n": 1600 },
-        "ws_16": { "p_range": (0.05, 0.2), "k": [4,6,8], "n": 16 },
-        "ws_80": { "p_range": (0.05, 0.2), "k": [4,6,8], "n": 80 },
-        "ws_160": { "p_range": (0.05, 0.2), "k": [4,6,8], "n": 160 },
-        "ws_800": { "p_range": (0.05, 0.2), "k": [4,6,8], "n": 800 },
-        "ws_1600": { "p_range": (0.05, 0.2), "k": [4,6,8], "n": 1600 },
-        "delaunay_16": { "n": 16 },
-        "delaunay_80": { "n": 80 },
-        "delaunay_160": { "n": 160 },
-        "delaunay_800": { "n": 800 },
-        "delaunay_1600": { "n": 1600 },
-    },
-    "val": { "p_range": er_probabilities(16), "n": 16 },
-    "train": {'p_range': er_probabilities(16), 'n':[4, 7, 11, 13, 16]}
-}
-
-def __dataset_available(algorithm, split, local_dir):
-    if not osp.exists(osp.join(local_dir, algorithm, split)):
-        return False
+        if stage == "input":
+            inputs[name] = data
+        elif stage == "output":
+            outputs[name] = data
+        else:
+            data = np.swapaxes(data, 0, 1)
+            hints[name] = data
     
-    datasets = os.listdir(osp.join(local_dir, algorithm, split))
-    if split == "test" and len(datasets) < len(SALSA_CLRS_DATASETS["test"]):
-        return False
-    else:
-        req_len = 10002 if split == "train" else 1002 # samples + 2 metadata files
-        for dataset in datasets:
-            if len(os.listdir(osp.join(local_dir, algorithm, split, dataset, "processed"))) != req_len:
-                return False
-        return True
+    return CLRSData(features=CLRSData(inputs=inputs, hints=hints, lengths=lengths), outputs=outputs)
+
 
 def load_dataset(algorithm, split, local_dir):
-    """Load the SALSA-CLRS dataset for the given algorithm and split.
+    """Load the CLRS dataset for the given algorithm or list of algorithms and split.
     
     Args:
         algorithm (str): The algorithm to get the dataset for.
@@ -83,29 +61,26 @@ def load_dataset(algorithm, split, local_dir):
     if algorithm not in SAMPLERS:
         raise ValueError(f"Unknown algorithm '{algorithm}'. Available algorithms are {list(SAMPLERS.keys())}.")
 
-    if split not in SALSA_CLRS_DATASETS:
-        raise ValueError(f"Unknown split '{split}'. Available splits are {list(SALSA_CLRS_DATASETS.keys())}.")
+    if split not in SPLITS:
+        raise ValueError(f"Unknown split '{split}'. Available splits are {list(SPLITS)}.")
     
     # check if the dataset is already downloaded
-    if not __dataset_available(algorithm, split, local_dir):
+    try:
+        dataset = tfds.load(f'clrs_dataset/{algorithm}_{split}', data_dir=local_dir, split=split, download=False)
+    except DatasetNotFoundError:
         logger.info(f"Downloading dataset for algorithm '{algorithm}'...")
-        hf_hub_download(repo_id="SALSA-CLRS/SALSA-CLRS", filename=f"{algorithm}.zip", repo_type="dataset", local_dir = local_dir, local_dir_use_symlinks=False)
-
-        logger.info(f"Extracting dataset...")
-        with zipfile.ZipFile(osp.join(local_dir, f"{algorithm}.zip"), 'r') as zip_ref:
-            zip_ref.extractall(local_dir)
+        clrs.create_dataset(folder=local_dir, algorithm=algorithm, split=split, batch_size=32)
+        dataset = tfds.load(f'clrs_dataset/{algorithm}_{split}', data_dir=local_dir, split=split, download=False)
         
-    if split == "test":
-        return {k: SALSACLRSDataset(ignore_all_hints=True, root=local_dir, split="test", algorithm=algorithm, num_samples=1000, graph_generator=k.split("_")[0], graph_generator_kwargs=SALSA_CLRS_DATASETS["test"][k], nickname=k) for k in SALSA_CLRS_DATASETS["test"]}
-    elif split == "val":
-        return SALSACLRSDataset(ignore_all_hints=True, root=local_dir, split="val", algorithm=algorithm, num_samples=1000, graph_generator="er", graph_generator_kwargs=SALSA_CLRS_DATASETS["val"])
-    else:
-        return SALSACLRSDataset(ignore_all_hints=False, root=local_dir, split="train", algorithm=algorithm, num_samples=10000, graph_generator="er", graph_generator_kwargs=SALSA_CLRS_DATASETS["train"])
 
+    # if split == "test":
+    #     return {k: CLRSDataset(ignore_all_hints=True, root=local_dir, split="test", algorithm=algorithm, num_samples=1000, graph_generator=k.split("_")[0], graph_generator_kwargs=SALSA_CLRS_DATASETS["test"][k], nickname=k) for k in SALSA_CLRS_DATASETS["test"]}
+    # elif split == "val":
+    #     return CLRSDataset(ignore_all_hints=True, root=local_dir, split="val", algorithm=algorithm, num_samples=1000, graph_generator="er", graph_generator_kwargs=SALSA_CLRS_DATASETS["val"])
+    # else:
+    #     return CLRSDataset(ignore_all_hints=False, root=local_dir, split="train", algorithm=algorithm, num_samples=10000, graph_generator="er", graph_generator_kwargs=SALSA_CLRS_DATASETS["train"])
 
-class NotSparseError(Exception):
-    """Raised when the data is not sparse."""
-    pass
+    return dataset.map(lambda d: _preprocess(d, algorithm=algorithm))
 
 class CLRSData(Data):
     """A data object for CLRS data."""
@@ -243,14 +218,14 @@ def _collapse_val(val):
     else:
         return str(val)
 
-class SALSACLRSDataset(Dataset):
+class CLRSDataset(Dataset):
     def __init__(self, root, 
                  split,
                  algorithm,
                  num_samples = 1000,
                  verify_duplicates = False,
                  forbidden_duplicates_datasets = [],
-                 hints=True, ignore_all_hints=False, nickname=None, graph_generator="er", graph_generator_kwargs={"n": 16, "p": 0.1},max_cores=-1, **kwargs):
+                 hints=True, ignore_all_hints=False, nickname=None,max_cores=-1, **kwargs):
         """ Dataset for SALSA CLRS problems.
 
         Args:
@@ -263,29 +238,22 @@ class SALSACLRSDataset(Dataset):
             verify_duplicates (bool): Whether to verify that no duplicates are generated (on graph level - no two graphs are the same)
             forbidden_duplicates_datasets (list): List of datasets for which duplicates are forbidden. This is useful when you want to combine multiple datasets but do not want to have duplicates between them.
             nickname (str): Optional nickname for the dataset (mainly intended for logging purposes).
-            graph_generator (str): Name of the graph generator to use. 
-            graph_generator_kwargs (dict): Keyword arguments to pass to the graph generator.
             max_cores (int): Maximum number of cores to use for multiprocessing. If -1, it is serial. If None, it is the number of cores on the machine (default: -1)
             **kwargs: Keyword arguments to pass to the algorithm sampler.
         """
         self.algorithm = algorithm
         self.num_samples = num_samples
-        self.graph_generator = graph_generator
-        self.graph_generator_kwargs = graph_generator_kwargs
         self.max_cores = max_cores if max_cores is not None else mp.cpu_count()
         
         self.sampler, self.specs = build_sampler(algorithm, graph_generator, graph_generator_kwargs, **kwargs)
 
         self.verify_duplicates = verify_duplicates
         self.forbidden_duplicates_datasets = forbidden_duplicates_datasets
-        name = "graphgenerator=" + graph_generator + '_' + '_'.join([f'{key}={_collapse_val(val)}' for key, val in graph_generator_kwargs.items()])
         self.hints = hints
         self.ignore_all_hints = ignore_all_hints
-        if ignore_all_hints:
-            name += "-nohints"
 
         self.nickname = nickname
-        root = osp.join(root, algorithm, split, name)
+        root = os.path.join(root, algorithm, split, name)
         if not os.path.exists(root):
             os.makedirs(root, exist_ok=True)
         
@@ -367,7 +335,7 @@ class SALSACLRSDataset(Dataset):
                         if self.pre_transform is not None:
                             data = self.pre_transform(data)
 
-                        torch.save(data, osp.join(self.processed_dir, f'data_{i}.pt'))
+                        torch.save(data, os.path.join(self.processed_dir, f'data_{i}.pt'))
                         i += 1
 
                     generated_data = []
@@ -397,7 +365,7 @@ class SALSACLRSDataset(Dataset):
                     if self.pre_transform is not None:
                         data = self.pre_transform(data)
 
-                    torch.save(data, osp.join(self.processed_dir, f'data_{i}.pt'))
+                    torch.save(data, os.path.join(self.processed_dir, f'data_{i}.pt'))
                     i += 1
 
                 generated_data = []
@@ -406,7 +374,7 @@ class SALSACLRSDataset(Dataset):
         return len(self.processed_file_names)
 
     def get(self, idx):
-        data = torch.load(osp.join(self.processed_dir, f'data_{idx}.pt'))
+        data = torch.load(os.path.join(self.processed_dir, f'data_{idx}.pt'))
         if not self.hints and not self.ignore_all_hints:
             for hint in data.hints:
                 delattr(data, hint)
