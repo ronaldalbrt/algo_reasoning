@@ -47,13 +47,17 @@ SAMPLERS = [
     'jarvis_march',
 ]
 
+# Loader Example:
+# from torch.utils.data import DataLoader
+# loader = DataLoader(ds, "train", "tmp/CLRS30", collate_fn=collate)
+
 def to_torch(value):
     if isinstance(value, np.ndarray):
-        return torch.from_numpy(value)
+        return torch.from_numpy(value).to(torch.float32)
     elif isinstance(value, torch.Tensor):
         return value
     else:
-        return torch.tensor(value)
+        return torch.tensor(value, dtype=torch.float32)
 
 def _preprocess(data_point, algorithm=None):
     """Convert sampled inputs into DataPoints."""
