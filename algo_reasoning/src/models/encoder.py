@@ -1,10 +1,19 @@
-import torch.nn as nn
 import torch
-import torch_scatter
+import torch.nn as nn
+import torch.nn.functional as F
 from loguru import logger
-## Base encoders and decoders
+from algo_reasoning.src.data.data import CLRSData
+from algo_reasoning.src.data.specs import Stage, Location, Type
 
-class NodeBaseEncoder(nn.Module):
+_Tensor = torch.Tensor
+
+def preprocess(data:_Tensor, _type:str, nb_nodes:int=16) -> _Tensor:
+    if _type == Type.POINTER:
+        data = F.one_hot(data, nb_nodes)
+  
+    return data
+
+class LinearEncoder(nn.Module):
     def __init__(self, input_dim, hidden_dim=128):
         super().__init__()
         self.hidden_dim = hidden_dim
@@ -17,12 +26,6 @@ class NodeBaseEncoder(nn.Module):
         x = self.lin(x)
         return x
 
-_ENCODER_MAP = {
-    ('node', 'scalar'): NodeBaseEncoder,
-    ('node', 'mask'): NodeBaseEncoder,
-    ('node', 'mask_one'): NodeBaseEncoder,
-}
-
 
 class Encoder(nn.Module):
     def __init__(self, specs, hidden_dim=128):
@@ -32,19 +35,11 @@ class Encoder(nn.Module):
         self.encoder = nn.ModuleDict()
         for k, v in specs.items():
             stage, loc, type_ = v
-            if loc == 'edge':
-                logger.debug(f'Ignoring edge encoder for {k}')
-                continue
-            elif stage == 'hint':
-                logger.debug(f'Ignoring hint encoder for {k}')
-                continue
-            elif stage == 'output':
-                logger.debug(f'Ignoring output encoder for {k}')
-                continue
-            else:
-                # Input DIM currently hardcoded to 1
-                self.encoder[k] = _ENCODER_MAP[(loc, type_)](1, hidden_dim)
 
+            if loc == Location.NODE and stage == Stage.INPUT:
+                input_dim = 1                
+
+            self.encoder[k] = LinearEncoder(input_dim, hidden_dim)
     def forward(self, batch):
         hidden = None
         for key, value in batch.inputs:
@@ -52,7 +47,6 @@ class Encoder(nn.Module):
                 logger.debug(f"Ignoring {key}")
                 continue
             logger.debug(f"Encoding {key}")
-            type(value)
             encoding = self.encoder[key](value)
             # check of nan
             if torch.isnan(encoding).any():
