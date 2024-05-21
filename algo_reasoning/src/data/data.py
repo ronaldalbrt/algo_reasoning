@@ -79,8 +79,6 @@ def _preprocess(data_point, algorithm=None):
         elif stage == "output":
             outputs[name] = to_torch(np.copy(data)).unsqueeze(0)
         else:
-            if data.ndim > 1:
-                data = np.swapaxes(data, 0, 1)
             hints[name] = to_torch(np.copy(data)).unsqueeze(0)
     
     return CLRSData(inputs=inputs, hints=hints, length=length, outputs=outputs, algorithm=algorithm)

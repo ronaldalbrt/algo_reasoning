@@ -7,6 +7,50 @@ from algo_reasoning.src.data.specs import Stage, Location, Type
 
 _Tensor = torch.Tensor
 
+_CATEGORIES_DIMENSIONS = {
+    "heapsort": {
+        "phase": 3
+    },
+    "lcs_length": {
+        "key": 4,
+        'b': 4,
+        "b_h": 4
+    },
+    "dfs": {
+        "color": 3
+    },
+    "topological_sort": {
+        "color": 3
+    },
+    "strongly_connected_components": {
+        "color": 3
+    },
+    "articulation_points": {
+        "color": 3
+    },
+    "bridges": {
+        "color": 3
+    },
+    "mst_kruskal" : {
+        "phase": 3
+    },
+    "dag_shortest_paths": {
+        "color": 3
+    },
+    "naive_string_matcher": {
+        "key": 4
+    },
+    "kmp_matcher": {
+        "key": 4
+    },
+    "graham_scan": {
+        "phase": 5
+    },
+    "jarvis_march": {
+        "phase": 2
+    }
+}
+
 def preprocess(data:_Tensor, _type:str, nb_nodes:int=16) -> _Tensor:
     if _type == Type.POINTER:
         data = F.one_hot(data, nb_nodes)
