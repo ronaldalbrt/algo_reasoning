@@ -49,7 +49,7 @@ SAMPLERS = [
 
 # Loader Example:
 # from torch.utils.data import DataLoader
-# loader = DataLoader(ds, "train", "tmp/CLRS30", collate_fn=collate)
+# loader = DataLoader(ds, 32, collate_fn=collate)
 
 def to_torch(value):
     if isinstance(value, np.ndarray):

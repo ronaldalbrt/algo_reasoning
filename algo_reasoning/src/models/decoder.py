@@ -3,7 +3,6 @@ import torch
 import torch_scatter
 from loguru import logger
 from torch_geometric.nn import global_mean_pool, global_max_pool
-from ..utils import NaNException
 
 ## Node decoders
 
@@ -38,10 +37,10 @@ class NodeMaskOneDecoder(NodeBaseDecoder):
     def __init__(self, input_dim, hidden_dim=128):
         super().__init__(input_dim, hidden_dim)
 
-    def forward(self, x, batch_assignment, **kwargs):
-        out = super().forward(x) # N x 1
+    def forward(self, x, **kwargs):
+        out = super().forward(x).squeeze(-1) # N x 1
 
-        out = torch_scatter.scatter_log_softmax(out, batch_assignment, dim=0)
+        out = torch.log_softmax(out, dim=-1)
         return out
 
 
@@ -49,7 +48,7 @@ class NodeCategoricalDecoder(NodeBaseDecoder):
     def __init__(self, input_dim, hidden_dim=128):
         super().__init__(input_dim, hidden_dim)
 
-    def forward(self, x, batch_assignment, **kwargs):
+    def forward(self, x, **kwargs):
         out = super().forward(x) # N x C
         out = torch.log_softmax(out, dim=-1)
         return out
@@ -98,17 +97,17 @@ class GraphBaseDecoder(nn.Module):
         self.input_dim = input_dim
         self.lin = nn.Linear(hidden_dim, input_dim)
 
-    def forward(self, x, batch_assignment, **kwargs):
+    def forward(self, x, **kwargs):
         x = self.lin(x)
-        out = global_mean_pool(x, batch_assignment)
+        out = global_mean_pool(x, None)
         return out.squeeze(-1)
     
 class GraphMaskDecoder(GraphBaseDecoder):
     def __init__(self, input_dim, hidden_dim=128):
         super().__init__(input_dim, hidden_dim)
 
-    def forward(self, x, batch_assignment, **kwargs):
-        out = super().forward(x, batch_assignment)
+    def forward(self, x, **kwargs):
+        out = super().forward(x)
         out = out.sigmoid()
         return out
 
@@ -116,8 +115,8 @@ class GraphCategoricalDecoder(GraphBaseDecoder):
     def __init__(self, input_dim, hidden_dim=128):
         super().__init__(input_dim, hidden_dim)
 
-    def forward(self, x, batch_assignment, **kwargs):
-        out = super().forward(x, batch_assignment)
+    def forward(self, x, **kwargs):
+        out = super().forward(x)
         out = torch.log_softmax(out, dim=-1)
         return out
     
