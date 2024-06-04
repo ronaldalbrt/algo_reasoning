@@ -2,133 +2,178 @@ import torch.nn as nn
 import torch
 import torch_scatter
 from loguru import logger
-from torch_geometric.nn import global_mean_pool
 from algo_reasoning.src.data.specs import Stage, Location, Type, SPECS, CATEGORIES_DIMENSIONS
 
 ## Node decoders
-
 class NodeBaseDecoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim=128):
+    def __init__(self, spec_dim, hidden_dim=128):
         super().__init__()
         self.hidden_dim = hidden_dim
-        self.input_dim = input_dim
-        self.lin = nn.Linear(hidden_dim, input_dim)
+        self.spec_dim = spec_dim
+        self.lin = nn.Linear(hidden_dim, spec_dim)
 
     def forward(self, x, *args, **kwargs):
-        x = self.lin(x)
+        x = self.lin(x) # (B, N, H)
         return x
 
 class NodeScalarDecoder(NodeBaseDecoder):
-    def __init__(self, input_dim, hidden_dim=128):
-        super().__init__(input_dim, hidden_dim)
+    def __init__(self, spec_dim, hidden_dim=128):
+        super().__init__(spec_dim, hidden_dim)
 
     def forward(self, x, *args, **kwargs):
-        out = super().forward(x).squeeze(-1)
+        out = super().forward(x).squeeze(-1) # (B, N)
         return out
 
 class NodeMaskDecoder(NodeBaseDecoder):
-    def __init__(self, input_dim, hidden_dim=128):
-        super().__init__(input_dim, hidden_dim)
+    def __init__(self, spec_dim, hidden_dim=128):
+        super().__init__(spec_dim, hidden_dim)
 
     def forward(self, x, *args, **kwargs):
-        out = super().forward(x).squeeze(-1)
+        out = super().forward(x).squeeze(-1) # (B, N)
+
         return out
 
 class NodeMaskOneDecoder(NodeBaseDecoder):
-    def __init__(self, input_dim, hidden_dim=128):
-        super().__init__(input_dim, hidden_dim)
+    def __init__(self, spec_dim, hidden_dim=128):
+        super().__init__(spec_dim, hidden_dim)
 
     def forward(self, x, **kwargs):
-        out = super().forward(x).squeeze(-1) # N x 1
+        out = super().forward(x).squeeze(-1) # (B, N)
 
-        out = torch.sigmoid(out, dim=-1)
         return out
 
-
 class NodeCategoricalDecoder(NodeBaseDecoder):
-    def __init__(self, input_dim, hidden_dim=128):
-        super().__init__(input_dim, hidden_dim)
+    def __init__(self, spec_dim, hidden_dim=128):
+        super().__init__(spec_dim, hidden_dim)
 
     def forward(self, x, **kwargs):
-        out = super().forward(x) # N x C
-        out = torch.log_softmax(out, dim=-1)
+        out = super().forward(x) # (B, N, C)
+
         return out
     
 class NodePointerDecoder(NodeBaseDecoder):
-    def __init__(self, input_dim, hidden_dim=128):
-        super().__init__(input_dim, hidden_dim)
+    def __init__(self, nb_nodes, hidden_dim=128):
+        super().__init__(nb_nodes, hidden_dim)
 
     def forward(self, x, **kwargs):
-        out = super().forward(x) # N x C
-        out = torch.log_softmax(out, dim=-1)
+        out = super().forward(x) # (B, N, N)
+
         return out
 
 
 
 #### Edge decoders
-
 class BaseEdgeDecoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim=128):
+    def __init__(self, spec_dim, hidden_dim=128):
         super().__init__()
         self.hidden_dim = hidden_dim
-        self.input_dim = input_dim
-        self.source_lin = nn.Linear(hidden_dim, input_dim)
-        self.target_lin = nn.Linear(hidden_dim, input_dim)
+        self.spec_dim = spec_dim
+        self.lin = nn.Linear(hidden_dim, spec_dim)
 
-    def forward(self, hiddens, edge_index):
-        zs = self.source_lin(hiddens) # N x H
-        zt = self.target_lin(hiddens) # N x H
-        return zs[edge_index[0]] + zt[edge_index[1]]
+    def forward(self, edge_emb):
+        out = self.lin(edge_emb) # (B, N, N, H)
+        return out
     
-class EdgeMaskDecoder(BaseEdgeDecoder):
-    def __init__(self, input_dim, hidden_dim=128):
-        super().__init__(input_dim, hidden_dim)
+class EdgeScalarDecoder(BaseEdgeDecoder):
+    def __init__(self, spec_dim, hidden_dim=128):
+        super().__init__(spec_dim, hidden_dim)
 
-    def forward(self, hiddens, edge_index, **kwargs):
-        out = super().forward(hiddens, edge_index)
-        out = torch.sigmoid(out, dim=-1).squeeze(-1)
+    def forward(self, edge_emb, **kwargs):
+        out = super().forward(edge_emb).squeeze(-1) # (B, N, N)
+
+        return out
+class EdgeMaskDecoder(BaseEdgeDecoder):
+    def __init__(self, spec_dim, hidden_dim=128):
+        super().__init__(spec_dim, hidden_dim)
+
+    def forward(self, edge_emb, **kwargs):
+        out = super().forward(edge_emb).squeeze(-1) # (B, N, N)
+
+        return out
+    
+class EdgeMaskOneDecoder(BaseEdgeDecoder):
+    def __init__(self, spec_dim, hidden_dim=128):
+        super().__init__(spec_dim, hidden_dim)
+
+    def forward(self, edge_emb, **kwargs):
+        out = super().forward(edge_emb).squeeze(-1) # (B, N, N)
+
+        return out
+    
+class EdgeCategoricalDecoder(BaseEdgeDecoder):
+    def __init__(self, spec_dim, hidden_dim=128):
+        super().__init__(spec_dim, hidden_dim)
+
+    def forward(self, edge_emb, **kwargs):
+        out = super().forward(edge_emb) # (B, N, N, C)
+
         return out
     
 class EdgePointerDecoder(BaseEdgeDecoder):
+    def __init__(self, nb_nodes, hidden_dim=128):
+        super().__init__(nb_nodes, hidden_dim)
+
+    def forward(self, edge_emb, **kwargs):
+        out = super().forward(edge_emb) # (B, N, N, N)
+        
+        return out
+
+
+#### Graph decoders
+class GraphBaseDecoder(nn.Module):
+    def __init__(self, spec_dim, hidden_dim=128):
+        super().__init__()
+        self.hidden_dim = hidden_dim
+        self.spec_dim = spec_dim
+        self.lin = nn.Linear(hidden_dim, spec_dim)
+
+    def forward(self, x, **kwargs):
+        x = self.lin(x) # (B, N, H)
+        out = torch.mean(x, 1) # (B, H)
+        
+        return out
+
+class GraphScalarDecoder(GraphBaseDecoder):
     def __init__(self, input_dim, hidden_dim=128):
         super().__init__(input_dim, hidden_dim)
 
-    def forward(self, hiddens, edge_index, **kwargs):
-        out = super().forward(hiddens, edge_index)
-        out = torch.log_softmax(out, dim=-1)
-        
-        return out
-    
-#### Graph decoders
-
-class GraphBaseDecoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim=128):
-        super().__init__()
-        self.hidden_dim = hidden_dim
-        self.input_dim = input_dim
-        self.lin = nn.Linear(hidden_dim, input_dim)
-
     def forward(self, x, **kwargs):
-        x = self.lin(x)
-        out = global_mean_pool(x, None)
-        return out.squeeze(-1)
-    
+        out = super().forward(x).squeeze(-1) # (B)
+        
 class GraphMaskDecoder(GraphBaseDecoder):
     def __init__(self, input_dim, hidden_dim=128):
         super().__init__(input_dim, hidden_dim)
 
     def forward(self, x, **kwargs):
-        out = super().forward(x)
-        out = out.sigmoid()
+        out = super().forward(x).squeeze(-1) # (B)
+        
+        return out
+
+class GraphMaskOneDecoder(GraphBaseDecoder):
+    def __init__(self, spec_dim, hidden_dim=128):
+        super().__init__(spec_dim, hidden_dim)
+
+    def forward(self, x, **kwargs):
+        out = super().forward(x).squeeze(-1) # (B)
+        
         return out
 
 class GraphCategoricalDecoder(GraphBaseDecoder):
-    def __init__(self, input_dim, hidden_dim=128):
-        super().__init__(input_dim, hidden_dim)
+    def __init__(self, spec_dim, hidden_dim=128):
+        super().__init__(spec_dim, hidden_dim)
 
     def forward(self, x, **kwargs):
-        out = super().forward(x)
-        out = torch.log_softmax(out, dim=-1)
+        out = super().forward(x) # (B, C)
+
+        return out
+    
+class GraphPointerDecoder(GraphBaseDecoder):
+    def __init__(self, nb_nodes, hidden_dim=128):
+        super().__init__(nb_nodes, hidden_dim)
+
+    def forward(self, x, **kwargs):
+        out = super().forward(x) # (B, N)
+
         return out
     
 
@@ -136,17 +181,22 @@ _DECODER_MAP = {
     ('node', 'scalar'): NodeScalarDecoder,
     ('node', 'mask'): NodeMaskDecoder,
     ('node', 'mask_one'): NodeMaskOneDecoder,
-    ('node', 'pointer'): NodePointerDecoder,
     ('node', 'categorical'): NodeCategoricalDecoder,
+    ('node', 'pointer'): NodePointerDecoder,
+    ('edge', 'scalar'): EdgeScalarDecoder,
     ('edge', 'mask'): EdgeMaskDecoder,
-    ('edge', 'scalar'): BaseEdgeDecoder,
-    ('graph', 'scalar'): GraphBaseDecoder,  
+    ('edge', 'mask_one'): EdgeMaskOneDecoder,
+    ('edge', 'categorical'): EdgeCategoricalDecoder,
+    ('edge', 'pointer'): EdgePointerDecoder,
+    ('graph', 'scalar'): GraphScalarDecoder,
     ('graph', 'mask'): GraphMaskDecoder,
+    ('graph', 'mask_one'): GraphMaskOneDecoder,
     ('graph', 'categorical'): GraphCategoricalDecoder,
+    ('graph', 'pointer'): GraphPointerDecoder
 }
     
 class Decoder(nn.Module):
-    def __init__(self, algorithm, hidden_dim=128, no_hint=False):
+    def __init__(self, algorithm, nb_nodes=16, hidden_dim=128, no_hint=False):
         super().__init__()
         self.algortihm = algorithm
         self.hidden_dim = hidden_dim
@@ -160,17 +210,18 @@ class Decoder(nn.Module):
                 logger.debug(f'Ignoring hint decoder for {k}')
                 continue
             if stage == 'input':
-                logger.debug(f'Ignoring input decoder for {k}')
                 continue
             if stage == 'hint':
-                k = k.replace('_h', '')
+                k = k + '_h'
             
-            input_dim = 1
-            if type_ == 'categorical':
-                input_dim = cat_dim
+            spec_dim = 1
+            if type_ == Type.CATEGORICAL:
+                spec_dim = cat_dim
+            elif type_ == Type.POINTER:
+                spec_dim = nb_nodes
 
             if k not in self.decoder:
-                self.decoder[k] = _DECODER_MAP[(loc, type_)](input_dim, hidden_dim)
+                self.decoder[k] = _DECODER_MAP[(loc, type_)](spec_dim, hidden_dim)
 
     def forward(self, hidden, batch, stage):
         output = {}
@@ -180,7 +231,7 @@ class Decoder(nn.Module):
             else:
                 dkey = key
 
-            output[key] = self.decoder[dkey](hidden, edge_index=batch.edge_index)
+            output[key] = self.decoder[dkey](hidden)
         return output
 
     

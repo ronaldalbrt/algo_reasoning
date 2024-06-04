@@ -1,17 +1,6 @@
-from abc import ABC
 import torch.nn as nn
-import torch.nn.functional as F
 import torch
-import torch_geometric.nn as pyg_nn
-from inspect import signature
 from loguru import logger
-
-from algo_reasoning.utils.utils import stack_hidden
-
-from inspect import signature
-from loguru import logger
-import torch
-import torch.nn as nn
 
 ######################
 
@@ -56,8 +45,8 @@ class PGN(nn.Module):
 
         if self.nb_triplet_fts is not None:
             self.t_1 = nn.Linear(in_channels*2, nb_triplet_fts)
-            self.t_2 = nn.Linear(in_channels, nb_triplet_fts)
-            self.t_3 = nn.Linear(in_channels, nb_triplet_fts)
+            self.t_2 = nn.Linear(in_channels*2, nb_triplet_fts)
+            self.t_3 = nn.Linear(in_channels*2, nb_triplet_fts)
             self.t_e_1 = nn.Linear(in_channels, nb_triplet_fts)
             self.t_e_2 = nn.Linear(in_channels, nb_triplet_fts)
             self.t_e_3 = nn.Linear(in_channels, nb_triplet_fts)
@@ -103,7 +92,7 @@ class PGN(nn.Module):
             triplets = self.get_triplet_msgs(z, edge_fts, graph_fts)
 
             
-            tri_msgs = self.o3(torch.max(triplets, dim=1))  # (B, N, N, H)
+            tri_msgs = self.o3(torch.amax(triplets, dim=1))  # (B, N, N, H)
             if self.activation is not None:
                 tri_msgs = self.activation(tri_msgs)
 
@@ -111,8 +100,8 @@ class PGN(nn.Module):
                 tri_msgs = self.norm(tri_msgs)
 
         if self.aggr == "max":
-            maxarg = torch.where(adj_matrix.unsqueeze(-1), msgs, -1e9) # (B, N, N, H)
-            msgs = torch.max(maxarg, dim=1) # (B, N, H)
+            maxarg = torch.where(adj_matrix.unsqueeze(-1) == 1, msgs, -1e9) # (B, N, N, H)
+            msgs = torch.amax(maxarg, dim=1) # (B, N, H)
 
         h_1 = self.o1(z)
         h_2 = self.o2(msgs)
