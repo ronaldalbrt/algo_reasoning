@@ -3,6 +3,7 @@ import torch
 import torch_scatter
 from loguru import logger
 from algo_reasoning.src.data.specs import Stage, Location, Type, SPECS, CATEGORIES_DIMENSIONS
+from algo_reasoning.src.data.data import CLRSData
 
 ## Node decoders
 class NodeBaseDecoder(nn.Module):
@@ -198,22 +199,23 @@ _DECODER_MAP = {
 class Decoder(nn.Module):
     def __init__(self, algorithm, nb_nodes=16, hidden_dim=128, no_hint=False):
         super().__init__()
-        self.algortihm = algorithm
+        self.algorithm = algorithm
         self.hidden_dim = hidden_dim
+        self.no_hint = no_hint
         self.decoder = nn.ModuleDict()
 
         self.specs = SPECS[algorithm]
         for k, v in self.specs.items():
             stage, loc, type_ = v
             cat_dim = CATEGORIES_DIMENSIONS[algorithm][k]
+
             if no_hint and stage == 'hint':
                 logger.debug(f'Ignoring hint decoder for {k}')
                 continue
             if stage == 'input':
+                logger.debug(f'Ignoring input decoder for {k}')
                 continue
-            if stage == 'hint':
-                k = k + '_h'
-            
+
             spec_dim = 1
             if type_ == Type.CATEGORICAL:
                 spec_dim = cat_dim
@@ -223,16 +225,24 @@ class Decoder(nn.Module):
             if k not in self.decoder:
                 self.decoder[k] = _DECODER_MAP[(loc, type_)](spec_dim, hidden_dim)
 
-    def forward(self, hidden, batch, stage):
-        output = {}
-        for key in getattr(batch, stage):
-            if stage == 'hints':
-                dkey = key.replace('_h', '')
-            else:
-                dkey = key
+    def forward(self, hidden):
+        outputs = CLRSData()
+        hints = CLRSData()
+        
+        for k, v in self.specs.items():
+            stage, loc, type_ = v
 
-            output[key] = self.decoder[dkey](hidden)
-        return output
+            if self.no_hint and stage == 'hint':
+                continue
+            if stage == 'input':
+                continue
+            
+            if stage == 'output':
+                outputs[k] = self.decoder[k](hidden)
+            elif stage == 'hint':
+                hints[k] = self.decoder[k](hidden)
+
+        return CLRSData(inputs=CLRSData(), hints=hints, length=None, outputs=outputs, algorithm=self.algorithm)
 
     
 def grab_outputs(hints, batch):
