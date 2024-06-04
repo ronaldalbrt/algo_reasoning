@@ -8,7 +8,6 @@ from loguru import logger
 
 from algo_reasoning.utils.utils import stack_hidden
 
-import torch_geometric.nn as pyg_nn
 from inspect import signature
 from loguru import logger
 import torch
@@ -16,20 +15,33 @@ import torch.nn as nn
 
 ######################
 
-class PGN(pyg_nn.MessagePassing):
-    """Adapted from https://github.com/google-deepmind/clrs/blob/64e016998f14305f94cf3f6d19ac9d7edc39a185/clrs/_src/processors.py#L330"""
-    def __init__(self, in_channels, out_channels, aggr, mid_act=None, activation=nn.ReLU()):
-        super(PGN, self).__init__(aggr=aggr)
+#TODO: Implement other Processor Architectures
+
+class PGN(nn.Module):
+    # TODO: Implement gated message passing
+    """Pointer Graph Networks (Veličković et al., NeurIPS 2020)."""
+    """Adapted from https://github.com/google-deepmind/clrs/blob/master/clrs/_src/processors.py"""
+    def __init__(self, in_channels, out_channels, aggr="max", mid_act=None, activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8):
+        super().__init__()
+        
         logger.info(f"PGN: in_channels: {in_channels}, out_channels: {out_channels}")
         self.in_channels = in_channels
         self.mid_channels = out_channels
         self.mid_act = mid_act
         self.out_channels = out_channels
         self.activation = activation
+        self.nb_triplet_fts = nb_triplet_fts
+        self.aggr = aggr
+        self.layer_norm = layer_norm
 
         # Message MLPs
-        self.m_1 = nn.Linear(in_channels, self.mid_channels) # source node
-        self.m_2 = nn.Linear(in_channels, self.mid_channels) # target node
+        self.m_1 = nn.Linear(in_channels*2, self.mid_channels)
+        self.m_2 = nn.Linear(in_channels*2, self.mid_channels)
+        self.m_e = nn.Linear(in_channels, self.mid_channels)
+        self.m_g = nn.Linear(in_channels, self.mid_channels)
+
+        if self.layer_norm:
+            self.norm = nn.LayerNorm(out_channels)
         
         self.msg_mlp = nn.Sequential(
             nn.ReLU(),
@@ -38,188 +50,80 @@ class PGN(pyg_nn.MessagePassing):
             nn.Linear(self.mid_channels, self.mid_channels)
         )
 
-        # Edge weight scaler
-        self.edge_weight_scaler = nn.Linear(1, self.mid_channels)
-
         # Output MLP
-        self.o1 = nn.Linear(in_channels, out_channels) # skip connection
+        self.o1 = nn.Linear(in_channels*2, out_channels) # skip connection
         self.o2 = nn.Linear(self.mid_channels, out_channels)
 
-        
-        # We do not support graph level features for now
+        if self.nb_triplet_fts is not None:
+            self.t_1 = nn.Linear(in_channels*2, nb_triplet_fts)
+            self.t_2 = nn.Linear(in_channels, nb_triplet_fts)
+            self.t_3 = nn.Linear(in_channels, nb_triplet_fts)
+            self.t_e_1 = nn.Linear(in_channels, nb_triplet_fts)
+            self.t_e_2 = nn.Linear(in_channels, nb_triplet_fts)
+            self.t_e_3 = nn.Linear(in_channels, nb_triplet_fts)
+            self.t_g = nn.Linear(in_channels, nb_triplet_fts)
 
-    def forward(self, x, edge_index, edge_weight=None):
-        if edge_weight is None:
-            edge_weight = torch.ones(edge_index.shape[1], 1).to(x.device)
+            self.o3 = nn.Linear(nb_triplet_fts, out_channels)
+
+    def get_triplet_msgs(self, node_fts, edge_fts, graph_fts):
+        """Triplet messages, as done by Dudzik and Velickovic (2022)."""
+        tri_1 = self.t_1(node_fts)
+        tri_2 = self.t_2(node_fts)
+        tri_3 = self.t_1(node_fts)
+        tri_e_1 = self.t_e_1(edge_fts)
+        tri_e_2 = self.t_e_2(edge_fts)
+        tri_e_3 = self.t_e_3(edge_fts)
+        tri_g = self.t_g(graph_fts)
+
+        return (
+            tri_1[:, :, None, None, :]  +  #   (B, N, 1, 1, H)
+            tri_2[:, None, :, None, :]  +  # + (B, 1, N, 1, H)
+            tri_3[:, None, None, :, :]  +  # + (B, 1, 1, N, H)
+            tri_e_1[:, :, :, None, :]   +  # + (B, N, N, 1, H)
+            tri_e_2[:, :, None, :, :]   +  # + (B, N, 1, N, H)
+            tri_e_3[:, None, :, :, :]   +  # + (B, 1, N, N, H)
+            tri_g[:, None, None, None, :]  # + (B, 1, 1, 1, H)
+        )                                  # = (B, N, N, N, H)
+
+
+    def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
+        z = torch.concat([node_fts, hidden], dim=-1)
+
+        msg_1 = self.m_1(z)
+        msg_2 = self.m_2(z)
+        msg_e = self.m_e(edge_fts)
+        msg_g = self.m_g(graph_fts)
+
+        msgs = msg_1[:, None, :, :] + msg_2[:, :, None, :] + msg_e + msg_g[:, None, None, :] # (B, N, N, H)
+        msgs = self.msg_mlp(msgs)
         
-        out = self.propagate(edge_index, x=x, edge_weight=edge_weight)
-        h_1 = self.o1(x)
-        h_2 = self.o2(out)
+        tri_msgs = None
+        if self.nb_triplet_fts is not None:
+            # Triplet messages, as done by Dudzik and Velickovic (2022)
+            triplets = self.get_triplet_msgs(z, edge_fts, graph_fts)
+
+            
+            tri_msgs = self.o3(torch.max(triplets, dim=1))  # (B, N, N, H)
+            if self.activation is not None:
+                tri_msgs = self.activation(tri_msgs)
+
+            if self.layer_norm:
+                tri_msgs = self.norm(tri_msgs)
+
+        if self.aggr == "max":
+            maxarg = torch.where(adj_matrix.unsqueeze(-1), msgs, -1e9) # (B, N, N, H)
+            msgs = torch.max(maxarg, dim=1) # (B, N, H)
+
+        h_1 = self.o1(z)
+        h_2 = self.o2(msgs)
         out = h_1 + h_2
+
         if self.activation is not None:
             out = self.activation(out)
-        return out
-    
-    def message(self, x_j, x_i, edge_weight=None):
-        # j is source, i is target
-        msg_1 = self.m_1(x_j)
-        msg_2 = self.m_2(x_i)
-        
-        
-        msg = msg_1 + msg_2        
-        if edge_weight is not None:
-            msg_e = self.edge_weight_scaler(edge_weight.reshape(-1, 1))
-            msg = msg + msg_e
-        
-        msg = self.msg_mlp(msg)
 
-
-        if self.mid_act is not None:
-            msg = self.mid_act(msg)
-
-        return msg
-
-######################
-# Modules from https://github.com/floriangroetschla/Recurrent-GNNs-for-algorithm-learning/blob/main/model.py
-# Adapted to work with edge weights
-
-class GRUConv(pyg_nn.MessagePassing):
-    def __init__(self, in_channels, out_channels, aggr):
-        super(GRUConv, self).__init__(aggr=aggr)
-        logger.info(f"GRUConv: in_channels: {in_channels}, out_channels: {out_channels}")
-        self.rnn = torch.nn.GRUCell(in_channels, out_channels)
-        self.edge_weight_scaler = nn.Linear(1, in_channels)
-
-    def forward(self, x, edge_index, edge_weight, last_hidden):
-        out = self.propagate(edge_index, x=x, edge_weight=edge_weight)
-        out = self.rnn(out, last_hidden)
-        return out
-
-    def message(self, x_j, edge_weight):
-        return F.relu(x_j + self.edge_weight_scaler(edge_weight.unsqueeze(-1)))
-
-class GRUMLPConv(pyg_nn.MessagePassing):
-    def __init__(self, in_channels, out_channels, mlp_edge, aggr):
-        super(GRUMLPConv, self).__init__(aggr=aggr)
-        self.rnn = torch.nn.GRUCell(in_channels, out_channels)
-        self.mlp_edge = mlp_edge
-
-    def forward(self, x, edge_index, last_hidden, edge_weight=None):
-        out = self.propagate(edge_index, x=x, edge_weight=edge_weight)
-        out = self.rnn(out, last_hidden)
-        return out
-
-    def message(self, x_j, x_i, edge_weight=None):
-        concatted = torch.cat((x_j, x_i), dim=-1)
-        if edge_weight is not None:
-            concatted = torch.cat((concatted, edge_weight.unsqueeze(-1)), dim=-1)
-        return self.mlp_edge(concatted) 
-
-def _gruconv_module(in_channels, out_channels, aggr="add"):
-    return GRUConv(in_channels, out_channels, aggr)
-
-def _grumlpconv_module(in_channels, out_channels, aggr="add", layers=2, dropout=0.0, use_bn=False, is_weighted=False):
-    input_dim = in_channels*2+1 if is_weighted else in_channels*2
-    mlp  = nn.Sequential(
-        nn.Linear(input_dim, in_channels)
-    )
-    if use_bn:
-        logger.debug(f"Using batch norm in GIN module")
-        mlp.add_module(f"bn_input", nn.BatchNorm1d(in_channels))
-    for _ in range(layers-1):
-        mlp.add_module(f"relu_{_}", nn.ReLU())
-        mlp.add_module(f"linear_{_}", nn.Linear(in_channels, in_channels))
-        if use_bn:
-            logger.debug(f"Using batch norm in GIN module")
-            mlp.add_module(f"bn_{_}", nn.BatchNorm1d(in_channels))
-    if dropout > 0:
-        mlp.add_module(f"dropout", nn.Dropout(dropout))
-    return GRUMLPConv(in_channels, out_channels, mlp, aggr)
-
-######################
-
-def _gin_module(in_channels, out_channels, eps=0, train_eps=False, layers=2, dropout=0.0, use_bn=False, aggr="add"):
-    mlp = nn.Sequential(
-        nn.Linear(in_channels, out_channels),
-    )
-    if use_bn:
-        logger.debug(f"Using batch norm in GIN module")
-        mlp.add_module(f"bn_input", nn.BatchNorm1d(out_channels))
-    for _ in range(layers-1):
-        mlp.add_module(f"relu_{_}", nn.ReLU())
-        mlp.add_module(f"linear_{_}", nn.Linear(out_channels, out_channels))
-        if use_bn:
-            logger.debug(f"Using batch norm in GIN module")
-            mlp.add_module(f"bn_{_}", nn.BatchNorm1d(out_channels))
-    if dropout > 0:
-        mlp.add_module(f"dropout", nn.Dropout(dropout))
-    return pyg_nn.GINConv(mlp, eps, train_eps, aggr=aggr)
-
-def _gine_module(in_channels, out_channels, eps=0, train_eps=False, layers=2, dropout=0.0, use_bn=False, edge_dim=1, aggr="add"):
-    
-    mlp = nn.Sequential(
-        nn.Linear(in_channels, out_channels),
-    )
-    if use_bn:
-        logger.debug(f"Using batch norm in GIN module")
-        mlp.add_module(f"bn_input", nn.BatchNorm1d(out_channels))
-    for _ in range(layers-1):
-        mlp.add_module(f"relu_{_}", nn.ReLU())
-        mlp.add_module(f"linear_{_}", nn.Linear(out_channels, out_channels))
-        if use_bn:
-            logger.debug(f"Using batch norm in GIN module")
-            mlp.add_module(f"bn_{_}", nn.BatchNorm1d(out_channels))
-    if dropout > 0:
-        mlp.add_module(f"dropout", nn.Dropout(dropout))
-    
-    return pyg_nn.GINEConv(mlp, eps, train_eps, edge_dim=edge_dim, aggr=aggr)
-
-def _get_processor(name):
-    if name == "GCNConv":
-        return pyg_nn.GCNConv
-    elif name == "GINConv":
-        return _gin_module    
-    elif name == "GINEConv":
-        return _gine_module
-    elif name == "GRUConv":
-        return _gruconv_module
-    elif name == "RecGNNConv": # initially called GRUMLPConv
-        return _grumlpconv_module
-    elif name == "PGN":
-        return PGN
-    else:
-        raise ValueError(f"Unknown processor {name}")
-    
-class Processor(nn.Module, ABC):
-    def __init__(self, processor_name="GCNConv", hidden_dim=128, use_last_hidden=False, layer_norm=False, **kwargs):
-        super().__init__()
-        processor_input = hidden_dim*3 if use_last_hidden else hidden_dim*2
-
-        self.use_last_hidden = use_last_hidden
-        self.hidden_dim = hidden_dim
-        self.layer_norm = layer_norm
-        
-        self.core = _get_processor(processor_name)(in_channels=processor_input, out_channels=hidden_dim, **kwargs)
         if self.layer_norm:
-            self.norm = nn.LayerNorm(hidden_dim)
-        
-        self._core_requires_last_hidden = "last_hidden" in signature(self.core.forward).parameters
-
-    def forward(self, input_hidden, hidden, last_hidden, **kwargs):
-        stacked = stack_hidden(input_hidden, hidden, last_hidden, self.use_last_hidden)
-        if self._core_requires_last_hidden:
-            kwargs["last_hidden"] = last_hidden
-        out = self.core(stacked, **kwargs)
-        if self.layer_norm:
-            # norm
             out = self.norm(out)
-        return out
 
-    def has_edge_weight(self):
-        return "edge_weight" in signature(self.core.forward).parameters
-    
-    def has_edge_attr(self):
-        return "edge_attr" in signature(self.core.forward).parameters
-
+        return out, tri_msgs
 
 
