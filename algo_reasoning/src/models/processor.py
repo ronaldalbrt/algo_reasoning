@@ -6,7 +6,7 @@ import torch_geometric.nn as pyg_nn
 from inspect import signature
 from loguru import logger
 
-from ..utils import stack_hidden
+from algo_reasoning.utils.utils import stack_hidden
 
 import torch_geometric.nn as pyg_nn
 from inspect import signature
@@ -191,28 +191,28 @@ def _get_processor(name):
         raise ValueError(f"Unknown processor {name}")
     
 class Processor(nn.Module, ABC):
-    def __init__(self, cfg, has_randomness=False):
+    def __init__(self, processor_name="GCNConv", hidden_dim=128, use_last_hidden=False, layer_norm=False, **kwargs):
         super().__init__()
-        self.cfg = cfg        
-        processor_input = self.cfg.MODEL.HIDDEN_DIM*3 if self.cfg.MODEL.PROCESSOR_USE_LAST_HIDDEN else self.cfg.MODEL.HIDDEN_DIM*2
-        if has_randomness:
-            processor_input += 1
-        self.core = _get_processor(self.cfg.MODEL.PROCESSOR.NAME)(in_channels=processor_input, out_channels=self.cfg.MODEL.HIDDEN_DIM, **self.cfg.MODEL.PROCESSOR.KWARGS[0])
-        if self.cfg.MODEL.PROCESSOR.LAYERNORM.ENABLE:
-            self.norm = pyg_nn.LayerNorm(self.cfg.MODEL.HIDDEN_DIM, mode=self.cfg.MODEL.PROCESSOR.LAYERNORM.MODE)
+        processor_input = hidden_dim*3 if use_last_hidden else hidden_dim*2
+
+        self.use_last_hidden = use_last_hidden
+        self.hidden_dim = hidden_dim
+        self.layer_norm = layer_norm
+        
+        self.core = _get_processor(processor_name)(in_channels=processor_input, out_channels=hidden_dim, **kwargs)
+        if self.layer_norm:
+            self.norm = nn.LayerNorm(hidden_dim)
         
         self._core_requires_last_hidden = "last_hidden" in signature(self.core.forward).parameters
 
-    def forward(self, input_hidden, hidden, last_hidden, batch_assignment, randomness=None, **kwargs):
-        stacked = stack_hidden(input_hidden, hidden, last_hidden, self.cfg.MODEL.PROCESSOR_USE_LAST_HIDDEN)
-        if randomness is not None:
-            stacked = torch.cat((stacked, randomness.unsqueeze(1)), dim=-1)
+    def forward(self, input_hidden, hidden, last_hidden, **kwargs):
+        stacked = stack_hidden(input_hidden, hidden, last_hidden, self.use_last_hidden)
         if self._core_requires_last_hidden:
             kwargs["last_hidden"] = last_hidden
         out = self.core(stacked, **kwargs)
-        if self.cfg.MODEL.PROCESSOR.LAYERNORM.ENABLE:
+        if self.layer_norm:
             # norm
-            out = self.norm(out, batch=batch_assignment)
+            out = self.norm(out)
         return out
 
     def has_edge_weight(self):

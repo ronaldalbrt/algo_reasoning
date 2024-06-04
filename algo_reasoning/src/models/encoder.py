@@ -3,53 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from loguru import logger
 from algo_reasoning.src.data.data import CLRSData
-from algo_reasoning.src.data.specs import Stage, Location, Type, SPECS
+from algo_reasoning.src.data.specs import Stage, Location, Type, SPECS, CATEGORIES_DIMENSIONS
 
 _Tensor = torch.Tensor
-
-_CATEGORIES_DIMENSIONS = {
-    "heapsort": {
-        "phase": 3
-    },
-    "lcs_length": {
-        "key": 4,
-        'b': 4,
-        "b_h": 4
-    },
-    "dfs": {
-        "color": 3
-    },
-    "topological_sort": {
-        "color": 3
-    },
-    "strongly_connected_components": {
-        "color": 3
-    },
-    "articulation_points": {
-        "color": 3
-    },
-    "bridges": {
-        "color": 3
-    },
-    "mst_kruskal" : {
-        "phase": 3
-    },
-    "dag_shortest_paths": {
-        "color": 3
-    },
-    "naive_string_matcher": {
-        "key": 4
-    },
-    "kmp_matcher": {
-        "key": 4
-    },
-    "graham_scan": {
-        "phase": 5
-    },
-    "jarvis_march": {
-        "phase": 2
-    }
-}
 
 def preprocess(data:_Tensor, _type:str, nb_nodes:int=16) -> _Tensor:
     if _type != Type.CATEGORICAL:
@@ -61,8 +17,7 @@ def preprocess(data:_Tensor, _type:str, nb_nodes:int=16) -> _Tensor:
     return data
 
 def encode_CLRSData(data:CLRSData, models:nn.ModuleDict, algorithm:str, nb_nodes:int=16,
-                    node_hidden=None, edge_hidden=None, graph_hidden=None, hint_step=None) -> _Tensor:
-    
+                    node_hidden=None, edge_hidden=None, graph_hidden=None, hint_step=None) -> _Tensor:    
     for key, value in data:
         if key not in SPECS[algorithm]:
             logger.warning(f"Key {key} not in specs for algorithm {algorithm}")
@@ -70,7 +25,7 @@ def encode_CLRSData(data:CLRSData, models:nn.ModuleDict, algorithm:str, nb_nodes
         if hint_step is not None:
             value = value[:, hint_step]
         
-        stage, loc, type_ = SPECS[algorithm][key]
+        _, loc, type_ = SPECS[algorithm][key]
 
         logger.debug(f"Encoding {key}.")
 
@@ -128,7 +83,7 @@ class Encoder(nn.Module):
 
             input_dim = 1
             if type_ == Type.CATEGORICAL:
-                input_dim = _CATEGORIES_DIMENSIONS[algorithm][k]    
+                input_dim = CATEGORIES_DIMENSIONS[algorithm][k]
             elif type_ == Type.POINTER:
                 input_dim = nb_nodes        
 
@@ -141,7 +96,7 @@ class Encoder(nn.Module):
 
         node_hidden, edge_hidden, graph_hidden = encode_CLRSData(batch.inputs, self.encoder, self.algorithm, self.nb_nodes)
 
-        if self.encode_hints:
+        if self.encode_hints and hint_step is not None:
             node_hidden, edge_hidden, graph_hidden = encode_CLRSData(batch.hints, self.encoder, self.algorithm, self.nb_nodes,
                                                                      node_hidden=node_hidden, edge_hidden=edge_hidden, graph_hidden=graph_hidden, hint_step=hint_step)
 

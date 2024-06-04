@@ -2,7 +2,8 @@ import torch.nn as nn
 import torch
 import torch_scatter
 from loguru import logger
-from torch_geometric.nn import global_mean_pool, global_max_pool
+from torch_geometric.nn import global_mean_pool
+from algo_reasoning.src.data.specs import Stage, Location, Type, SPECS, CATEGORIES_DIMENSIONS
 
 ## Node decoders
 
@@ -40,11 +41,20 @@ class NodeMaskOneDecoder(NodeBaseDecoder):
     def forward(self, x, **kwargs):
         out = super().forward(x).squeeze(-1) # N x 1
 
-        out = torch.log_softmax(out, dim=-1)
+        out = torch.sigmoid(out, dim=-1)
         return out
 
 
 class NodeCategoricalDecoder(NodeBaseDecoder):
+    def __init__(self, input_dim, hidden_dim=128):
+        super().__init__(input_dim, hidden_dim)
+
+    def forward(self, x, **kwargs):
+        out = super().forward(x) # N x C
+        out = torch.log_softmax(out, dim=-1)
+        return out
+    
+class NodePointerDecoder(NodeBaseDecoder):
     def __init__(self, input_dim, hidden_dim=128):
         super().__init__(input_dim, hidden_dim)
 
@@ -62,32 +72,33 @@ class BaseEdgeDecoder(nn.Module):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.input_dim = input_dim
-        self.source_lin = nn.Linear(hidden_dim, hidden_dim)
-        self.target_lin = nn.Linear(hidden_dim, hidden_dim)
+        self.source_lin = nn.Linear(hidden_dim, input_dim)
+        self.target_lin = nn.Linear(hidden_dim, input_dim)
 
     def forward(self, hiddens, edge_index):
         zs = self.source_lin(hiddens) # N x H
         zt = self.target_lin(hiddens) # N x H
-        return (zs[edge_index[0]] * zt[edge_index[1]]).sum(dim=-1)
+        return zs[edge_index[0]] + zt[edge_index[1]]
     
 class EdgeMaskDecoder(BaseEdgeDecoder):
     def __init__(self, input_dim, hidden_dim=128):
         super().__init__(input_dim, hidden_dim)
 
     def forward(self, hiddens, edge_index, **kwargs):
-        out = super().forward(hiddens, edge_index).sigmoid().squeeze(-1)
+        out = super().forward(hiddens, edge_index)
+        out = torch.sigmoid(out, dim=-1).squeeze(-1)
         return out
     
-class NodePointerDecoder(BaseEdgeDecoder):
+class EdgePointerDecoder(BaseEdgeDecoder):
     def __init__(self, input_dim, hidden_dim=128):
         super().__init__(input_dim, hidden_dim)
 
     def forward(self, hiddens, edge_index, **kwargs):
-        z =  super().forward(hiddens, edge_index) # E
-        # per node outgoing softmax
-        z = torch_scatter.scatter_log_softmax(z, edge_index[0], dim=0)
-        return z
-
+        out = super().forward(hiddens, edge_index)
+        out = torch.log_softmax(out, dim=-1)
+        
+        return out
+    
 #### Graph decoders
 
 class GraphBaseDecoder(nn.Module):
@@ -135,13 +146,16 @@ _DECODER_MAP = {
 }
     
 class Decoder(nn.Module):
-    def __init__(self, specs, hidden_dim=128, no_hint=False):
+    def __init__(self, algorithm, hidden_dim=128, no_hint=False):
         super().__init__()
-        self.specs = specs
+        self.algortihm = algorithm
         self.hidden_dim = hidden_dim
         self.decoder = nn.ModuleDict()
-        for k, v in specs.items():
-            stage, loc, type_, cat_dim = v
+
+        self.specs = SPECS[algorithm]
+        for k, v in self.specs.items():
+            stage, loc, type_ = v
+            cat_dim = CATEGORIES_DIMENSIONS[algorithm][k]
             if no_hint and stage == 'hint':
                 logger.debug(f'Ignoring hint decoder for {k}')
                 continue
@@ -166,7 +180,7 @@ class Decoder(nn.Module):
             else:
                 dkey = key
 
-            output[key] = self.decoder[dkey](hidden, edge_index=batch.edge_index, batch_assignment=batch.batch)
+            output[key] = self.decoder[dkey](hidden, edge_index=batch.edge_index)
         return output
 
     

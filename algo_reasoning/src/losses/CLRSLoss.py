@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch_scatter
-from functools import partial
 from loguru import logger
 
 def calculate_loss(mask, truth, pred, edge_index, type_, batch_assignment):

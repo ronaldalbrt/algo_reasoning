@@ -6,36 +6,41 @@ from loguru import logger
 from .encoder import Encoder
 from .decoder import Decoder, grab_outputs, output_mask
 from .processor import Processor
-from ..utils import stack_hidden   
+from algo_reasoning.utils.utils import stack_hidden
 
 def stack_hints(hints):
     return {k: torch.stack([hint[k] for hint in hints], dim=-1) for k in hints[0]} if hints else {}
 
+HIDDEN_DIM = 128
+GRU_ENABLED = False
+MSG_PASSING_STEPS = 3
+HINT_LOSS_WEIGHT = 0.0
+USE_LAST_HIDDEN = False
+
 class EncodeProcessDecode(torch.nn.Module):
-    def __init__(self, specs, cfg):
+    def __init__(self, cfg, algorithms):
         super().__init__()
         self.cfg = cfg
-        self.specs = specs
-        self.has_randomness = 'randomness' in specs
-        self.processor = Processor(cfg, self.has_randomness)
-        self.encoder = Encoder(specs, self.cfg.MODEL.HIDDEN_DIM)
+        self.processor = Processor()
+        self.encoders = {}
+        for algorithm in algorithms:
+            #self.encoders[algorithm] = Encoder(algorithm, hidden_dim=self.cfg.MODEL.HIDDEN_DIM)
+            self.encoders[algorithm] = Encoder(algorithm, hidden_dim=HIDDEN_DIM)
 
-        decoder_input = self.cfg.MODEL.HIDDEN_DIM*3 if self.cfg.MODEL.DECODER_USE_LAST_HIDDEN else self.cfg.MODEL.HIDDEN_DIM*2
-        self.decoder = Decoder(specs, decoder_input, no_hint=self.cfg.TRAIN.LOSS.HINT_LOSS_WEIGHT == 0.0)
-        logger.debug(f"Decoder: {self.cfg.TRAIN.LOSS.HINT_LOSS_WEIGHT == 0.0}")
+        #decoder_input = self.cfg.MODEL.HIDDEN_DIM*3 if self.cfg.MODEL.DECODER_USE_LAST_HIDDEN else self.cfg.MODEL.HIDDEN_DIM*2
+        #self.decoder = Decoder(specs, decoder_input, no_hint=self.cfg.TRAIN.LOSS.HINT_LOSS_WEIGHT == 0.0)
+        #logger.debug(f"Decoder: {self.cfg.TRAIN.LOSS.HINT_LOSS_WEIGHT == 0.0}")
 
-        if not self.processor.has_edge_weight() and not self.processor.has_edge_attr():
-            if "A" in specs:
-                logger.warning(f"Processor {self.cfg.MODEL.PROCESSOR.NAME} does neither support edge_weight nor edge_attr, but the algorithm requires edge weights.")
-                raise ValueError(f"Processor {self.cfg.MODEL.PROCESSOR.NAME} does neither support edge_weight nor edge_attr, but the algorithm requires edge weights.")
-        elif self.processor.has_edge_weight():
+        if self.processor.has_edge_weight():
             self.edge_weight_name = "edge_weight"
         elif self.processor.has_edge_attr():
             self.edge_weight_name = "edge_attr"
 
 
-        if self.cfg.MODEL.GRU.ENABLE:
-            self.gru = torch.nn.GRUCell(self.cfg.MODEL.HIDDEN_DIM, self.cfg.MODEL.HIDDEN_DIM)
+        #if self.cfg.MODEL.GRU.ENABLE:
+        #    self.gru = torch.nn.GRUCell(self.cfg.MODEL.HIDDEN_DIM, self.cfg.MODEL.HIDDEN_DIM)
+        if GRU_ENABLED:
+            self.gru = torch.nn.GRUCell(HIDDEN_DIM, HIDDEN_DIM)
         
     def process_weights(self, batch):
         if self.edge_weight_name == "edge_attr":
@@ -44,7 +49,8 @@ class EncodeProcessDecode(torch.nn.Module):
             return batch.weights
         
     def forward(self, batch):
-        input_hidden, randomness = self.encoder(batch)
+        algorithm = batch.algorithm
+        input_hidden = self.encoders[algorithm](batch)
         max_len = batch.length.max().item()
         hints = []
         output = None
@@ -53,9 +59,11 @@ class EncodeProcessDecode(torch.nn.Module):
         hidden = input_hidden
         for step in range(max_len):
             last_hidden = hidden
-            for _ in range(self.cfg.MODEL.MSG_PASSING_STEPS):
-                hidden = self.processor(input_hidden, hidden, last_hidden, randomness=randomness[:, step] if randomness is not None else None, edge_index=batch.edge_index, batch_assignment=batch.batch, **{self.edge_weight_name: self.process_weights(batch) for _ in range(1) if hasattr(batch, 'weights') })
-                if self.cfg.MODEL.GRU.ENABLE:
+            #for _ in range(self.cfg.MODEL.MSG_PASSING_STEPS):
+            for _ in range(MSG_PASSING_STEPS):
+                hidden = self.processor(input_hidden, hidden, last_hidden, **{self.edge_weight_name: self.process_weights(batch) for _ in range(1) if hasattr(batch, 'weights') })
+                #if self.cfg.MODEL.GRU.ENABLE:
+                if GRU_ENABLED:
                     hidden = self.gru(hidden, last_hidden)
             if self.training and self.cfg.TRAIN.LOSS.HINT_LOSS_WEIGHT > 0.0:
                 hints.append(self.decoder(stack_hidden(input_hidden, hidden, last_hidden, self.cfg.MODEL.DECODER_USE_LAST_HIDDEN), batch, 'hints'))
@@ -63,11 +71,13 @@ class EncodeProcessDecode(torch.nn.Module):
             # Check if output needs to be constructed
             if (batch.length == step+1).sum() > 0:
                 # Decode outputs
-                if self.training and self.cfg.TRAIN.LOSS.HINT_LOSS_WEIGHT > 0.0:
+                #if self.training and self.cfg.TRAIN.LOSS.HINT_LOSS_WEIGHT > 0.0:
+                if self.training and HINT_LOSS_WEIGHT > 0.0:
                     # The last hint is the output, no need to decode again, its the same decoder
                     output_step = grab_outputs(hints[-1], batch)
                 else:
-                    output_step = self.decoder(stack_hidden(input_hidden, hidden, last_hidden, self.cfg.MODEL.DECODER_USE_LAST_HIDDEN), batch, 'outputs')
+                    #output_step = self.decoder(stack_hidden(input_hidden, hidden, last_hidden, self.cfg.MODEL.DECODER_USE_LAST_HIDDEN), batch, 'outputs')
+                    output_step = stack_hidden(input_hidden, hidden, last_hidden, USE_LAST_HIDDEN)
                 
                 # Mask output
                 mask = output_mask(batch, step)   
