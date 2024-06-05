@@ -207,7 +207,6 @@ class Decoder(nn.Module):
         self.specs = SPECS[algorithm]
         for k, v in self.specs.items():
             stage, loc, type_ = v
-            cat_dim = CATEGORIES_DIMENSIONS[algorithm][k]
 
             if no_hint and stage == 'hint':
                 logger.debug(f'Ignoring hint decoder for {k}')
@@ -218,19 +217,23 @@ class Decoder(nn.Module):
 
             spec_dim = 1
             if type_ == Type.CATEGORICAL:
-                spec_dim = cat_dim
+                spec_dim = CATEGORIES_DIMENSIONS[algorithm][k]
             elif type_ == Type.POINTER:
                 spec_dim = nb_nodes
 
             if k not in self.decoder:
                 self.decoder[k] = _DECODER_MAP[(loc, type_)](spec_dim, hidden_dim)
 
-    def forward(self, hidden):
+    def forward(self, node_fts, edge_fts):
         outputs = CLRSData()
         hints = CLRSData()
         
         for k, v in self.specs.items():
             stage, loc, type_ = v
+            if loc == Location.EDGE:
+                hidden = edge_fts
+            else:
+                hidden = node_fts
 
             if self.no_hint and stage == 'hint':
                 continue
@@ -242,29 +245,4 @@ class Decoder(nn.Module):
             elif stage == 'hint':
                 hints[k] = self.decoder[k](hidden)
 
-        return CLRSData(inputs=CLRSData(), hints=hints, length=None, outputs=outputs, algorithm=self.algorithm)
-
-    
-def grab_outputs(hints, batch):
-    """This function grabs the outputs from the batch and returns them in the same format as the hints"""
-    output = {}
-    for k in hints:
-        k_out = k.replace('_h', '')
-        if k_out in batch.outputs:
-            output[k_out] = hints[k]
-    return output
-
-def output_mask(batch, step):
-    final_node_idx = (batch.length[batch.batch]-1)
-
-    masks = {}
-    for key in batch.outputs:
-        if key in batch.edge_attrs():
-            final_edge_idx = final_node_idx[batch.edge_index[0]]
-            masks[key] = final_edge_idx == step
-        elif key in batch.node_attrs():
-            masks[key] = final_node_idx == step
-        else:
-            # graph attribute
-            masks[key] = batch.length == step + 1
-    return masks
+        return CLRSData(inputs=CLRSData(), hints=hints, length=-1, outputs=outputs, algorithm=self.algorithm)

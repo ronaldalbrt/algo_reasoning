@@ -18,16 +18,15 @@ HINT_LOSS_WEIGHT = 0.0
 USE_LAST_HIDDEN = False
 
 class EncodeProcessDecode(torch.nn.Module):
-    def __init__(self, cfg, algorithms):
+    def __init__(self, algorithms, hidden_dim=128, msg_passing_steps=3, gru_enabled=False, hint_loss_weight=0.0, use_last_hidden=False):
         super().__init__()
         self.cfg = cfg
         self.processor = Processor()
         self.encoders = {}
         for algorithm in algorithms:
-            #self.encoders[algorithm] = Encoder(algorithm, hidden_dim=self.cfg.MODEL.HIDDEN_DIM)
-            self.encoders[algorithm] = Encoder(algorithm, hidden_dim=HIDDEN_DIM)
+            self.encoders[algorithm] = Encoder(algorithm, hidden_dim=hidden_dim)
 
-        #decoder_input = self.cfg.MODEL.HIDDEN_DIM*3 if self.cfg.MODEL.DECODER_USE_LAST_HIDDEN else self.cfg.MODEL.HIDDEN_DIM*2
+        decoder_input = self.cfg.MODEL.HIDDEN_DIM*3 if self.cfg.MODEL.DECODER_USE_LAST_HIDDEN else self.cfg.MODEL.HIDDEN_DIM*2
         #self.decoder = Decoder(specs, decoder_input, no_hint=self.cfg.TRAIN.LOSS.HINT_LOSS_WEIGHT == 0.0)
         #logger.debug(f"Decoder: {self.cfg.TRAIN.LOSS.HINT_LOSS_WEIGHT == 0.0}")
 
