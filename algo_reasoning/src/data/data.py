@@ -126,4 +126,20 @@ class CLRSData(Data):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def concat(self, other):
+        """Concatenate two CLRSData objects."""
+        for key, value in other.items():
+            if key in self:
+                if isinstance(value, CLRSData):
+                    self[key].concat(value)
+                elif isinstance(value, str):
+                    self[key] = value
+                elif value.dim() > 0:
+                    self[key] = torch.cat([self[key], value], dim=1)
+                elif value.dim() == 0:
+                    self[key] = torch.tensor([self[key], value], dtype=torch.float32)
+                
+            else:
+                self[key] = value
+
 

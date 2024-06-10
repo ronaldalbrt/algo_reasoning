@@ -5,6 +5,8 @@ from loguru import logger
 from algo_reasoning.src.data.specs import Stage, Location, Type, SPECS, CATEGORIES_DIMENSIONS
 from algo_reasoning.src.data.data import CLRSData
 
+
+## TODO: AJUSTAR DECODERS!!!
 ## Node decoders
 class NodeBaseDecoder(nn.Module):
     def __init__(self, spec_dim, hidden_dim=128):
@@ -140,6 +142,8 @@ class GraphScalarDecoder(GraphBaseDecoder):
 
     def forward(self, x, **kwargs):
         out = super().forward(x).squeeze(-1) # (B)
+
+        return out
         
 class GraphMaskDecoder(GraphBaseDecoder):
     def __init__(self, input_dim, hidden_dim=128):
@@ -197,7 +201,7 @@ _DECODER_MAP = {
 }
     
 class Decoder(nn.Module):
-    def __init__(self, algorithm, nb_nodes=16, hidden_dim=128, no_hint=False):
+    def __init__(self, algorithm, hidden_dim=128, nb_nodes=16, no_hint=False):
         super().__init__()
         self.algorithm = algorithm
         self.hidden_dim = hidden_dim
@@ -225,8 +229,8 @@ class Decoder(nn.Module):
                 self.decoder[k] = _DECODER_MAP[(loc, type_)](spec_dim, hidden_dim)
 
     def forward(self, node_fts, edge_fts):
-        outputs = CLRSData()
-        hints = CLRSData()
+        outputs = dict()
+        hints = dict()
         
         for k, v in self.specs.items():
             stage, loc, type_ = v
@@ -235,14 +239,14 @@ class Decoder(nn.Module):
             else:
                 hidden = node_fts
 
-            if self.no_hint and stage == 'hint':
+            if self.no_hint and stage == Stage.HINT:
                 continue
-            if stage == 'input':
+            if stage == Stage.INPUT:
                 continue
             
-            if stage == 'output':
+            if stage == Stage.OUTPUT:
                 outputs[k] = self.decoder[k](hidden)
-            elif stage == 'hint':
-                hints[k] = self.decoder[k](hidden)
+            elif stage == Stage.HINT:
+                hints[k] = self.decoder[k](hidden).unsqueeze(1)
 
-        return CLRSData(inputs=CLRSData(), hints=hints, length=-1, outputs=outputs, algorithm=self.algorithm)
+        return CLRSData(inputs=CLRSData(), hints=CLRSData().from_dict(hints), length=-1, outputs=CLRSData().from_dict(outputs), algorithm=self.algorithm)
