@@ -201,11 +201,12 @@ _DECODER_MAP = {
 }
     
 class Decoder(nn.Module):
-    def __init__(self, algorithm, hidden_dim=128, nb_nodes=16, no_hint=False):
+    def __init__(self, algorithm, hidden_dim=128, nb_nodes=64, no_hint=False):
         super().__init__()
         self.algorithm = algorithm
         self.hidden_dim = hidden_dim
         self.no_hint = no_hint
+        self.nb_nodes = nb_nodes
         self.decoder = nn.ModuleDict()
 
         self.specs = SPECS[algorithm]
@@ -223,7 +224,7 @@ class Decoder(nn.Module):
             if type_ == Type.CATEGORICAL:
                 spec_dim = CATEGORIES_DIMENSIONS[algorithm][k]
             elif type_ == Type.POINTER:
-                spec_dim = nb_nodes
+                spec_dim = self.nb_nodes
 
             if k not in self.decoder:
                 self.decoder[k] = _DECODER_MAP[(loc, type_)](spec_dim, hidden_dim)

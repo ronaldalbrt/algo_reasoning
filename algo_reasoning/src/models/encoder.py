@@ -7,10 +7,10 @@ from algo_reasoning.src.specs import Stage, Location, Type, SPECS, CATEGORIES_DI
 
 _Tensor = torch.Tensor
 
-def preprocess(data:_Tensor, _type:str, nb_nodes:int=16) -> _Tensor:
+def preprocess(data:_Tensor, _type:str, nb_nodes:int=64) -> _Tensor:
     if _type != Type.CATEGORICAL:
         if _type == Type.POINTER:
-            data = F.one_hot(data.to(torch.int64), nb_nodes).to(torch.float32)
+            data = F.one_hot(data.long(), nb_nodes).to(torch.float32)
         else:
             data = data.unsqueeze(-1)
   
@@ -29,7 +29,7 @@ class LinearEncoder(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, algorithm, encode_hints=True, nb_nodes=16, hidden_dim=128):
+    def __init__(self, algorithm, encode_hints=True, nb_nodes=64, hidden_dim=128):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.nb_nodes = nb_nodes
@@ -50,11 +50,11 @@ class Encoder(nn.Module):
             if type_ == Type.CATEGORICAL:
                 input_dim = CATEGORIES_DIMENSIONS[algorithm][k]
             elif type_ == Type.POINTER:
-                input_dim = nb_nodes        
+                input_dim = self.nb_nodes        
 
             self.encoder[k] = LinearEncoder(input_dim, hidden_dim)
 
-    def _encode_CLRSData(self, data, node_hidden, edge_hidden, graph_hidden, adj_mat, hint_step=None):    
+    def _encode_CLRSData(self, data, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes, hint_step=None):    
         for key, value in data:
             if key not in SPECS[self.algorithm]:
                 continue
@@ -88,7 +88,7 @@ class Encoder(nn.Module):
 
             if loc == Location.NODE and type_ == Type.POINTER:
                 data = data.squeeze(-1)
-                adj_mat += ((data + data.permute((0, 2, 1))) > 0.5)
+                adj_mat += ((data[:, :, :nb_nodes] + data[:, :, :nb_nodes].permute((0, 2, 1))) > 0.5)
             elif loc == Location.EDGE and type_ == Type.MASK:
                 data = data.squeeze(-1)
                 adj_mat += ((data + data.permute((0, 2, 1))) > 0.0)
@@ -97,15 +97,16 @@ class Encoder(nn.Module):
 
     def forward(self, batch, hint_step=None):
         batch_size = len(batch.inputs.batch)
-        adj_mat = (torch.eye(self.nb_nodes)[None, :, :]).repeat(batch_size, 1, 1)
-        node_hidden = torch.zeros((batch_size, self.nb_nodes, self.hidden_dim))
-        edge_hidden = torch.zeros((batch_size, self.nb_nodes, self.nb_nodes, self.hidden_dim))
+        nb_nodes = batch.inputs.pos.shape[1]
+        adj_mat = (torch.eye(nb_nodes)[None, :, :]).repeat(batch_size, 1, 1)
+        node_hidden = torch.zeros((batch_size, nb_nodes, self.hidden_dim))
+        edge_hidden = torch.zeros((batch_size, nb_nodes, nb_nodes, self.hidden_dim))
         graph_hidden = torch.zeros((batch_size, self.hidden_dim))
 
-        node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_CLRSData(batch.inputs, node_hidden, edge_hidden, graph_hidden, adj_mat)
+        node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_CLRSData(batch.inputs, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes)
 
         if self.encode_hints and hint_step is not None:
-            node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_CLRSData(batch.hints, node_hidden, edge_hidden, graph_hidden, adj_mat, 
+            node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_CLRSData(batch.hints, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes, 
                                                                                     hint_step=hint_step)
 
         return node_hidden, edge_hidden, graph_hidden, adj_mat

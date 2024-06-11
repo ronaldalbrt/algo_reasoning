@@ -16,7 +16,7 @@ class EncodeProcessDecode(torch.nn.Module):
     def __init__(self, 
                  algorithms, 
                  hidden_dim=128, 
-                 nb_nodes=16, 
+                 nb_nodes=64, 
                  msg_passing_steps=3, 
                  use_lstm=False, 
                  hint_loss_weight=0.1, 
@@ -71,8 +71,9 @@ class EncodeProcessDecode(torch.nn.Module):
     def forward(self, batch):
         algorithm = batch.algorithm
         batch_size = len(batch.inputs.batch)
+        nb_nodes = batch.inputs.pos.shape[1]
         
-        hidden = torch.zeros(batch_size, self.nb_nodes, self.hidden_dim)
+        hidden = torch.zeros(batch_size, nb_nodes, self.hidden_dim)
         lstm_state = None
     
         max_len = batch.max_length.item() - 1

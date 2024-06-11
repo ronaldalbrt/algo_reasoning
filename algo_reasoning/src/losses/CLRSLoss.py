@@ -6,7 +6,7 @@ from algo_reasoning.src.specs import Location, SPECS
 from loguru import logger
     
 class CLRSLoss(nn.Module):
-    def __init__(self, hidden_loss_type, nb_nodes=16, hint_loss_weight=0.1):
+    def __init__(self, nb_nodes=64, hidden_loss_type=None, hint_loss_weight=0.1):
         super().__init__()
         self.hint_loss = (hint_loss_weight > 0.0)
         self.hint_loss_weight = hint_loss_weight
