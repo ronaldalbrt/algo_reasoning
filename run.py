@@ -13,6 +13,8 @@ import argparse
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.profilers import AdvancedProfiler
 
+#TODO: Deal with different number of nodes!!
+
 torch.set_float32_matmul_precision('high')
 
 def list_of_strings(arg):
