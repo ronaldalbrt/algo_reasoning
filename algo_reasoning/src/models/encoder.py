@@ -87,8 +87,9 @@ class Encoder(nn.Module):
                     graph_hidden += encoding
 
             if loc == Location.NODE and type_ == Type.POINTER:
-                data = data.squeeze(-1)
-                adj_mat += ((data[:, :, :nb_nodes] + data[:, :, :nb_nodes].permute((0, 2, 1))) > 0.5)
+                data = data.squeeze(-1)[:, :, :nb_nodes]
+                adj_mat += ((data + data.permute((0, 2, 1))) > 0.5)
+                
             elif loc == Location.EDGE and type_ == Type.MASK:
                 data = data.squeeze(-1)
                 adj_mat += ((data + data.permute((0, 2, 1))) > 0.0)
@@ -98,6 +99,7 @@ class Encoder(nn.Module):
     def forward(self, batch, hint_step=None):
         batch_size = len(batch.inputs.batch)
         nb_nodes = batch.inputs.pos.shape[1]
+
         adj_mat = (torch.eye(nb_nodes)[None, :, :]).repeat(batch_size, 1, 1)
         node_hidden = torch.zeros((batch_size, nb_nodes, self.hidden_dim))
         edge_hidden = torch.zeros((batch_size, nb_nodes, nb_nodes, self.hidden_dim))
