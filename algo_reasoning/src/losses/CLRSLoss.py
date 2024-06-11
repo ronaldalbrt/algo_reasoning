@@ -2,13 +2,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from algo_reasoning.src.data.specs import Location, SPECS
+from algo_reasoning.src.specs import Location, SPECS
 from loguru import logger
     
 class CLRSLoss(nn.Module):
-    def __init__(self, hidden_loss_type, nb_nodes=16, hint_loss=True):
+    def __init__(self, hidden_loss_type, nb_nodes=16, hint_loss_weight=0.1):
         super().__init__()
-        self.hint_loss = hint_loss
+        self.hint_loss = (hint_loss_weight > 0.0)
+        self.hint_loss_weight = hint_loss_weight
         self.nb_nodes = nb_nodes
 
         # if hidden_loss_type == "l2":
@@ -53,7 +54,7 @@ class CLRSLoss(nn.Module):
     def forward(self, pred, batch):
         algorithm = batch.algorithm
         specs = SPECS[algorithm]
-        max_length = batch.length.to(torch.int).max().item() + 1
+        max_length = batch.max_length.item()
         device = batch.length.device
 
         output_loss = torch.zeros(1, device=device)
@@ -81,4 +82,4 @@ class CLRSLoss(nn.Module):
 
             hint_loss += self._calculate_loss(mask, ground_truth, value, type_)
         
-        return output_loss, hint_loss
+        return output_loss + (self.hint_loss_weight*hint_loss)
