@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from loguru import logger
-from algo_reasoning.src.data.data import CLRSData
-from algo_reasoning.src.data.specs import Stage, Location, Type, SPECS, CATEGORIES_DIMENSIONS
+from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.specs import Stage, Location, Type, SPECS, CATEGORIES_DIMENSIONS
 
 _Tensor = torch.Tensor
 
@@ -29,13 +29,12 @@ class LinearEncoder(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, algorithm, batch_size=32, encode_hints=True, nb_nodes=16, hidden_dim=128):
+    def __init__(self, algorithm, encode_hints=True, nb_nodes=16, hidden_dim=128):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.nb_nodes = nb_nodes
         self.algorithm = algorithm
         self.encode_hints = encode_hints
-        self.batch_size = batch_size
         self.encoder = nn.ModuleDict()
 
         self.specs = SPECS[algorithm]
@@ -97,10 +96,11 @@ class Encoder(nn.Module):
         return node_hidden, edge_hidden, graph_hidden, (adj_mat > 0.).to(torch.float)
 
     def forward(self, batch, hint_step=None):
-        adj_mat = (torch.eye(self.nb_nodes)[None, :, :]).repeat(self.batch_size, 1, 1)
-        node_hidden = torch.zeros((self.batch_size, self.nb_nodes, self.hidden_dim))
-        edge_hidden = torch.zeros((self.batch_size, self.nb_nodes, self.nb_nodes, self.hidden_dim))
-        graph_hidden = torch.zeros((self.batch_size, self.hidden_dim))
+        batch_size = len(batch.inputs.batch)
+        adj_mat = (torch.eye(self.nb_nodes)[None, :, :]).repeat(batch_size, 1, 1)
+        node_hidden = torch.zeros((batch_size, self.nb_nodes, self.hidden_dim))
+        edge_hidden = torch.zeros((batch_size, self.nb_nodes, self.nb_nodes, self.hidden_dim))
+        graph_hidden = torch.zeros((batch_size, self.hidden_dim))
 
         node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_CLRSData(batch.inputs, node_hidden, edge_hidden, graph_hidden, adj_mat)
 

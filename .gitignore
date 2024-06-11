@@ -186,5 +186,6 @@ cython_debug/
 #.idea/
 
 tmp/
+checkpoints/
 
 .DS_Store

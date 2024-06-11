@@ -6,7 +6,7 @@ from loguru import logger
 from .encoder import Encoder
 from .decoder import Decoder
 from .processor import PGN
-from algo_reasoning.src.data.data import CLRSData
+from algo_reasoning.src.data import CLRSData
 
 
 def stack_hints(hints):
@@ -17,7 +17,6 @@ class EncodeProcessDecode(torch.nn.Module):
                  algorithms, 
                  hidden_dim=128, 
                  nb_nodes=16, 
-                 batch_size=32,
                  msg_passing_steps=3, 
                  use_lstm=False, 
                  hint_loss_weight=0.1, 
@@ -26,18 +25,19 @@ class EncodeProcessDecode(torch.nn.Module):
         super().__init__()
         self.msg_passing_steps = msg_passing_steps
         self.nb_nodes = nb_nodes
-        self.batch_size = batch_size
         self.hidden_dim = hidden_dim
         self.use_lstm = use_lstm
-        self.processor = PGN(hidden_dim, hidden_dim)
         self.encoders = {}
         self.decoders = {}
-        self.dropout_prob = dropout_prob
-        self.dropout = nn.Dropout(dropout_prob)
         for algorithm in algorithms:
-            self.encoders[algorithm] = Encoder(algorithm, batch_size=batch_size, encode_hints=encode_hints, nb_nodes=nb_nodes, hidden_dim=hidden_dim)
+            self.encoders[algorithm] = Encoder(algorithm, encode_hints=encode_hints, nb_nodes=nb_nodes, hidden_dim=hidden_dim)
             self.decoders[algorithm] = Decoder(algorithm, hidden_dim=hidden_dim, nb_nodes=nb_nodes, no_hint=hint_loss_weight == 0.0)
 
+        self.processor = PGN(hidden_dim, hidden_dim)
+        
+        self.dropout_prob = dropout_prob
+        self.dropout = nn.Dropout(dropout_prob)
+        
         if use_lstm:
             self.lstm = nn.LSTM(hidden_dim, hidden_dim)
     
@@ -70,10 +70,12 @@ class EncodeProcessDecode(torch.nn.Module):
     
     def forward(self, batch):
         algorithm = batch.algorithm
-        hidden = torch.zeros(self.batch_size, self.nb_nodes, self.hidden_dim)
+        batch_size = len(batch.inputs.batch)
+        
+        hidden = torch.zeros(batch_size, self.nb_nodes, self.hidden_dim)
         lstm_state = None
     
-        max_len = batch.length.to(torch.int).max().item()
+        max_len = batch.max_length.item() - 1
 
         output_pred, hidden, lstm_state = self._one_step_prediction(batch, hidden, lstm_state=lstm_state)
         hints = output_pred.hints

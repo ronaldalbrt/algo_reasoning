@@ -2,10 +2,12 @@
 Further it provides a custom dataloader that automatically pads hints to the maximum length of the batch. This is necessary because the hints are not padded in the dataset."""
 
 
+import os
 import clrs
 import numpy as np
 import numpy as np
 from torch_geometric.data import Data, Batch
+from torch.utils.data import Dataset
 import tensorflow_datasets as tfds
 from loguru import logger
 import torch
@@ -65,6 +67,7 @@ def _preprocess(data_point, algorithm=None):
     outputs = CLRSData()
     hints = CLRSData()
     length = None
+    max_length = 0
 
     for name, data in data_point.items():
         if name == 'lengths':
@@ -80,14 +83,16 @@ def _preprocess(data_point, algorithm=None):
             outputs[name] = to_torch(np.copy(data)).unsqueeze(0)
         else:
             hints[name] = to_torch(np.copy(data)).unsqueeze(0)
+            max_length = hints[name].shape[1]
     
-    return CLRSData(inputs=inputs, hints=hints, length=length, outputs=outputs, algorithm=algorithm)
+    return CLRSData(inputs=inputs, hints=hints, length=length, outputs=outputs, max_length=max_length, algorithm=algorithm)
 
 def collate(batch):
     """Collate a batch of data points."""
     batch = Batch.from_data_list(batch)
 
     batch.algorithm = batch[0].algorithm
+    batch.max_length = batch[0].max_length
 
     batch.inputs = Batch.from_data_list(batch.inputs)
     batch.hints = Batch.from_data_list(batch.hints)
@@ -143,3 +148,42 @@ class CLRSData(Data):
                 self[key] = value
 
 
+class CLRSDataset(Dataset):
+    def __init__(self, algorithms, split, data_folder="tmp/CLRS30"):
+        self.algorithms = algorithms
+        self.split = split
+        self.data_folder = data_folder
+
+        self.data_per_algo = 1000 if split == "train" else 32
+
+        for algorithm in self.algorithms:
+            if os.path.isdir(f"{self.data_folder}/{algorithm}/{self.split}"):
+                continue
+            else:
+                if not os.path.isdir(f"{self.data_folder}/{algorithm}"):
+                    os.mkdir(f"{self.data_folder}/{algorithm}")
+                
+                os.mkdir(f"{self.data_folder}/{algorithm}/{self.split}")
+
+                ds = load_dataset(algorithm, self.split, self.data_folder)
+
+                for i, obj in enumerate(ds):
+                    torch.save(obj, f"{self.data_folder}/{algorithm}/{self.split}/{i}")
+        
+    def __len__(self):
+        curr_lenth = 0
+        for algorithm in self.algorithms: 
+            curr_lenth += len(os.listdir(f"{self.data_folder}/{algorithm}/{self.split}"))
+        
+        return curr_lenth
+    
+    def __getitem__(self, idx):
+        algorithm = self.algorithms[idx //self.data_per_algo]
+
+        data_idx = idx % self.data_per_algo
+
+        return torch.load(f"{self.data_folder}/{algorithm}/{self.split}/{data_idx}")
+
+
+   
+            
