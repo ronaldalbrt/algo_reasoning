@@ -19,11 +19,11 @@ def list_of_strings(arg):
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Training Parser Options')
-    ap.add_argument('--algorithms', default=CLRS_30_ALGS, type=list_of_strings, help="Algorithms for the model to be trained on.")
-    #ap.add_argument('--algorithms', default=["quickselect"], type=list_of_strings, help="Algorithms for the model to be trained on.")
+    #ap.add_argument('--algorithms', default=CLRS_30_ALGS, type=list_of_strings, help="Algorithms for the model to be trained on.")
+    ap.add_argument('--algorithms', default=["insertion_sort", "bfs", "quickselect"], type=list_of_strings, help="Algorithms for the model to be trained on.")
     ap.add_argument('--path', default="tmp/CLRS30", type=str, help="Path to the dataset folder")
     ap.add_argument('--max_nb_nodes', default=64, type=int, help="Maximum number of nodes in any sample trajectory of the dataset.")
-    ap.add_argument('--batch_size', default=100, type=int, help="Number of samples in each training batch")
+    ap.add_argument('--batch_size', default=10, type=int, help="Number of samples in each training batch")
     ap.add_argument('--n_epochs', default=100, type=int, help="Number of training epochs")
     ap.add_argument('--n_workers', default=8, type=int, help="Number of Data Loading Workers")
     ap.add_argument('--lr', default=1e-3, type=float, help="Initial Learning Rate for ADAM Optimizer")

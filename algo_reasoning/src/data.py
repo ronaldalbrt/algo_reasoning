@@ -153,10 +153,14 @@ class CLRSDataset(Dataset):
         self.split = split
         self.data_folder = data_folder
 
-        self.data_per_algo = 1000 if split == "train" else 32
+        self.n_datapoints = {}
+
+        self.algo_start_idx = {}
+        self.curr_length = 0
 
         for algorithm in self.algorithms:
             if os.path.isdir(f"{self.data_folder}/{algorithm}/{self.split}"):
+                self.n_datapoints[algorithm] = len(os.listdir(f"{self.data_folder}/{algorithm}/{self.split}"))
                 continue
             else:
                 if not os.path.isdir(f"{self.data_folder}/{algorithm}"):
@@ -166,20 +170,28 @@ class CLRSDataset(Dataset):
 
                 ds = load_dataset(algorithm, self.split, self.data_folder)
 
+                self.n_datapoints[algorithm] = len(ds)
+
                 for i, obj in enumerate(ds):
                     torch.save(obj, f"{self.data_folder}/{algorithm}/{self.split}/{i}")
-        
-    def __len__(self):
-        curr_lenth = 0
+
         for algorithm in self.algorithms: 
-            curr_lenth += len(os.listdir(f"{self.data_folder}/{algorithm}/{self.split}"))
-        
-        return curr_lenth
+            self.algo_start_idx[algorithm] = self.curr_length
+            self.curr_length += self.n_datapoints[algorithm]
+
+    def __len__(self):
+        return self.curr_length
     
     def __getitem__(self, idx):
-        algorithm = self.algorithms[idx //self.data_per_algo]
+        algorithm = None
+        data_idx = 0
 
-        data_idx = idx % self.data_per_algo
+        for k, v in self.algo_start_idx.items():
+            if idx >= v:
+                algorithm = k
+                break
+
+            data_idx = idx - v
 
         return torch.load(f"{self.data_folder}/{algorithm}/{self.split}/{data_idx}")
 
