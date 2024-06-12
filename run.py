@@ -47,9 +47,9 @@ if __name__ == '__main__':
     test_sampler = CLRSSampler(test_dataset, algorithms=args.algorithms, batch_size=args.batch_size)
 
 
-    train_dataloader = DataLoader(train_dataset, batch_sampler=train_sampler, num_workers=args.n_workers, collate_fn=collate)
-    val_dataloader = DataLoader(val_dataset, batch_sampler=val_sampler, num_workers=args.n_workers, collate_fn=collate)
-    test_dataloader = DataLoader(test_dataset, batch_sampler=test_sampler, num_workers=args.n_workers, collate_fn=collate)
+    train_dataloader = DataLoader(train_dataset, batch_sampler=train_sampler, num_workers=args.n_workers, persistent_workers=True, collate_fn=collate)
+    val_dataloader = DataLoader(val_dataset, batch_sampler=val_sampler, num_workers=args.n_workers, persistent_workers=True, collate_fn=collate)
+    test_dataloader = DataLoader(test_dataset, batch_sampler=test_sampler, num_workers=args.n_workers, persistent_workers=True, collate_fn=collate)
 
     model = EncodeProcessDecode(args.algorithms, nb_nodes=args.max_nb_nodes)
 
@@ -78,8 +78,9 @@ if __name__ == '__main__':
                         max_epochs=args.n_epochs, 
                         devices=args.devices, 
                         accelerator=args.accelerator, 
-                        callbacks=[checkpoint_callback],
+                        callbacks=[checkpoint_callback]
                         )#profiler=profiler)
+    
     trainer.fit(lightning_module, train_dataloader, val_dataloader)
 
     trainer.test(lightning_module, test_dataloader)
