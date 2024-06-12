@@ -41,14 +41,16 @@ class EncodeProcessDecode(torch.nn.Module):
                  nb_nodes=64, 
                  msg_passing_steps=3, 
                  use_lstm=False, 
-                 hint_loss_weight=0.1, 
+                 hint_loss_weight=1, 
                  dropout_prob=0.1,
+                 teacher_force_prob=0,
                  encode_hints=True):
         super().__init__()
         self.msg_passing_steps = msg_passing_steps
         self.nb_nodes = nb_nodes
         self.hidden_dim = hidden_dim
         self.use_lstm = use_lstm
+        self.teacher_force_prob = teacher_force_prob
         self.encoders = nn.ModuleDict()
         self.decoders = nn.ModuleDict()
         for algorithm in algorithms:
@@ -68,7 +70,10 @@ class EncodeProcessDecode(torch.nn.Module):
         nb_nodes = batch.inputs.pos.shape[1]
         
         if hints is not None:
-            hints = process_hints(hints.clone(), algorithm=algorithm, batch_nb_nodes=nb_nodes)
+            if self.training and self.teacher_force_prob > torch.rand(1).item():
+                    hints = batch.hints
+            else:
+                hints = process_hints(hints.clone(), algorithm=algorithm, batch_nb_nodes=nb_nodes)
 
         node_fts, edge_fts, graph_fts, adj_mat = self.encoders[algorithm](batch, hints=hints, hint_step=hint_step)
 

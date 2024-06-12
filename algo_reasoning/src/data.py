@@ -7,7 +7,7 @@ import clrs
 import numpy as np
 import numpy as np
 from torch_geometric.data import Data, Batch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Sampler
 import tensorflow_datasets as tfds
 from loguru import logger
 import torch
@@ -97,7 +97,6 @@ def collate(batch):
     batch.inputs = Batch.from_data_list(batch.inputs)
     batch.hints = Batch.from_data_list(batch.hints)
     batch.outputs = Batch.from_data_list(batch.outputs)
-
     return batch
 
 def load_dataset(algorithm, split, local_dir):
@@ -185,5 +184,25 @@ class CLRSDataset(Dataset):
         return torch.load(f"{self.data_folder}/{algorithm}/{self.split}/{data_idx}")
 
 
+# class CLRSSampler(Sampler[int]):
+#     def __init__(self, dataset, algorithms, split, batch_size):
+#         self.dataset = dataset
+#         self.algorithms = algorithms
+#         self.data_per_algo = 1000 if split == "train" else 32
+
+#         self.batch_size = batch_size
+
+#     def __len__(self):
+#         return len(self.dataset) // self.batch_size
+
+#     def __iter__(self):
+#         seed = int(torch.empty((), dtype=torch.int64).random_().item())
+#         generator = torch.Generator()
+#         generator.manual_seed(seed)
+    
+#         n_algorithms = len(self.algorithms)
+#         algo_idx = torch.randint(0, n_algorithms, (1,), generator=generator).item()
+
+
+
    
-            

@@ -52,7 +52,7 @@ class Type:
   MASK = 'mask'
   MASK_ONE = 'mask_one'
   POINTER = 'pointer'
-  SHOULD_BE_PERMUTATION = 'should_be_permutation'
+  SHOULD_BE_PERMUTATION = 'pointer'
   PERMUTATION_POINTER = 'permutation_pointer'
   SOFT_POINTER = 'soft_pointer'
 
