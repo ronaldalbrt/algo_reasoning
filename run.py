@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 import argparse
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.profilers import AdvancedProfiler
+from lightning.pytorch.strategies import DDPStrategy
 
 torch.set_float32_matmul_precision('high')
 
@@ -19,7 +20,37 @@ def list_of_strings(arg):
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Training Parser Options')
-    ap.add_argument('--algorithms', default=CLRS_30_ALGS, type=list_of_strings, help="Algorithms for the model to be trained on.")
+    ap.add_argument('--algorithms', default=[
+    'articulation_points',
+    'activity_selector',
+    'bellman_ford',
+    'bfs',
+    'binary_search',
+    'bridges',
+    'bubble_sort',
+    'dag_shortest_paths',
+    'dfs',
+    'dijkstra',
+    'find_maximum_subarray_kadane',
+    'floyd_warshall',
+    'graham_scan',
+    'heapsort',
+    'insertion_sort',
+    'jarvis_march',
+    'kmp_matcher',
+    'matrix_chain_order',
+    'minimum',
+    'mst_kruskal',
+    'mst_prim',
+    'naive_string_matcher',
+    'optimal_bst',
+    'quickselect',
+    'quicksort',
+    'segments_intersect',
+    'strongly_connected_components',
+    'task_scheduling',
+    'topological_sort',
+], type=list_of_strings, help="Algorithms for the model to be trained on.")
     ap.add_argument('--path', default="tmp/CLRS30", type=str, help="Path to the dataset folder")
     ap.add_argument('--max_nb_nodes', default=64, type=int, help="Maximum number of nodes in any sample trajectory of the dataset.")
     ap.add_argument('--batch_size', default=32, type=int, help="Number of samples in each training batch")
@@ -32,7 +63,7 @@ if __name__ == '__main__':
     ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
     ap.add_argument('--checkpoint_model', default="", type=str, help="Path for pretrained checkpoint model")
     ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
-    ap.add_argument("--devices",  default=1, type=str, help="Number of devices used for training")
+    ap.add_argument("--devices",  default=2, type=str, help="Number of devices used for training")
     args = ap.parse_args()
 
     path = args.path
@@ -77,7 +108,8 @@ if __name__ == '__main__':
                         devices=args.devices, 
                         accelerator=args.accelerator, 
                         callbacks=[checkpoint_callback],
-                        use_distributed_sampler=False
+                        use_distributed_sampler=False,
+                        strategy=DDPStrategy(find_unused_parameters=True)
                         )#profiler=profiler)
     
     trainer.fit(lightning_module, train_dataloader, val_dataloader)

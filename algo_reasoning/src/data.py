@@ -161,7 +161,8 @@ class CLRSDataset(Dataset):
 
         for algorithm in self.algorithms:
             if os.path.isdir(f"{self.data_folder}/{algorithm}/{self.split}"):
-                self.n_datapoints[algorithm] = len(os.listdir(f"{self.data_folder}/{algorithm}/{self.split}"))
+                #self.n_datapoints[algorithm] = len(os.listdir(f"{self.data_folder}/{algorithm}/{self.split}"))
+                self.n_datapoints[algorithm] = 1000 if split == "train" else 32
                 continue
             else:
                 if not os.path.isdir(f"{self.data_folder}/{algorithm}"):
@@ -171,8 +172,9 @@ class CLRSDataset(Dataset):
 
                 ds = load_dataset(algorithm, self.split, self.data_folder)
 
-                self.n_datapoints[algorithm] = len(ds)
-
+                #self.n_datapoints[algorithm] = len(ds)
+                self.n_datapoints[algorithm] = 1000 if split == "train" else 32
+                
                 for i, obj in enumerate(ds):
                     torch.save(obj, f"{self.data_folder}/{algorithm}/{self.split}/{i}")
 
