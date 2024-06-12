@@ -188,24 +188,24 @@ class CLRSDataset(Dataset):
         data_idx = 0
 
         for k, v in self.algo_start_idx.items():
-            if idx >= v:
+            if idx >= v and idx < (v + self.n_datapoints[k]):
                 algorithm = k
-                break
+                data_idx = idx - v
 
-            data_idx = idx - v
+                break
 
         return torch.load(f"{self.data_folder}/{algorithm}/{self.split}/{data_idx}")
 
 
 class CLRSSampler(Sampler[List[int]]):
+    #TODO: Implement sampling without replacement
     def __init__(self, dataset, algorithms, batch_size, replacement=True, generator=None):
         super().__init__()
         self.dataset = dataset
         self.algorithms = algorithms
-        self.n_algorithms =  len(self.algorithms)
+        self.n_algorithms = len(self.algorithms)
         self.generator = generator
-
-        #TODO: Implement sampling without replacement
+        
         self.replacement = replacement
 
         self.batch_size = batch_size
