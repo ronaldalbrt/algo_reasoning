@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from algo_reasoning.src.specs import Location, SPECS
+from algo_reasoning.src.specs import Location, SPECS, Type
 from loguru import logger
     
 class CLRSLoss(nn.Module):
@@ -18,21 +18,21 @@ class CLRSLoss(nn.Module):
         #     raise NotImplementedError(f"Unknown hidden loss type {hidden_loss_type}")
     
     def _calculate_loss(self, mask, truth, pred, type_):
-        if type_ == "scalar":
+        if type_ == Type.SCALAR:
             
             return torch.mean(F.mse_loss(pred, truth, reduction='none') * mask)
         
-        elif type_ == "mask":
+        elif type_ == Type.MASK:
             
             return torch.mean(F.binary_cross_entropy_with_logits(pred, truth, reduction='none') * mask)
         
-        elif type_ == "mask_one":
+        elif type_ == Type.MASK_ONE:
             logsoftmax_pred = F.log_softmax(pred, dim=-1)
             losses = truth*logsoftmax_pred*mask
 
             return losses.mean()
         
-        elif type_ == "categorical":
+        elif type_ == Type.CATEGORICAL:
 
             return torch.mean(
                 F.cross_entropy(
@@ -40,7 +40,7 @@ class CLRSLoss(nn.Module):
                     truth.transpose(-1, 1), 
                     reduction='none').transpose(-1, 1) * mask.squeeze(-1))
         
-        elif type_ == "pointer":
+        elif type_ == Type.POINTER:
             
             return torch.mean(
                 F.cross_entropy(

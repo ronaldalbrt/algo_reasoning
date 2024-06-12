@@ -30,7 +30,7 @@ if __name__ == '__main__':
     ap.add_argument('--model_name', default="EncodeProcessDecode_PGN_GeneralNodeNumber", type=str, help="Model's name")
     ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
     ap.add_argument('--checkpoint_model', default="", type=str, help="Path for pretrained checkpoint model")
-    ap.add_argument("--accelerator", default="cpu", type=str, help="Device for the model to be trained on")
+    ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
     ap.add_argument("--devices",  default=1, type=str, help="Number of devices used for training")
     args = ap.parse_args()
 

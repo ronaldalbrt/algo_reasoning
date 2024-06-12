@@ -132,7 +132,7 @@ SPECS = types.MappingProxyType({
     'heapsort': {
         'pos': (Stage.INPUT, Location.NODE, Type.SCALAR),
         'key': (Stage.INPUT, Location.NODE, Type.SCALAR),
-        'pred': (Stage.OUTPUT, Location.NODE, Type.SHOULD_BE_PERMUTATION),
+        'pred': (Stage.OUTPUT, Location.NODE, Type.POINTER),
         'pred_h': (Stage.HINT, Location.NODE, Type.POINTER),
         'parent': (Stage.HINT, Location.NODE, Type.POINTER),
         'i': (Stage.HINT, Location.NODE, Type.MASK_ONE),

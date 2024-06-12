@@ -13,7 +13,7 @@ loader = DataLoader(articulation_points_train, 32, collate_fn=collate)
 for obj in loader:
     result = model(obj)
 
-    loss = CLRSLoss("l2")
+    loss = CLRSLoss(64)
 
     loss = loss(result, obj)
 

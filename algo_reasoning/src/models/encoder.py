@@ -96,19 +96,19 @@ class Encoder(nn.Module):
 
         return node_hidden, edge_hidden, graph_hidden, (adj_mat > 0.).to(torch.float)
 
-    def forward(self, batch, hint_step=None):
+    def forward(self, batch, hints=None, hint_step=None):
         batch_size = len(batch.inputs.batch)
         nb_nodes = batch.inputs.pos.shape[1]
-
-        adj_mat = (torch.eye(nb_nodes)[None, :, :]).repeat(batch_size, 1, 1)
-        node_hidden = torch.zeros((batch_size, nb_nodes, self.hidden_dim))
-        edge_hidden = torch.zeros((batch_size, nb_nodes, nb_nodes, self.hidden_dim))
-        graph_hidden = torch.zeros((batch_size, self.hidden_dim))
+        device = batch.inputs.pos.device
+        adj_mat = (torch.eye(nb_nodes, device=device)[None, :, :]).repeat(batch_size, 1, 1)
+        node_hidden = torch.zeros((batch_size, nb_nodes, self.hidden_dim), device=device)
+        edge_hidden = torch.zeros((batch_size, nb_nodes, nb_nodes, self.hidden_dim), device=device)
+        graph_hidden = torch.zeros((batch_size, self.hidden_dim), device=device)
 
         node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_CLRSData(batch.inputs, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes)
 
-        if self.encode_hints and hint_step is not None:
-            node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_CLRSData(batch.hints, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes, 
+        if self.encode_hints and hints is not None:
+            node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_CLRSData(hints, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes, 
                                                                                     hint_step=hint_step)
 
         return node_hidden, edge_hidden, graph_hidden, adj_mat

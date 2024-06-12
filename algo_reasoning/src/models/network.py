@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from inspect import signature
 from loguru import logger
 
@@ -7,10 +8,31 @@ from .encoder import Encoder
 from .decoder import Decoder
 from .processor import PGN
 from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.specs import SPECS, Type, Stage, Location, CATEGORIES_DIMENSIONS
 
 
-def stack_hints(hints):
-    return {k: torch.stack([hint[k] for hint in hints], dim=-1) for k in hints[0]} if hints else {}
+def process_hints(hints, algorithm, batch_nb_nodes=16):
+    for key, value in hints.items():
+        _, _, type_ = SPECS[algorithm][key]
+    
+        if type_ == Type.POINTER:
+            new_value = torch.argmax(value, dim=-1)
+
+        elif type_ == Type.CATEGORICAL:
+            new_value = F.one_hot(torch.argmax(value, dim=-1), CATEGORIES_DIMENSIONS[algorithm][key]).float()
+        
+        elif type_ == Type.MASK_ONE:
+            new_value = F.one_hot(torch.argmax(value, dim=-1), batch_nb_nodes).float()
+        
+        elif type_ == Type.MASK:
+            new_value = torch.sigmoid(value).long().float()
+        else:
+            new_value = value
+
+        hints[key] = new_value
+
+    return hints
+
 
 class EncodeProcessDecode(torch.nn.Module):
     def __init__(self, 
@@ -27,8 +49,8 @@ class EncodeProcessDecode(torch.nn.Module):
         self.nb_nodes = nb_nodes
         self.hidden_dim = hidden_dim
         self.use_lstm = use_lstm
-        self.encoders = {}
-        self.decoders = {}
+        self.encoders = nn.ModuleDict()
+        self.decoders = nn.ModuleDict()
         for algorithm in algorithms:
             self.encoders[algorithm] = Encoder(algorithm, encode_hints=encode_hints, nb_nodes=nb_nodes, hidden_dim=hidden_dim)
             self.decoders[algorithm] = Decoder(algorithm, hidden_dim=hidden_dim, nb_nodes=nb_nodes, no_hint=hint_loss_weight == 0.0)
@@ -41,9 +63,14 @@ class EncodeProcessDecode(torch.nn.Module):
         if use_lstm:
             self.lstm = nn.LSTM(hidden_dim, hidden_dim)
     
-    def _one_step_prediction(self, batch, hidden, hint_step=None, lstm_state=None):
+    def _one_step_prediction(self, batch, hidden, hints=None, hint_step=None, lstm_state=None):
         algorithm = batch.algorithm
-        node_fts, edge_fts, graph_fts, adj_mat = self.encoders[algorithm](batch, hint_step=hint_step)
+        nb_nodes = batch.inputs.pos.shape[1]
+        
+        if hints is not None:
+            hints = process_hints(hints.clone(), algorithm=algorithm, batch_nb_nodes=nb_nodes)
+
+        node_fts, edge_fts, graph_fts, adj_mat = self.encoders[algorithm](batch, hints=hints, hint_step=hint_step)
 
         nxt_hidden = hidden
 
@@ -72,8 +99,9 @@ class EncodeProcessDecode(torch.nn.Module):
         algorithm = batch.algorithm
         batch_size = len(batch.inputs.batch)
         nb_nodes = batch.inputs.pos.shape[1]
+        device = batch.inputs.pos.device
         
-        hidden = torch.zeros(batch_size, nb_nodes, self.hidden_dim)
+        hidden = torch.zeros(batch_size, nb_nodes, self.hidden_dim, device=device)
         lstm_state = None
     
         max_len = batch.max_length.item() - 1
@@ -81,7 +109,7 @@ class EncodeProcessDecode(torch.nn.Module):
         output_pred, hidden, lstm_state = self._one_step_prediction(batch, hidden, lstm_state=lstm_state)
         hints = output_pred.hints
         for step in range(max_len):
-            output_step, hidden, lstm_state = self._one_step_prediction(batch, hidden, hint_step=step, lstm_state=lstm_state)
+            output_step, hidden, lstm_state = self._one_step_prediction(batch, hidden, hints=hints, hint_step=step, lstm_state=lstm_state)
             hints.concat(output_step.hints)
         
         return CLRSData(inputs=batch.inputs, hints=hints, length=max_len, outputs=output_step.outputs, algorithm=algorithm)
