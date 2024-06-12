@@ -10,6 +10,7 @@ from torch_geometric.data import Data, Batch
 from torch.utils.data import Dataset, Sampler
 import tensorflow_datasets as tfds
 from loguru import logger
+from typing import List
 import torch
 
 SPLITS = ["train", "val", "test"]
@@ -196,24 +197,42 @@ class CLRSDataset(Dataset):
         return torch.load(f"{self.data_folder}/{algorithm}/{self.split}/{data_idx}")
 
 
-# class CLRSSampler(Sampler[int]):
-#     def __init__(self, dataset, algorithms, split, batch_size):
-#         self.dataset = dataset
-#         self.algorithms = algorithms
-#         self.data_per_algo = 1000 if split == "train" else 32
+class CLRSSampler(Sampler[List[int]]):
+    def __init__(self, dataset, algorithms, batch_size, replacement=True, generator=None):
+        self.dataset = dataset
+        self.algorithms = algorithms
+        self.n_algorithms =  len(self.algorithms)
+        self.generator = generator
 
-#         self.batch_size = batch_size
+        #TODO: Implement sampling without replacement
+        self.replacement = replacement
 
-#     def __len__(self):
-#         return len(self.dataset) // self.batch_size
+        self.batch_size = batch_size
 
-#     def __iter__(self):
-#         seed = int(torch.empty((), dtype=torch.int64).random_().item())
-#         generator = torch.Generator()
-#         generator.manual_seed(seed)
-    
-#         n_algorithms = len(self.algorithms)
-#         algo_idx = torch.randint(0, n_algorithms, (1,), generator=generator).item()
+        if generator is None:
+            seed = int(torch.empty((), dtype=torch.int64).random_().item())
+            self.generator = torch.Generator()
+            self.generator.manual_seed(seed)
+        else:
+            self.generator = generator
+
+    def __len__(self):
+        return len(self.dataset) // self.batch_size
+
+    def __iter__(self):
+        for _ in range(self.__len__() // self.batch_size):
+            algo_idx = torch.randint(0, self.n_algorithms, (1,), generator=self.generator).item()
+
+            algorithm = self.algorithms[algo_idx]
+
+            min_idx = self.dataset.algo_start_idx[algorithm]
+            max_idx = min_idx + self.dataset.n_datapoints[algorithm]
+
+            yield torch.randint(min_idx, max_idx, size=(self.batch_size,), dtype=torch.int64, generator=self.generator).tolist()
+        
+        yield torch.randint(min_idx, max_idx, size=(self.__len__() % self.batch_size,), dtype=torch.int64, generator=self.generator).tolist()
+
+
 
 
 

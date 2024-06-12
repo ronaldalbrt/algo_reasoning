@@ -1,6 +1,5 @@
 import torch.nn as nn
 import torch
-import torch_scatter
 from loguru import logger
 from algo_reasoning.src.specs import Stage, Location, Type, SPECS, CATEGORIES_DIMENSIONS
 from algo_reasoning.src.data import CLRSData

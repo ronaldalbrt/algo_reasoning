@@ -1,5 +1,5 @@
 from algo_reasoning.src.models.network import EncodeProcessDecode
-from algo_reasoning.src.data import CLRSDataset, collate
+from algo_reasoning.src.data import CLRSDataset, CLRSSampler, collate
 from algo_reasoning.src.losses.CLRSLoss import CLRSLoss
 from algo_reasoning.src.lightning.CLRSTask import CLRSTask
 from algo_reasoning.src.specs import CLRS_30_ALGS
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     ap.add_argument('--algorithms', default=["insertion_sort", "bfs", "quickselect"], type=list_of_strings, help="Algorithms for the model to be trained on.")
     ap.add_argument('--path', default="tmp/CLRS30", type=str, help="Path to the dataset folder")
     ap.add_argument('--max_nb_nodes', default=64, type=int, help="Maximum number of nodes in any sample trajectory of the dataset.")
-    ap.add_argument('--batch_size', default=10, type=int, help="Number of samples in each training batch")
+    ap.add_argument('--batch_size', default=32, type=int, help="Number of samples in each training batch")
     ap.add_argument('--n_epochs', default=100, type=int, help="Number of training epochs")
     ap.add_argument('--n_workers', default=8, type=int, help="Number of Data Loading Workers")
     ap.add_argument('--lr', default=1e-3, type=float, help="Initial Learning Rate for ADAM Optimizer")
@@ -42,9 +42,14 @@ if __name__ == '__main__':
     val_dataset = CLRSDataset(args.algorithms, "val", path)
     test_dataset = CLRSDataset(args.algorithms, "test", path)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.n_workers, collate_fn=collate)
-    val_dataloader = DataLoader(val_dataset, batch_size=32, num_workers=args.n_workers, collate_fn=collate)
-    test_dataloader = DataLoader(test_dataset, batch_size=32, num_workers=args.n_workers, collate_fn=collate)
+    train_sampler = CLRSSampler(train_dataset, algorithms=args.algorithms, batch_size=args.batch_size)
+    val_sampler = CLRSSampler(val_dataset, algorithms=args.algorithms, batch_size=args.batch_size)
+    test_sampler = CLRSSampler(test_dataset, algorithms=args.algorithms, batch_size=args.batch_size)
+
+
+    train_dataloader = DataLoader(train_dataset, batch_sampler=train_sampler, num_workers=args.n_workers, collate_fn=collate)
+    val_dataloader = DataLoader(val_dataset, batch_sampler=val_sampler, num_workers=args.n_workers, collate_fn=collate)
+    test_dataloader = DataLoader(test_dataset, batch_sampler=test_sampler, num_workers=args.n_workers, collate_fn=collate)
 
     model = EncodeProcessDecode(args.algorithms, nb_nodes=args.max_nb_nodes)
 
@@ -56,8 +61,7 @@ if __name__ == '__main__':
         model=model,
         loss_fn=loss_fn,
         optim_method=optim_method,
-        lr=args.lr, 
-        batch_size=args.batch_size
+        lr=args.lr
     )
 
     checkpoint_callback = ModelCheckpoint(
