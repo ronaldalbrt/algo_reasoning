@@ -199,6 +199,7 @@ class CLRSDataset(Dataset):
 
 class CLRSSampler(Sampler[List[int]]):
     def __init__(self, dataset, algorithms, batch_size, replacement=True, generator=None):
+        super().__init__()
         self.dataset = dataset
         self.algorithms = algorithms
         self.n_algorithms =  len(self.algorithms)
@@ -217,10 +218,10 @@ class CLRSSampler(Sampler[List[int]]):
             self.generator = generator
 
     def __len__(self):
-        return len(self.dataset) // self.batch_size
+        return (len(self.dataset) + self.batch_size - 1) // self.batch_size
 
     def __iter__(self):
-        for _ in range(self.__len__() // self.batch_size):
+        for _ in range(len(self.dataset) // self.batch_size):
             algo_idx = torch.randint(0, self.n_algorithms, (1,), generator=self.generator).item()
 
             algorithm = self.algorithms[algo_idx]
@@ -229,9 +230,9 @@ class CLRSSampler(Sampler[List[int]]):
             max_idx = min_idx + self.dataset.n_datapoints[algorithm]
 
             yield torch.randint(min_idx, max_idx, size=(self.batch_size,), dtype=torch.int64, generator=self.generator).tolist()
-        
-        yield torch.randint(min_idx, max_idx, size=(self.__len__() % self.batch_size,), dtype=torch.int64, generator=self.generator).tolist()
 
+        if (len(self.dataset) % self.batch_size) != 0:
+            yield torch.randint(min_idx, max_idx, size=(len(self.dataset) % self.batch_size,), dtype=torch.int64, generator=self.generator).tolist()
 
 
 
