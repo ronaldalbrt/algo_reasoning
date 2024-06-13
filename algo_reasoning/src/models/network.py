@@ -44,7 +44,9 @@ class EncodeProcessDecode(torch.nn.Module):
                  hint_loss_weight=1, 
                  dropout_prob=0.1,
                  teacher_force_prob=0,
-                 encode_hints=True):
+                 encode_hints=True,
+                 freeze_processor=False,
+                 pretrained_processor=None):
         super().__init__()
         self.msg_passing_steps = msg_passing_steps
         self.nb_nodes = nb_nodes
@@ -57,7 +59,14 @@ class EncodeProcessDecode(torch.nn.Module):
             self.encoders[algorithm] = Encoder(algorithm, encode_hints=encode_hints, nb_nodes=nb_nodes, hidden_dim=hidden_dim)
             self.decoders[algorithm] = Decoder(algorithm, hidden_dim=hidden_dim, nb_nodes=nb_nodes, no_hint=hint_loss_weight == 0.0)
 
-        self.processor = PGN(hidden_dim, hidden_dim)
+        if pretrained_processor is None:
+            self.processor = PGN(hidden_dim, hidden_dim)
+        else:
+            self.processor = pretrained_processor
+            
+        if freeze_processor:
+            for p in self.processor.parameters():
+                p.requires_grad = False
         
         self.dropout_prob = dropout_prob
         self.dropout = nn.Dropout(dropout_prob)
