@@ -51,7 +51,7 @@ def list_of_strings(arg):
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Training Parser Options')
-    ap.add_argument('--algorithms', default=algos, type=list_of_strings, help="Algorithms for the model to be trained on.")
+    ap.add_argument('--algorithms', default=["schedule"], type=list_of_strings, help="Algorithms for the model to be trained on.")
     ap.add_argument('--path', default="tmp/CLRS30", type=str, help="Path to the dataset folder")
     ap.add_argument('--max_nb_nodes', default=64, type=int, help="Maximum number of nodes in any sample trajectory of the dataset.")
     ap.add_argument('--batch_size', default=32, type=int, help="Number of samples in each training batch")
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
     ap.add_argument('--checkpoint_model', default="", type=str, help="Path for pretrained checkpoint model")
     ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
-    ap.add_argument("--devices",  default=2, type=str, help="Number of devices used for training")
+    ap.add_argument("--devices",  default=1, type=str, help="Number of devices used for training")
     ap.add_argument("--processor_pretrained_path", default="", type=str, help="Path for processor's weights folder")
     ap.add_argument("--freeze_processor", default=False, type=bool, help="Whether or not to freeze processor's weights.")
     args = ap.parse_args()
@@ -74,7 +74,7 @@ if __name__ == '__main__':
         model = EncodeProcessDecode(algos, nb_nodes=args.max_nb_nodes)
         checkpoint = torch.load(args.processor_pretrained_path)
         model.load_state_dict(checkpoint["state_dict"])
-        
+
         processor = model.processor
 
     path = args.path
@@ -120,7 +120,7 @@ if __name__ == '__main__':
                         accelerator=args.accelerator, 
                         callbacks=[checkpoint_callback],
                         use_distributed_sampler=False,
-                        strategy=DDPStrategy(find_unused_parameters=True)
+                        #strategy=DDPStrategy(find_unused_parameters=True)
                         )#profiler=profiler)
     
     trainer.fit(lightning_module, train_dataloader, val_dataloader)

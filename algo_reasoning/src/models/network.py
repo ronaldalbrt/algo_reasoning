@@ -63,7 +63,7 @@ class EncodeProcessDecode(torch.nn.Module):
             self.processor = PGN(hidden_dim, hidden_dim)
         else:
             self.processor = pretrained_processor
-            
+
         if freeze_processor:
             for p in self.processor.parameters():
                 p.requires_grad = False
@@ -118,7 +118,7 @@ class EncodeProcessDecode(torch.nn.Module):
         hidden = torch.zeros(batch_size, nb_nodes, self.hidden_dim, device=device)
         lstm_state = None
     
-        max_len = batch.max_length.item() - 1
+        max_len = (batch.max_length - 1).long().item()
 
         output_pred, hidden, lstm_state = self._one_step_prediction(batch, hidden, lstm_state=lstm_state)
         hints = output_pred.hints

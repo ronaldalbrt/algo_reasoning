@@ -48,6 +48,7 @@ SAMPLERS = [
     'segments_intersect',
     'graham_scan',
     'jarvis_march',
+    'schedule'
 ]
 
 # Loader Example:
@@ -109,7 +110,7 @@ def load_dataset(algorithm, split, local_dir):
         local_dir (str): The directory to download the dataset to.
     """
     if algorithm not in SAMPLERS:
-        raise ValueError(f"Unknown algorithm '{algorithm}'. Available algorithms are {list(SAMPLERS.keys())}.")
+        raise ValueError(f"Unknown algorithm '{algorithm}'. Available algorithms are {list(SAMPLERS)}.")
 
     if split not in SPLITS:
         raise ValueError(f"Unknown split '{split}'. Available splits are {list(SPLITS)}.")
