@@ -1,8 +1,9 @@
 from algo_reasoning.src.models.network import EncodeProcessDecode
 from algo_reasoning.src.data import CLRSDataset, CLRSSampler, collate
 from algo_reasoning.src.losses.CLRSLoss import CLRSLoss
-from algo_reasoning.src.specs import CLRS_30_ALGS
+from algo_reasoning.src.specs import CLRS_30_ALGS, SPECS, Stage, OutputClass
 from torch.utils.data import DataLoader
+import torch
 
 # model = EncodeProcessDecode(["articulation_points"])
 
@@ -25,13 +26,12 @@ from torch.utils.data import DataLoader
 #     datasets.append(load_dataset(algorithm, "val", "tmp/CLRS30"))
 #     datasets.append(load_dataset(algorithm, "test", "tmp/CLRS30"))
 
-algorithms = ["insertion_sort", "bfs", "quickselect"]
+algorithms = CLRS_30_ALGS
 
 ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
-sampler = CLRSSampler(ds, algorithms, 32)
+sampler = CLRSSampler(ds, algorithms, 32, replacement=False)
 
 loader = DataLoader(ds, batch_sampler=sampler, collate_fn=collate)
 
-obj = next(iter(loader))
-
-print(obj)
+for obj in loader:
+    print(obj.algorithm)
