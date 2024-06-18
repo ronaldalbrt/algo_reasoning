@@ -6,7 +6,7 @@ from algo_reasoning.src.lightning.eval import metrics
 
 
 class CLRSTask(L.LightningModule):
-    def __init__(self, model, loss_fn, optim_method, lr, batch_size):
+    def __init__(self, model, loss_fn, optim_method, lr):
         super().__init__()
         self.save_hyperparameters(ignore=['model','loss_fn'])
         
@@ -14,7 +14,6 @@ class CLRSTask(L.LightningModule):
         self.loss_fn = loss_fn
         self.optim_method = optim_method
         self.lr = lr
-        self.batch_size = batch_size
 
     def _batch_loss(self, batch, calculate_metrics=False, prefix="val"):
         input_batch = batch.clone()
@@ -24,7 +23,7 @@ class CLRSTask(L.LightningModule):
 
         if calculate_metrics:
             pred_prob = F.sigmoid(preds)
-            metrics_r = metrics(torch.flatten(pred_prob).detach().cpu(), torch.flatten(labels).detach().cpu())
+            metrics_r = metrics(torch.flatten(pred_prob).detach().cpu(), torch.flatten(batch).detach().cpu())
             
             metrics_r["loss"] = loss
 
@@ -35,7 +34,7 @@ class CLRSTask(L.LightningModule):
     def training_step(self, batch, batch_idx):
         loss = self._batch_loss(batch)
 
-        self.log("train_loss", loss, batch_size=self.batch_size)
+        self.log("train_loss", loss)
 
         return loss
     
@@ -48,7 +47,7 @@ class CLRSTask(L.LightningModule):
         #return metrics["val_loss"]
         loss = self._batch_loss(batch)
 
-        self.log("val_loss", loss, batch_size=self.batch_size)
+        self.log("val_loss", loss)
 
         return loss
     
@@ -62,7 +61,7 @@ class CLRSTask(L.LightningModule):
 
         loss = self._batch_loss(batch)
 
-        self.log("val_loss", loss, batch_size=self.batch_size)
+        self.log("test_loss", loss)
 
         return loss
 

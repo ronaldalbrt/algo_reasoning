@@ -521,6 +521,12 @@ SPECS = types.MappingProxyType({
         'endpoint': (Stage.HINT, Location.NODE, Type.MASK_ONE),
         'i': (Stage.HINT, Location.NODE, Type.MASK_ONE),
         'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL)
+    },
+    'schedule': {
+        'N': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+        'W': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+        "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
+        'C': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR)
     }
 })
 

@@ -1,5 +1,5 @@
 from algo_reasoning.src.models.network import EncodeProcessDecode
-from algo_reasoning.src.data import CLRSDataset, collate
+from algo_reasoning.src.data import CLRSDataset, CLRSSampler, collate
 from algo_reasoning.src.losses.CLRSLoss import CLRSLoss
 from algo_reasoning.src.lightning.CLRSTask import CLRSTask
 from algo_reasoning.src.specs import CLRS_30_ALGS
@@ -11,7 +11,38 @@ from torch.utils.data import DataLoader
 import argparse
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.profilers import AdvancedProfiler
+from lightning.pytorch.strategies import DDPStrategy
 
+algos = [
+    'articulation_points',
+    'activity_selector',
+    'bellman_ford',
+    'bfs',
+    'binary_search',
+    'bubble_sort',
+    'dag_shortest_paths',
+    'dfs',
+    'dijkstra',
+    'find_maximum_subarray_kadane',
+    'floyd_warshall',
+    'graham_scan',
+    'heapsort',
+    'insertion_sort',
+    'jarvis_march',
+    'kmp_matcher',
+    'matrix_chain_order',
+    'minimum',
+    'mst_kruskal',
+    'mst_prim',
+    'naive_string_matcher',
+    'optimal_bst',
+    'quickselect',
+    'quicksort',
+    'segments_intersect',
+    'strongly_connected_components',
+    'task_scheduling',
+    'topological_sort',
+]
 torch.set_float32_matmul_precision('high')
 
 def list_of_strings(arg):
@@ -19,22 +50,35 @@ def list_of_strings(arg):
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Training Parser Options')
-    ap.add_argument('--algorithms', default=CLRS_30_ALGS, type=list_of_strings, help="Algorithms for the model to be trained on.")
-    #ap.add_argument('--algorithms', default=["quickselect"], type=list_of_strings, help="Algorithms for the model to be trained on.")
+    ap.add_argument('--algorithms', default=algos, type=list_of_strings, help="Algorithms for the model to be trained on.")
     ap.add_argument('--path', default="tmp/CLRS30", type=str, help="Path to the dataset folder")
     ap.add_argument('--max_nb_nodes', default=64, type=int, help="Maximum number of nodes in any sample trajectory of the dataset.")
-    ap.add_argument('--batch_size', default=100, type=int, help="Number of samples in each training batch")
+    ap.add_argument('--batch_size', default=8, type=int, help="Number of samples in each training batch")
     ap.add_argument('--n_epochs', default=100, type=int, help="Number of training epochs")
     ap.add_argument('--n_workers', default=8, type=int, help="Number of Data Loading Workers")
     ap.add_argument('--lr', default=1e-3, type=float, help="Initial Learning Rate for ADAM Optimizer")
     ap.add_argument('--lr_decrease_factor', default=0.1, type=float, help="Factor by which the learning rate is going to be reduced after lr_patience epochs without Evaluation perfomance improvement.")
     ap.add_argument('--lr_patience', default=10, type=int, help="Number of epochs without improvement for the learning rate to de decreased")
-    ap.add_argument('--model_name', default="Generalist_PGN_WithTeacherForcing_HintLossWeigh1", type=str, help="Model's name")
+    ap.add_argument('--model_name', default="Schedule_Pretrained", type=str, help="Model's name")
     ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
     ap.add_argument('--checkpoint_model', default="", type=str, help="Path for pretrained checkpoint model")
-    ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
+    ap.add_argument("--accelerator", default="cpu", type=str, help="Device for the model to be trained on")
     ap.add_argument("--devices",  default=1, type=str, help="Number of devices used for training")
+    ap.add_argument("--processor_pretrained_path", default="checkpoints/Generalist_PGN_WithTeacherForcing_HintLossWeigh1/Generalist_PGN_WithTeacherForcing_HintLossWeigh1-epoch=33.ckpt", type=str, help="Path for processor's weights folder")
+    ap.add_argument("--freeze_processor", default=False, type=bool, help="Whether or not to freeze processor's weights.")
     args = ap.parse_args()
+
+    processor = None
+    if args.processor_pretrained_path != "":
+        model = EncodeProcessDecode(algos, nb_nodes=args.max_nb_nodes)
+        state_dict = torch.load(args.processor_pretrained_path)["state_dict"]
+        new_state_dict = {}
+        for key in state_dict:
+            new_state_dict[key.replace("model.", "")] = state_dict[key]
+
+        model.load_state_dict(new_state_dict)
+
+        processor = model.processor
 
     path = args.path
 
@@ -42,11 +86,15 @@ if __name__ == '__main__':
     val_dataset = CLRSDataset(args.algorithms, "val", path)
     test_dataset = CLRSDataset(args.algorithms, "test", path)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.n_workers, collate_fn=collate)
-    val_dataloader = DataLoader(val_dataset, batch_size=32, num_workers=args.n_workers, collate_fn=collate)
-    test_dataloader = DataLoader(test_dataset, batch_size=32, num_workers=args.n_workers, collate_fn=collate)
+    train_sampler = CLRSSampler(train_dataset, algorithms=args.algorithms, batch_size=args.batch_size)
+    val_sampler = CLRSSampler(val_dataset, algorithms=args.algorithms, batch_size=args.batch_size)
+    test_sampler = CLRSSampler(test_dataset, algorithms=args.algorithms, batch_size=args.batch_size)
 
-    model = EncodeProcessDecode(args.algorithms, nb_nodes=args.max_nb_nodes)
+    train_dataloader = DataLoader(train_dataset, batch_sampler=train_sampler, num_workers=args.n_workers, persistent_workers=True, collate_fn=collate)
+    val_dataloader = DataLoader(val_dataset, batch_sampler=val_sampler, num_workers=args.n_workers, persistent_workers=True, collate_fn=collate)
+    test_dataloader = DataLoader(test_dataset, batch_sampler=test_sampler, num_workers=args.n_workers, persistent_workers=True, collate_fn=collate)
+
+    model = EncodeProcessDecode(args.algorithms, nb_nodes=args.max_nb_nodes, freeze_processor=args.freeze_processor, pretrained_processor=processor)
 
     loss_fn = CLRSLoss(nb_nodes=args.max_nb_nodes)
 
@@ -56,8 +104,7 @@ if __name__ == '__main__':
         model=model,
         loss_fn=loss_fn,
         optim_method=optim_method,
-        lr=args.lr, 
-        batch_size=args.batch_size
+        lr=args.lr
     )
 
     checkpoint_callback = ModelCheckpoint(
@@ -75,7 +122,10 @@ if __name__ == '__main__':
                         devices=args.devices, 
                         accelerator=args.accelerator, 
                         callbacks=[checkpoint_callback],
+                        use_distributed_sampler=False,
+                        #strategy=DDPStrategy(find_unused_parameters=True)
                         )#profiler=profiler)
+    
     trainer.fit(lightning_module, train_dataloader, val_dataloader)
 
     trainer.test(lightning_module, test_dataloader)
