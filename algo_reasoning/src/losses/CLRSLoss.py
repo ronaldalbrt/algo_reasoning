@@ -81,5 +81,13 @@ class CLRSLoss(nn.Module):
             ground_truth = batch.hints[key][:, :max_length]
 
             hint_loss += self._calculate_loss(mask, ground_truth, value, type_)
+
+            if output_loss < 0 or hint_loss < 0:
+                logger.warning(f"Negative loss: output_loss={output_loss}, hint_loss={hint_loss}")
+
+                print("Existence of negative values in Ground Truth:", torch.unique(ground_truth))
+                print("Predicted Values", value)
+                print("Algorithm: ", algorithm)
+                raise Exception(f"Negative loss: output_loss={output_loss}, hint_loss={hint_loss}")
         
         return output_loss + (self.hint_loss_weight*hint_loss)
