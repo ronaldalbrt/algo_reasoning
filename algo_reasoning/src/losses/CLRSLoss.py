@@ -30,6 +30,8 @@ class CLRSLoss(nn.Module):
             logsoftmax_pred = F.log_softmax(pred, dim=-1)
             losses = truth*logsoftmax_pred*mask
 
+            losses *= -1
+
             return losses.mean()
         
         elif type_ == Type.CATEGORICAL:
@@ -65,6 +67,7 @@ class CLRSLoss(nn.Module):
             
             _, _, type_ = specs[key]
             mask = torch.ones_like(batch.outputs[key], device=device)
+
             output_loss += self._calculate_loss(mask, batch.outputs[key], value,  type_)
 
         hint_loss = torch.zeros(1, device=device)
