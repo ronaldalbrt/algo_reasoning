@@ -67,24 +67,9 @@ class CLRSLoss(nn.Module):
             
             _, _, type_ = specs[key]
             mask = torch.ones_like(batch.outputs[key], device=device)
-            output_loss_int =  self._calculate_loss(mask, batch.outputs[key], value,  type_)
-            
-            if output_loss_int < 0:
-                logger.warning(f"Negative loss: output_loss={output_loss_int}")
 
-                print("Ground Truth:", torch.unique(batch.outputs[key]))
-                print("Softmax: ", F.log_softmax(value, dim=-1))
-                #print("Predicted Values", value)
+            output_loss += self._calculate_loss(mask, batch.outputs[key], value,  type_)
 
-                # print("Cross Entropy:", torch.sum(F.cross_entropy(
-                #     value.transpose(-1, 1), 
-                #     F.one_hot(batch.outputs[key], self.nb_nodes).float().transpose(-1, 1), 
-                #     reduction='none').transpose(1, -1) * mask.squeeze(-1)))
-                print("Type: ", type_)
-                print("Algorithm: ", algorithm)
-
-            output_loss += output_loss_int
-        
         hint_loss = torch.zeros(1, device=device)
         for key, value in pred.hints:
             
@@ -97,22 +82,7 @@ class CLRSLoss(nn.Module):
             mask = mask[:, :, *[None for _ in range(obj_dim - 2)]]
 
             ground_truth = batch.hints[key][:, :max_length]
-            
-            hint_loss_int =  self._calculate_loss(mask, ground_truth, value, type_)
 
-            if hint_loss_int < 0:
-                logger.warning(f"Negative loss hint: hint_loss={hint_loss_int}")
-
-                print("Ground Truth:", torch.unique(ground_truth))
-                #print("Predicted Values", value)
-
-                # print("Cross Entropy:", torch.sum(F.cross_entropy(
-                #     value.transpose(-1, 1), 
-                #     F.one_hot(batch.outputs[key], self.nb_nodes).float().transpose(-1, 1), 
-                #     reduction='none').transpose(1, -1) * mask.squeeze(-1)))
-                print("Type: ", type_)
-                print("Algorithm: ", algorithm)
-
-            hint_loss += hint_loss_int
+            hint_loss += self._calculate_loss(mask, ground_truth, value, type_)
         
         return output_loss + (self.hint_loss_weight*hint_loss)
