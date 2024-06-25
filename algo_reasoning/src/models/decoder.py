@@ -200,11 +200,11 @@ _DECODER_MAP = {
 }
     
 class Decoder(nn.Module):
-    def __init__(self, algorithm, hidden_dim=128, nb_nodes=64, no_hint=False):
+    def __init__(self, algorithm, hidden_dim=128, nb_nodes=64, decode_hints=True):
         super().__init__()
         self.algorithm = algorithm
         self.hidden_dim = hidden_dim
-        self.no_hint = no_hint
+        self.decode_hints = decode_hints
         self.nb_nodes = nb_nodes
         self.decoder = nn.ModuleDict()
 
@@ -212,7 +212,7 @@ class Decoder(nn.Module):
         for k, v in self.specs.items():
             stage, loc, type_ = v
 
-            if no_hint and stage == 'hint':
+            if (not decode_hints) and stage == 'hint':
                 logger.debug(f'Ignoring hint decoder for {k}')
                 continue
             if stage == 'input':
@@ -239,7 +239,7 @@ class Decoder(nn.Module):
             else:
                 hidden = node_fts
 
-            if self.no_hint and stage == Stage.HINT:
+            if not self.decode_hints and stage == Stage.HINT:
                 continue
             if stage == Stage.INPUT:
                 continue
