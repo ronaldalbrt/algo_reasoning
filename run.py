@@ -50,11 +50,11 @@ def list_of_strings(arg):
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Training Parser Options')
-    ap.add_argument('--algorithms', default=["articulation_points"], type=list_of_strings, help="Algorithms for the model to be trained on.")
+    ap.add_argument('--algorithms', default=["bfs"], type=list_of_strings, help="Algorithms for the model to be trained on.")
     ap.add_argument('--path', default="tmp/CLRS30", type=str, help="Path to the dataset folder")
     ap.add_argument('--max_nb_nodes', default=64, type=int, help="Maximum number of nodes in any sample trajectory of the dataset.")
-    ap.add_argument('--batch_size', default=8, type=int, help="Number of samples in each training batch")
-    ap.add_argument('--n_epochs', default=100, type=int, help="Number of training epochs")
+    ap.add_argument('--batch_size', default=32, type=int, help="Number of samples in each training batch")
+    ap.add_argument('--n_epochs', default=10, type=int, help="Number of training epochs")
     ap.add_argument('--n_workers', default=8, type=int, help="Number of Data Loading Workers")
     ap.add_argument('--lr', default=1e-3, type=float, help="Initial Learning Rate for ADAM Optimizer")
     ap.add_argument('--lr_decrease_factor', default=0.1, type=float, help="Factor by which the learning rate is going to be reduced after lr_patience epochs without Evaluation perfomance improvement.")
@@ -104,7 +104,8 @@ if __name__ == '__main__':
         model=model,
         loss_fn=loss_fn,
         optim_method=optim_method,
-        lr=args.lr
+        lr=args.lr,
+        max_nb_nodes=args.max_nb_nodes
     )
 
     checkpoint_callback = ModelCheckpoint(

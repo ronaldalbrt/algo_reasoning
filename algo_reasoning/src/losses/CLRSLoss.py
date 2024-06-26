@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from algo_reasoning.src.specs import Location, SPECS, Type
+from algo_reasoning.src.specs import SPECS, Type
 from loguru import logger
     
 class CLRSLoss(nn.Module):

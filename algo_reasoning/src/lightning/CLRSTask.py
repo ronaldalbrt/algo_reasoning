@@ -2,11 +2,11 @@ import os
 import torch
 import torch.nn.functional as F
 import lightning as L
-from algo_reasoning.src.lightning.eval import metrics
+from algo_reasoning.src.eval import eval_function
 
 
 class CLRSTask(L.LightningModule):
-    def __init__(self, model, loss_fn, optim_method, lr):
+    def __init__(self, model, loss_fn, optim_method, lr, max_nb_nodes):
         super().__init__()
         self.save_hyperparameters(ignore=['model','loss_fn'])
         
@@ -14,6 +14,7 @@ class CLRSTask(L.LightningModule):
         self.loss_fn = loss_fn
         self.optim_method = optim_method
         self.lr = lr
+        self.max_nb_nodes = max_nb_nodes
 
     def _batch_loss(self, batch, calculate_metrics=False, prefix="val"):
         input_batch = batch.clone()
@@ -22,8 +23,7 @@ class CLRSTask(L.LightningModule):
         loss = self.loss_fn(preds, batch)
 
         if calculate_metrics:
-            pred_prob = F.sigmoid(preds)
-            metrics_r = metrics(torch.flatten(pred_prob).detach().cpu(), torch.flatten(batch).detach().cpu())
+            metrics_r = eval_function(preds.detach().cpu(), batch.detach().cpu())
             
             metrics_r["loss"] = loss
 
@@ -40,30 +40,19 @@ class CLRSTask(L.LightningModule):
     
 
     def validation_step(self, batch, batch_idx):
-        #metrics = self._batch_loss(batch, prefix="val")
+        metrics = self._batch_loss(batch, calculate_metrics=True, prefix="val")
 
-        #self.log_dict(metrics, sync_dist=True)
+        self.log_dict(metrics, sync_dist=True)
 
-        #return metrics["val_loss"]
-        loss = self._batch_loss(batch)
-
-        self.log("val_loss", loss)
-
-        return loss
+        return metrics["val_loss"]
     
     
     def test_step(self, batch, batch_idx):
-        #metrics = self._batch_loss(batch, prefix="test")
+        metrics = self._batch_loss(batch, calculate_metrics=True, prefix="test")
 
-        #self.log_dict(metrics, sync_dist=True)
+        self.log_dict(metrics, sync_dist=True)
 
-        #return metrics["test_loss"]
-
-        loss = self._batch_loss(batch)
-
-        self.log("test_loss", loss)
-
-        return loss
+        return metrics["test_loss"]
 
     def configure_optimizers(self):
         optimizer = self.optim_method(self.parameters(), lr=self.lr)

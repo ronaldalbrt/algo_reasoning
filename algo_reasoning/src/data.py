@@ -202,7 +202,7 @@ class CLRSDataset(Dataset):
 
 
 class CLRSSampler(Sampler[List[int]]):
-    def __init__(self, dataset, algorithms, batch_size, replacement=True, generator=None):
+    def __init__(self, dataset, algorithms, batch_size, replacement=False, generator=None):
         super().__init__()
         self.dataset = dataset
         self.algorithms = algorithms
@@ -249,7 +249,6 @@ class CLRSSampler(Sampler[List[int]]):
                 wo_replacement_algos = np.append(wo_replacement_algos, [alg]*n_batches_per_algo)
 
             wo_replacement_algos = wo_replacement_algos[torch.randperm(len(wo_replacement_algos), generator=self.generator).tolist()]
-            print(wo_replacement_algos)
 
             curr_idx = {alg: 0 for alg in self.algorithms}
             for batch in wo_replacement_algos:

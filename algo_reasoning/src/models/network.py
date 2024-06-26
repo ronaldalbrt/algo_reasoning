@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from inspect import signature
-from loguru import logger
 
 from .encoder import Encoder
 from .decoder import Decoder
