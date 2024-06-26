@@ -10,7 +10,7 @@ class PGN(nn.Module):
     # TODO: Implement gated message passing
     """Pointer Graph Networks (Veličković et al., NeurIPS 2020)."""
     """Adapted from https://github.com/google-deepmind/clrs/blob/master/clrs/_src/processors.py"""
-    def __init__(self, in_channels, out_channels, aggr="max", activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8, use_hidden=True):
+    def __init__(self, in_channels, out_channels, aggr="max", activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8):
         super().__init__()
         
         logger.info(f"PGN: in_channels: {in_channels}, out_channels: {out_channels}")
@@ -19,14 +19,12 @@ class PGN(nn.Module):
         self.out_channels = out_channels
         self.activation = activation
         self.nb_triplet_fts = nb_triplet_fts
-        self.use_hidden = use_hidden
-        self.channels_multipler = 2 if self.use_hidden else 1
         self.aggr = aggr
         self.layer_norm = layer_norm
 
         # Message MLPs
-        self.m_1 = nn.Linear(in_channels*self.channels_multipler, self.mid_channels)
-        self.m_2 = nn.Linear(in_channels*self.channels_multipler, self.mid_channels)
+        self.m_1 = nn.Linear(in_channels*2, self.mid_channels)
+        self.m_2 = nn.Linear(in_channels*2, self.mid_channels)
         self.m_e = nn.Linear(in_channels, self.mid_channels)
         self.m_g = nn.Linear(in_channels, self.mid_channels)
 
@@ -41,13 +39,13 @@ class PGN(nn.Module):
         )
 
         # Output MLP
-        self.o1 = nn.Linear(in_channels*self.channels_multipler, out_channels) # skip connection
+        self.o1 = nn.Linear(in_channels*2, out_channels) # skip connection
         self.o2 = nn.Linear(self.mid_channels, out_channels)
 
         if self.nb_triplet_fts is not None:
-            self.t_1 = nn.Linear(in_channels*self.channels_multipler, nb_triplet_fts)
-            self.t_2 = nn.Linear(in_channels*self.channels_multipler, nb_triplet_fts)
-            self.t_3 = nn.Linear(in_channels*self.channels_multipler, nb_triplet_fts)
+            self.t_1 = nn.Linear(in_channels*2, nb_triplet_fts)
+            self.t_2 = nn.Linear(in_channels*2, nb_triplet_fts)
+            self.t_3 = nn.Linear(in_channels*2, nb_triplet_fts)
             self.t_e_1 = nn.Linear(in_channels, nb_triplet_fts)
             self.t_e_2 = nn.Linear(in_channels, nb_triplet_fts)
             self.t_e_3 = nn.Linear(in_channels, nb_triplet_fts)
@@ -77,8 +75,8 @@ class PGN(nn.Module):
 
 
     def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
-        z = torch.concat([node_fts, hidden], dim=-1) if self.use_hidden else node_fts
-
+        z = torch.concat([node_fts, hidden], dim=-1)
+        
         msg_1 = self.m_1(z)
         msg_2 = self.m_2(z)
         msg_e = self.m_e(edge_fts)
@@ -115,5 +113,3 @@ class PGN(nn.Module):
             out = self.norm(out)
 
         return out, tri_msgs
-
-

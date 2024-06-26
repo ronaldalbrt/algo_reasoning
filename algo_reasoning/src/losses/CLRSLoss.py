@@ -6,24 +6,16 @@ from algo_reasoning.src.specs import SPECS, Type
 from loguru import logger
     
 class CLRSLoss(nn.Module):
-    def __init__(self, nb_nodes=64, hidden_loss_type=None, hint_loss_weight=0.1):
+    def __init__(self, hint_loss_weight=0.1):
         super().__init__()
         self.hint_loss = (hint_loss_weight > 0.0)
         self.hint_loss_weight = hint_loss_weight
-        self.nb_nodes = nb_nodes
-
-        # if hidden_loss_type == "l2":
-        #     self.hidden_loss = lambda x: torch.mean(torch.linalg.norm(x, dim=1))
-        # else:
-        #     raise NotImplementedError(f"Unknown hidden loss type {hidden_loss_type}")
     
-    def _calculate_loss(self, mask, truth, pred, type_):
+    def _calculate_loss(self, mask, truth, pred, type_, nb_nodes):
         if type_ == Type.SCALAR:
-            
             return torch.mean(F.mse_loss(pred, truth, reduction='none') * mask)
         
         elif type_ == Type.MASK:
-            
             return torch.mean(F.binary_cross_entropy_with_logits(pred, truth, reduction='none') * mask)
         
         elif type_ == Type.MASK_ONE:
@@ -47,7 +39,7 @@ class CLRSLoss(nn.Module):
             return torch.mean(
                 F.cross_entropy(
                     pred.transpose(-1, 1), 
-                    F.one_hot(truth.long(), self.nb_nodes).float().transpose(-1, 1), 
+                    F.one_hot(truth.long(), nb_nodes).float().transpose(-1, 1), 
                     reduction='none').transpose(1, -1) * mask.squeeze(-1))
         
         else:
@@ -56,6 +48,7 @@ class CLRSLoss(nn.Module):
     def forward(self, pred, batch):
         algorithm = batch.algorithm
         specs = SPECS[algorithm]
+        nb_nodes = batch.inputs.pos.shape[1]
         max_length = batch.max_length.item()
         device = batch.length.device
 
@@ -68,7 +61,7 @@ class CLRSLoss(nn.Module):
             _, _, type_ = specs[key]
             mask = torch.ones_like(batch.outputs[key], device=device)
 
-            output_loss += self._calculate_loss(mask, batch.outputs[key], value,  type_)
+            output_loss += self._calculate_loss(mask, batch.outputs[key], value,  type_, nb_nodes)
 
         if self.hint_loss:
             hint_loss = torch.zeros(1, device=device)
@@ -84,7 +77,7 @@ class CLRSLoss(nn.Module):
 
                 ground_truth = batch.hints[key][:, :max_length]
 
-                hint_loss += self._calculate_loss(mask, ground_truth, value, type_)
+                hint_loss += self._calculate_loss(mask, ground_truth, value, type_, nb_nodes)
 
             output_loss += self.hint_loss_weight*hint_loss
         

@@ -38,12 +38,11 @@ class EncodeProcessDecode(torch.nn.Module):
                  hidden_dim=128, 
                  nb_nodes=64, 
                  msg_passing_steps=3, 
-                 use_lstm=True, 
+                 use_lstm=False, 
                  dropout_prob=0.1,
-                 teacher_force_prob=0,
+                 teacher_force_prob=0.5,
                  encode_hints=True,
                  decode_hints=True,
-                 use_hidden=True,
                  freeze_processor=False,
                  pretrained_processor=None):
         super().__init__()
@@ -51,16 +50,15 @@ class EncodeProcessDecode(torch.nn.Module):
         self.nb_nodes = nb_nodes
         self.hidden_dim = hidden_dim
         self.use_lstm = use_lstm
-        self.use_hidden = use_hidden
         self.teacher_force_prob = teacher_force_prob
         self.encoders = nn.ModuleDict()
         self.decoders = nn.ModuleDict()
         for algorithm in algorithms:
             self.encoders[algorithm] = Encoder(algorithm, encode_hints=encode_hints, nb_nodes=nb_nodes, hidden_dim=hidden_dim)
-            self.decoders[algorithm] = Decoder(algorithm, hidden_dim=hidden_dim, nb_nodes=nb_nodes, decode_hints=decode_hints)
+            self.decoders[algorithm] = Decoder(algorithm, hidden_dim=hidden_dim, decode_hints=decode_hints)
 
         if pretrained_processor is None:
-            self.processor = PGN(hidden_dim, hidden_dim, use_hidden=use_hidden)
+            self.processor = PGN(hidden_dim, hidden_dim)
         else:
             self.processor = pretrained_processor
 
@@ -105,7 +103,7 @@ class EncodeProcessDecode(torch.nn.Module):
         else:
             nxt_lstm_state = None
         
-        output_pred = self.decoders[algorithm](nxt_hidden, nxt_edge)
+        output_pred = self.decoders[algorithm](nxt_hidden, nxt_edge, graph_fts)
 
         return output_pred, nxt_hidden, nxt_lstm_state
     

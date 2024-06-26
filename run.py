@@ -54,12 +54,12 @@ if __name__ == '__main__':
     ap.add_argument('--path', default="tmp/CLRS30", type=str, help="Path to the dataset folder")
     ap.add_argument('--max_nb_nodes', default=64, type=int, help="Maximum number of nodes in any sample trajectory of the dataset.")
     ap.add_argument('--batch_size', default=32, type=int, help="Number of samples in each training batch")
-    ap.add_argument('--n_epochs', default=10, type=int, help="Number of training epochs")
+    ap.add_argument('--n_epochs', default=100, type=int, help="Number of training epochs")
     ap.add_argument('--n_workers', default=8, type=int, help="Number of Data Loading Workers")
-    ap.add_argument('--lr', default=1e-3, type=float, help="Initial Learning Rate for ADAM Optimizer")
+    ap.add_argument('--lr', default=1e-4, type=float, help="Initial Learning Rate for ADAM Optimizer")
     ap.add_argument('--lr_decrease_factor', default=0.1, type=float, help="Factor by which the learning rate is going to be reduced after lr_patience epochs without Evaluation perfomance improvement.")
     ap.add_argument('--lr_patience', default=10, type=int, help="Number of epochs without improvement for the learning rate to de decreased")
-    ap.add_argument('--model_name', default="ArticulationPoints_PGN_HintLossWeight1", type=str, help="Model's name")
+    ap.add_argument('--model_name', default="BFS_PGN_WithoutTeacherForcing", type=str, help="Model's name")
     ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
     ap.add_argument('--checkpoint_model', default="", type=str, help="Path for pretrained checkpoint model")
     ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
     model = EncodeProcessDecode(args.algorithms, nb_nodes=args.max_nb_nodes, freeze_processor=args.freeze_processor, pretrained_processor=processor)
 
-    loss_fn = CLRSLoss(nb_nodes=args.max_nb_nodes, hint_loss_weight=1)
+    loss_fn = CLRSLoss()
 
     optim_method=Adam
 
@@ -104,8 +104,7 @@ if __name__ == '__main__':
         model=model,
         loss_fn=loss_fn,
         optim_method=optim_method,
-        lr=args.lr,
-        max_nb_nodes=args.max_nb_nodes
+        lr=args.lr
     )
 
     checkpoint_callback = ModelCheckpoint(
@@ -116,16 +115,13 @@ if __name__ == '__main__':
         every_n_epochs=1
     )
 
-    #profiler = AdvancedProfiler(dirpath=f"{args.checkpoint_path}{args.model_name}/", filename="perf_logs")
-
     trainer = L.Trainer(default_root_dir=args.checkpoint_path, 
                         max_epochs=args.n_epochs, 
                         devices=args.devices, 
                         accelerator=args.accelerator, 
                         callbacks=[checkpoint_callback],
                         use_distributed_sampler=False,
-                        #strategy=DDPStrategy(find_unused_parameters=True)
-                        )#profiler=profiler)
+                        )
     
     trainer.fit(lightning_module, train_dataloader, val_dataloader)
 
