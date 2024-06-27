@@ -11,7 +11,7 @@ class PGN(nn.Module):
     # TODO: Implement gated message passing
     """Pointer Graph Networks (Veličković et al., NeurIPS 2020)."""
     """Adapted from https://github.com/google-deepmind/clrs/blob/master/clrs/_src/processors.py"""
-    def __init__(self, in_channels, out_channels, aggr="max", activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8, gated=True):
+    def __init__(self, in_channels, out_channels, aggr="max", activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8, gated=False):
         super().__init__()
         
         logger.info(f"PGN: in_channels: {in_channels}, out_channels: {out_channels}")

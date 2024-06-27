@@ -42,16 +42,16 @@ def _multiclass_metrics(pred, y, num_classes, task, average="micro"):
         return auroc(pred, y, task=task, num_classes=num_classes)
     
     def acc(pred, y):
-        return accuracy(pred, y, task=task, num_classes=num_classes)
+        return accuracy(pred, y, task=task, num_classes=num_classes, average=average)
     
     def f1(pred, y):
-        return f1_score(pred, y, task=task, num_classes=num_classes)
+        return f1_score(pred, y, task=task, num_classes=num_classes, average=average)
     
     def prec(pred, y):
-        return precision(pred, y, task=task, num_classes=num_classes)
+        return precision(pred, y, task=task, num_classes=num_classes, average=average)
     
     def rec(pred, y):
-        return recall(pred, y, task=task, num_classes=num_classes)
+        return recall(pred, y, task=task, num_classes=num_classes, average=average)
 
 
     return {

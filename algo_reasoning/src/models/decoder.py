@@ -90,7 +90,7 @@ class GraphBaseDecoder(nn.Module):
         self.lin2 = nn.Linear(hidden_dim, spec_dim)
 
     def forward(self, x, edge_emb, graph_fts):
-        graph_embedding = torch.max(x, dim=-2) # (B, H)
+        graph_embedding = torch.max(x, dim=-2).values # (B, H)
 
         pred_n = self.lin1(graph_embedding) # (B, H)
         pred_g = self.lin2(graph_fts) # (B, H)
