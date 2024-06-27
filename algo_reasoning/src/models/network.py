@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from .encoder import Encoder
 from .decoder import Decoder
-from .processor import PGN
+from .processor import PGN, MPNN
 from algo_reasoning.src.data import CLRSData
 from algo_reasoning.src.specs import SPECS, Type, Stage, Location, CATEGORIES_DIMENSIONS
 
@@ -40,7 +40,7 @@ class EncodeProcessDecode(torch.nn.Module):
                  msg_passing_steps=3, 
                  use_lstm=False, 
                  dropout_prob=0.1,
-                 teacher_force_prob=0.5,
+                 teacher_force_prob=0,
                  encode_hints=True,
                  decode_hints=True,
                  freeze_processor=False,
@@ -58,7 +58,7 @@ class EncodeProcessDecode(torch.nn.Module):
             self.decoders[algorithm] = Decoder(algorithm, hidden_dim=hidden_dim, decode_hints=decode_hints)
 
         if pretrained_processor is None:
-            self.processor = PGN(hidden_dim, hidden_dim)
+            self.processor = MPNN(hidden_dim, hidden_dim)
         else:
             self.processor = pretrained_processor
 

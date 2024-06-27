@@ -1,5 +1,6 @@
-import torch.nn as nn
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from loguru import logger
 
 ######################
@@ -10,13 +11,14 @@ class PGN(nn.Module):
     # TODO: Implement gated message passing
     """Pointer Graph Networks (Veličković et al., NeurIPS 2020)."""
     """Adapted from https://github.com/google-deepmind/clrs/blob/master/clrs/_src/processors.py"""
-    def __init__(self, in_channels, out_channels, aggr="max", activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8):
+    def __init__(self, in_channels, out_channels, aggr="max", activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8, gated=True):
         super().__init__()
         
         logger.info(f"PGN: in_channels: {in_channels}, out_channels: {out_channels}")
         self.in_channels = in_channels
         self.mid_channels = out_channels
         self.out_channels = out_channels
+        self.gated = gated
         self.activation = activation
         self.nb_triplet_fts = nb_triplet_fts
         self.aggr = aggr
@@ -50,8 +52,13 @@ class PGN(nn.Module):
             self.t_e_2 = nn.Linear(in_channels, nb_triplet_fts)
             self.t_e_3 = nn.Linear(in_channels, nb_triplet_fts)
             self.t_g = nn.Linear(in_channels, nb_triplet_fts)
-
             self.o3 = nn.Linear(nb_triplet_fts, out_channels)
+
+        if self.gated:
+            self.gate1 = nn.Linear(in_channels*2, out_channels)
+            self.gate2 = nn.Linear(self.mid_channels, out_channels)
+            self.gate3 = nn.Linear(out_channels, out_channels)
+            nn.init.constant_(self.gate3.weight, -3)
 
     def get_triplet_msgs(self, node_fts, edge_fts, graph_fts):
         """Triplet messages, as done by Dudzik and Velickovic (2022)."""
@@ -72,7 +79,6 @@ class PGN(nn.Module):
             tri_e_3[:, None, :, :, :]   +  # + (B, 1, N, N, H)
             tri_g[:, None, None, None, :]  # + (B, 1, 1, 1, H)
         )                                  # = (B, N, N, N, H)
-
 
     def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
         z = torch.concat([node_fts, hidden], dim=-1)
@@ -112,4 +118,14 @@ class PGN(nn.Module):
         if self.layer_norm:
             out = self.norm(out)
 
+        if self.gated:
+            gate = F.sigmoid(self.gate3(F.relu(self.gate1(z) + self.gate2(msgs))))
+            out = out * gate + hidden * (1-gate)
+
         return out, tri_msgs
+
+
+class MPNN(PGN):
+    def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_mat):
+        adj_mat = torch.ones_like(adj_mat)
+        return super().forward(node_fts, edge_fts, graph_fts, hidden, adj_mat)
