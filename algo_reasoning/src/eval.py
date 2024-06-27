@@ -5,7 +5,7 @@ from algo_reasoning.src.specs import Type, SPECS, CATEGORIES_DIMENSIONS
 
 from loguru import logger
 
-def _preprocess_y(y, algorithm, key, type_, nb_nodes, max_nb_nodes):
+def _preprocess_y(y, algorithm, key, type_, nb_nodes):
     num_classes = 2
     preprocesed_y = torch.clone(y)
 
@@ -18,7 +18,7 @@ def _preprocess_y(y, algorithm, key, type_, nb_nodes, max_nb_nodes):
 
         preprocesed_y = torch.argmax(preprocesed_y, dim=1)
     elif type_ == Type.POINTER:
-        num_classes = max_nb_nodes
+        num_classes = nb_nodes
         
     return preprocesed_y.long(), num_classes
 
@@ -42,16 +42,16 @@ def _multiclass_metrics(pred, y, num_classes, task, average="micro"):
         return auroc(pred, y, task=task, num_classes=num_classes)
     
     def acc(pred, y):
-        return accuracy(pred, y, task=task, num_classes=num_classes, average=average)
+        return accuracy(pred, y, task=task, num_classes=num_classes)
     
     def f1(pred, y):
-        return f1_score(pred, y, task=task, num_classes=num_classes, average=average)
+        return f1_score(pred, y, task=task, num_classes=num_classes)
     
     def prec(pred, y):
-        return precision(pred, y, task=task, num_classes=num_classes, average=average)
+        return precision(pred, y, task=task, num_classes=num_classes)
     
     def rec(pred, y):
-        return recall(pred, y, task=task, num_classes=num_classes, average=average)
+        return recall(pred, y, task=task, num_classes=num_classes)
 
 
     return {
@@ -62,7 +62,7 @@ def _multiclass_metrics(pred, y, num_classes, task, average="micro"):
         'recall': rec(pred, y).item()
         }
 
-def eval_function(pred, batch, max_nb_nodes=64, average="micro"):
+def eval_function(pred, batch, average="micro"):
     algorithm = batch.algorithm
     specs = SPECS[algorithm]
     nb_nodes = batch.inputs.pos.shape[1]
@@ -81,7 +81,7 @@ def eval_function(pred, batch, max_nb_nodes=64, average="micro"):
         else:
             y = batch.outputs[key]
 
-            treated_y, num_classes = _preprocess_y(y, algorithm, key, type_, nb_nodes=nb_nodes, max_nb_nodes=max_nb_nodes)
+            treated_y, num_classes = _preprocess_y(y, algorithm, key, type_, nb_nodes=nb_nodes)
 
             task = "binary" if type_ == Type.MASK else "multiclass"
             if type_ == Type.POINTER:

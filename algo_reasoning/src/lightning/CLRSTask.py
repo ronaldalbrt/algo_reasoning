@@ -6,7 +6,7 @@ from algo_reasoning.src.eval import eval_function
 
 
 class CLRSTask(L.LightningModule):
-    def __init__(self, model, loss_fn, optim_method, lr, max_nb_nodes):
+    def __init__(self, model, loss_fn, optim_method, lr):
         super().__init__()
         self.save_hyperparameters(ignore=['model','loss_fn'])
         
@@ -14,7 +14,6 @@ class CLRSTask(L.LightningModule):
         self.loss_fn = loss_fn
         self.optim_method = optim_method
         self.lr = lr
-        self.max_nb_nodes = max_nb_nodes
 
     def _batch_loss(self, batch, calculate_metrics=False, prefix="val"):
         input_batch = batch.clone()
