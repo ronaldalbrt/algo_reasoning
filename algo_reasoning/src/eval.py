@@ -73,7 +73,7 @@ def eval_function(pred, batch, average="micro"):
 
         if type_ == Type.SCALAR:
             score = _scalar_score(value, batch.outputs[key])
-            if "scalar_score" in output_metrics[key].keys():
+            if "scalar_score" in output_metrics.keys():
                 output_metrics["scalar_score"].append(score)
             else:
                 output_metrics["scalar_score"] = [score]
