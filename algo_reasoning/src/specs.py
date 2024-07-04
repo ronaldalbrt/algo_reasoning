@@ -95,6 +95,7 @@ CLRS_30_ALGS = [
     'strongly_connected_components',
     'task_scheduling',
     'topological_sort',
+    'naive_vertex_cover'
 ]
 
 
@@ -527,6 +528,13 @@ SPECS = types.MappingProxyType({
         'W': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
         "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
         'C': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR)
+    },
+    'naive_vertex_cover': {
+        "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
+        'A': (Stage.INPUT, Location.EDGE, Type.SCALAR),
+        'adj': (Stage.INPUT, Location.EDGE, Type.MASK),
+        'in_cover':(Stage.OUTPUT, Location.NODE, Type.MASK),
+        'min_vertex_cover': (Stage.HINT, Location.GRAPH, Type.SCALAR),
     }
 })
 
