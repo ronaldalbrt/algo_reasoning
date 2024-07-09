@@ -36,7 +36,6 @@ class EncodeProcessDecode(torch.nn.Module):
     def __init__(self, 
                  algorithms, 
                  hidden_dim=128, 
-                 nb_nodes=64, 
                  msg_passing_steps=3, 
                  use_lstm=False, 
                  dropout_prob=0.1,
@@ -47,14 +46,13 @@ class EncodeProcessDecode(torch.nn.Module):
                  pretrained_processor=None):
         super().__init__()
         self.msg_passing_steps = msg_passing_steps
-        self.nb_nodes = nb_nodes
         self.hidden_dim = hidden_dim
         self.use_lstm = use_lstm
         self.teacher_force_prob = teacher_force_prob
         self.encoders = nn.ModuleDict()
         self.decoders = nn.ModuleDict()
         for algorithm in algorithms:
-            self.encoders[algorithm] = Encoder(algorithm, encode_hints=encode_hints, nb_nodes=nb_nodes, hidden_dim=hidden_dim)
+            self.encoders[algorithm] = Encoder(algorithm, encode_hints=encode_hints, hidden_dim=hidden_dim)
             self.decoders[algorithm] = Decoder(algorithm, hidden_dim=hidden_dim, decode_hints=decode_hints)
 
         if pretrained_processor is None:
