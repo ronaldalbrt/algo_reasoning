@@ -8,7 +8,6 @@ from loguru import logger
 #TODO: Implement other Processor Architectures
 
 class PGN(nn.Module):
-    # TODO: Implement gated message passing
     """Pointer Graph Networks (Veličković et al., NeurIPS 2020)."""
     """Adapted from https://github.com/google-deepmind/clrs/blob/master/clrs/_src/processors.py"""
     def __init__(self, in_channels, out_channels, aggr="max", activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8, gated=False):
