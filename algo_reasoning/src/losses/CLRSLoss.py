@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from algo_reasoning.src.specs import SPECS, Type
+from algo_reasoning.src.specs import SPECS, Type, OutputClass
 from loguru import logger
     
 class CLRSLoss(nn.Module):
@@ -16,23 +16,16 @@ class CLRSLoss(nn.Module):
             return torch.mean(F.mse_loss(pred, truth, reduction='none') * mask)
         
         elif type_ == Type.MASK:
-            return torch.mean(F.binary_cross_entropy_with_logits(pred, truth, reduction='none') * mask)
+            masked_truth = (truth != OutputClass.MASKED)
+            return torch.mean(F.binary_cross_entropy_with_logits(pred, truth, reduction='none') * mask * masked_truth)
         
-        elif type_ == Type.MASK_ONE:
+        elif type_ in [Type.MASK_ONE, Type.CATEGORICAL]:
+            masked_truth = truth * (truth != OutputClass.MASKED)
+
             logsoftmax_pred = F.log_softmax(pred, dim=-1)
-            losses = truth*logsoftmax_pred*mask
+            losses = logsoftmax_pred*mask*masked_truth
 
-            losses *= -1
-
-            return losses.mean()
-        
-        elif type_ == Type.CATEGORICAL:
-
-            return torch.mean(
-                F.cross_entropy(
-                    pred.transpose(-1, 1), 
-                    truth.transpose(-1, 1), 
-                    reduction='none').transpose(-1, 1) * mask.squeeze(-1))
+            return (-torch.sum(losses) / torch.sum(truth*mask == OutputClass.POSITIVE))
         
         elif type_ == Type.POINTER:
             
