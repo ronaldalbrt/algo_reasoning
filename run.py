@@ -61,13 +61,13 @@ if __name__ == '__main__':
     ap.add_argument('--lr', default=1e-3, type=float, help="Initial Learning Rate for ADAM Optimizer")
     ap.add_argument('--lr_decrease_factor', default=0.1, type=float, help="Factor by which the learning rate is going to be reduced after lr_patience epochs without Evaluation perfomance improvement.")
     ap.add_argument('--lr_patience', default=10, type=int, help="Number of epochs without improvement for the learning rate to de decreased")
-    ap.add_argument('--model_name', default="Bridges_Pretrained", type=str, help="Model's name")
+    ap.add_argument('--model_name', default="Bridges_Pretrained_FreezeWeights", type=str, help="Model's name")
     ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
     ap.add_argument('--checkpoint_model', default="", type=str, help="Path for pretrained checkpoint model")
     ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
     ap.add_argument("--devices",  default=1, type=str, help="Number of devices used for training")
     ap.add_argument("--processor_pretrained_path", default="checkpoints/Generalist_GMPNN_WithoutTeacherForcing/Generalist_GMPNN_WithoutTeacherForcing-epoch=95-val_loss=0.39.ckpt", type=str, help="Path for processor's weights folder")
-    ap.add_argument("--freeze_processor", default=False, type=bool, help="Whether or not to freeze processor's weights.")
+    ap.add_argument("--freeze_processor", default=True, type=bool, help="Whether or not to freeze processor's weights.")
     args = ap.parse_args()
 
     processor = None

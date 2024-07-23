@@ -87,7 +87,8 @@ def eval_function(pred, batch, average="micro"):
 
             task = "binary" if type_ == Type.MASK else "multiclass"
             
-            value = value.transpose(1, -1)
+            if value.dim() > 1:
+                value = value.transpose(1, -1)
             
             score = _multiclass_metrics(value, treated_y, num_classes, task, average=average, ignore_index=ignore_index)
 
