@@ -40,8 +40,8 @@ class EncodeProcessDecode(torch.nn.Module):
                  use_lstm=False, 
                  dropout_prob=0.1,
                  teacher_force_prob=0,
-                 encode_hints=True,
-                 decode_hints=True,
+                 encode_hints=False,
+                 decode_hints=False,
                  freeze_processor=False,
                  pretrained_processor=None):
         super().__init__()

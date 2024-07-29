@@ -40,11 +40,6 @@ def schedule(N, W, nb_nodes):
     if c > W:
         c = -1
 
-    # for i in range(W):
-    #     for j in range(N):
-    #         print(sch[j][i % c], end="")
-    #     print()
-
     outputs = CLRSData()
     outputs['C'] = torch.tensor([c]).float()
 
