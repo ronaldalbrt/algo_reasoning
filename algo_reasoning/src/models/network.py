@@ -118,8 +118,11 @@ class EncodeProcessDecode(torch.nn.Module):
 
         output_pred, hidden, lstm_state = self._one_step_prediction(batch, hidden, lstm_state=lstm_state)
         hints = output_pred.hints
-        for step in range(max_len):
-            output_step, hidden, lstm_state = self._one_step_prediction(batch, hidden, hints=hints, hint_step=step, lstm_state=lstm_state)
-            hints.concat(output_step.hints)
-        
+        if max_len > 0:
+            for step in range(max_len):
+                output_step, hidden, lstm_state = self._one_step_prediction(batch, hidden, hints=hints, hint_step=step, lstm_state=lstm_state)
+                hints.concat(output_step.hints)
+        else:
+            output_step, hidden, lstm_state = self._one_step_prediction(batch, hidden, hints=hints, hint_step=0, lstm_state=lstm_state)
+            
         return CLRSData(inputs=batch.inputs, hints=hints, length=max_len, outputs=output_step.outputs, algorithm=algorithm)

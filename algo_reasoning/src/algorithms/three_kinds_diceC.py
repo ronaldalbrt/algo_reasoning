@@ -103,19 +103,19 @@ def three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes):
     min_value = torch.min(torch.concat((values_D1, values_D2))).item()
     min_value = min_value - 1 if min_value > 0 else min_value
 
-    length = 0
+    length = 1
 
     hints = CLRSData() 
     score_D1 = torch.tensor([(torch.sum(v > values_D1) + torch.sum(v == values_D1)/2).item()/values_D1.size(0) for v in torch.arange(nb_nodes)])
     score_D2 = torch.tensor([(torch.sum(v > values_D2) + torch.sum(v == values_D2)/2).item()/values_D2.size(0) for v in torch.arange(nb_nodes)])
-    hints['score_D1'] = score_D1.float().unsqueeze(0)
-    hints['score_D2'] = score_D2.float().unsqueeze(0)
+    hints['score_D1'] = score_D1.float().unsqueeze(0).unsqueeze(0)
+    hints['score_D2'] = score_D2.float().unsqueeze(0).unsqueeze(0)
 
     in_hull_output = jarvis_march(score_D1[min_value:max_value], score_D2[min_value:max_value])
     in_hull = torch.zeros(score_D1.shape)
     in_hull[min_value:max_value] = in_hull_output
 
-    hints['in_hull'] = in_hull.unsqueeze(0)
+    hints['in_hull'] = in_hull.unsqueeze(0).unsqueeze(0)
 
     output_score_D1 = 0
     score_D1_in_hull = score_D1[in_hull.bool()]
@@ -157,7 +157,7 @@ if __name__ == "__main__":
 
         data_point = three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes)
         train_datapoints.append(data_point)
-        curr_length = data_point.length.item()
+        curr_length = data_point.length.long().item()
         max_length = curr_length if curr_length > max_length else max_length
 
 
@@ -174,7 +174,7 @@ if __name__ == "__main__":
 
         data_point = three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes)
         val_datapoints.append(data_point)
-        curr_length = data_point.length.item()
+        curr_length = data_point.length.long().item()
         max_length = curr_length if curr_length > max_length else max_length
 
 
@@ -191,7 +191,7 @@ if __name__ == "__main__":
 
         data_point = three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes)
         test_datapoints.append(data_point)
-        curr_length = data_point.length.item()
+        curr_length = data_point.length.long().item()
         max_length = curr_length if curr_length > max_length else max_length
 
     for i, data_point in enumerate(train_datapoints):
