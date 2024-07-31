@@ -106,8 +106,8 @@ def three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes):
     length = 1
 
     hints = CLRSData() 
-    score_D1 = torch.tensor([(torch.sum(v > values_D1) + torch.sum(v == values_D1)/2).item()/values_D1.size(0) for v in torch.arange(nb_nodes)])
-    score_D2 = torch.tensor([(torch.sum(v > values_D2) + torch.sum(v == values_D2)/2).item()/values_D2.size(0) for v in torch.arange(nb_nodes)])
+    score_D1 = torch.tensor([(torch.sum(v > values_D1) + torch.sum(v == values_D1)/2).item()/values_D1.size(0) for v in torch.arange(start=1, end=nb_nodes + 1)])
+    score_D2 = torch.tensor([(torch.sum(v > values_D2) + torch.sum(v == values_D2)/2).item()/values_D2.size(0) for v in torch.arange(start=1, end=nb_nodes + 1)])
     hints['score_D1'] = score_D1.float().unsqueeze(0).unsqueeze(0)
     hints['score_D2'] = score_D2.float().unsqueeze(0).unsqueeze(0)
 
@@ -117,7 +117,10 @@ def three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes):
 
     hints['in_hull'] = in_hull.unsqueeze(0).unsqueeze(0)
 
+    print(in_hull)
+
     output_score_D1 = 0
+    output_score_D2 = 1
     score_D1_in_hull = score_D1[in_hull.bool()]
     score_D2_in_hull = score_D2[in_hull.bool()]
     for i in range(in_hull.sum().long().item()):
@@ -127,13 +130,25 @@ def three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes):
         y1 = score_D2_in_hull[i - 1]
         y2 = score_D2_in_hull[i]
 
-        if x1 >= .5 or x2 < .5: 
-            continue
+        print([x1, y1])
+        print([x2, y2])
 
-        output_score_D1 = y1 + (y2 - y1) / (x2 - x1) * (0.5 - x1)
+        if (x1 <= 0.5 <= x2) or (x2 <= 0.5 <= x1):  # Intersection with x = 0.5
+            t = (0.5 - x1) / (x2 - x1)
+            y_intersect = y1 + t * (y2 - y1)
+
+            output_score_D2 = min(output_score_D2, y_intersect)
+
+        if (y1 <= 0.5 <= y2) or (y2 <= 0.5 <= y1):  # Intersection with y = 0.5
+            t = (0.5 - y1) / (y2 - y1)
+            x_intersect = x1 + t * (x2 - x1)
+
+            output_score_D1 = max(output_score_D1, x_intersect)
 
     outputs = CLRSData()
     outputs['output_score_D1'] = torch.tensor([output_score_D1]).float()
+    outputs['output_score_D2'] = torch.tensor([output_score_D2]).float()
+
     
 
     return CLRSData(inputs=inputs, hints=hints, length=torch.tensor(length).float(), outputs=outputs, algorithm="three_kinds_dice")
@@ -152,8 +167,8 @@ if __name__ == "__main__":
     max_length = -1
     for N_faces1, N_faces2 in zip(N_faces1_train, N_faces2_train):
         nb_nodes = 16
-        values_D1 = torch.randint(0, nb_nodes, (N_faces1, ))
-        values_D2 = torch.randint(0, nb_nodes, (N_faces1, ))
+        values_D1 = torch.randint(1, nb_nodes, (N_faces1, ))
+        values_D2 = torch.randint(1, nb_nodes, (N_faces1, ))
 
         data_point = three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes)
         train_datapoints.append(data_point)
@@ -169,8 +184,8 @@ if __name__ == "__main__":
 
     for N_faces1, N_faces2 in zip(N_faces1_val, N_faces2_val):
         nb_nodes = 16
-        values_D1 = torch.randint(0, nb_nodes, (N_faces1, ))
-        values_D2 = torch.randint(0, nb_nodes, (N_faces1, ))
+        values_D1 = torch.randint(1, nb_nodes, (N_faces1, ))
+        values_D2 = torch.randint(1, nb_nodes, (N_faces1, ))
 
         data_point = three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes)
         val_datapoints.append(data_point)
@@ -186,8 +201,8 @@ if __name__ == "__main__":
 
     for N_faces1, N_faces2 in zip(N_faces1_test, N_faces2_test):
         nb_nodes = 64
-        values_D1 = torch.randint(0, nb_nodes, (N_faces1, ))
-        values_D2 = torch.randint(0, nb_nodes, (N_faces1, ))
+        values_D1 = torch.randint(1, nb_nodes, (N_faces1, ))
+        values_D2 = torch.randint(1, nb_nodes, (N_faces1, ))
 
         data_point = three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes)
         test_datapoints.append(data_point)
