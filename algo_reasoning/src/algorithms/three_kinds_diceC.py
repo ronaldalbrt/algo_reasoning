@@ -72,6 +72,7 @@ def jarvis_march(xs, ys):
         if ys[i] < ys[best] or (ys[i] == ys[best] and xs[i] < xs[best]):
             best = i
 
+    ordering = [best]
     in_hull[best] = 1
     last_point = best
     endpoint = 0
@@ -84,10 +85,11 @@ def jarvis_march(xs, ys):
         if in_hull[endpoint] > 0:
             break
         in_hull[endpoint] = 1
+        ordering.append(endpoint)
         last_point = endpoint
         endpoint = 0
 
-    return in_hull
+    return in_hull, ordering
 
 
 def three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes):
@@ -100,8 +102,7 @@ def three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes):
     inputs['values_D2'] = torch.bincount(values_D2, minlength=nb_nodes).float().unsqueeze(0)
 
     max_value = torch.max(torch.concat((values_D1, values_D2))).item() + 1
-    min_value = torch.min(torch.concat((values_D1, values_D2))).item()
-    min_value = min_value - 1 if min_value > 0 else min_value
+    min_value = torch.min(torch.concat((values_D1, values_D2))).item() - 1
 
     length = 1
 
@@ -111,45 +112,51 @@ def three_kinds_dice(N_faces1, N_faces2, values_D1, values_D2, nb_nodes):
     hints['score_D1'] = score_D1.float().unsqueeze(0).unsqueeze(0)
     hints['score_D2'] = score_D2.float().unsqueeze(0).unsqueeze(0)
 
-    in_hull_output = jarvis_march(score_D1[min_value:max_value], score_D2[min_value:max_value])
+    in_hull_output, ordering = jarvis_march(score_D1[min_value:max_value], score_D2[min_value:max_value])
     in_hull = torch.zeros(score_D1.shape)
     in_hull[min_value:max_value] = in_hull_output
 
-    hints['in_hull'] = in_hull.unsqueeze(0).unsqueeze(0)
+    print(ordering)
 
-    print(in_hull)
+    hints['in_hull'] = in_hull.unsqueeze(0).unsqueeze(0)
 
     output_score_D1 = 0
     output_score_D2 = 1
-    score_D1_in_hull = score_D1[in_hull.bool()]
-    score_D2_in_hull = score_D2[in_hull.bool()]
-    for i in range(in_hull.sum().long().item()):
-        x1 = score_D1_in_hull[i - 1]
-        x2 =  score_D1_in_hull[i]
+    print(score_D1)
+    print(score_D2)
+    score_D1_in_hull = score_D1[min_value:max_value][ordering]
+    score_D2_in_hull = score_D2[min_value:max_value][ordering]
 
-        y1 = score_D2_in_hull[i - 1]
-        y2 = score_D2_in_hull[i]
+    print(score_D1_in_hull)
+    print(score_D2_in_hull)
 
-        print([x1, y1])
-        print([x2, y2])
+    n_hull_points = in_hull.sum().long().item()
+    for i in range(n_hull_points):
+        x1 = score_D1_in_hull[i].item()
+        x2 =  score_D1_in_hull[(i + 1) % n_hull_points].item()
 
-        if (x1 <= 0.5 <= x2) or (x2 <= 0.5 <= x1):  # Intersection with x = 0.5
+        y1 = score_D2_in_hull[i].item()
+        y2 = score_D2_in_hull[(i + 1) % n_hull_points].item()
+
+        if ((x1 <= 0.5) and (0.5 <= x2)) or ((x2 <= 0.5) and (0.5 <= x1)):
             t = (0.5 - x1) / (x2 - x1)
             y_intersect = y1 + t * (y2 - y1)
 
-            output_score_D2 = min(output_score_D2, y_intersect)
+            print("Y intersect: ", y_intersect)
 
-        if (y1 <= 0.5 <= y2) or (y2 <= 0.5 <= y1):  # Intersection with y = 0.5
+            output_score_D1 = max(output_score_D1, y_intersect)
+
+        if ((y1 <= 0.5) and (0.5 <= y2)) or ((y2 <= 0.5) and (0.5 <= y1)):
             t = (0.5 - y1) / (y2 - y1)
             x_intersect = x1 + t * (x2 - x1)
 
-            output_score_D1 = max(output_score_D1, x_intersect)
+            print("X intersect: ", x_intersect)
+
+            output_score_D2 = min(output_score_D2, x_intersect)
 
     outputs = CLRSData()
     outputs['output_score_D1'] = torch.tensor([output_score_D1]).float()
     outputs['output_score_D2'] = torch.tensor([output_score_D2]).float()
-
-    
 
     return CLRSData(inputs=inputs, hints=hints, length=torch.tensor(length).float(), outputs=outputs, algorithm="three_kinds_dice")
     
