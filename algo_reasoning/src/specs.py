@@ -535,13 +535,12 @@ SPECS = types.MappingProxyType({
         'in_cover':(Stage.OUTPUT, Location.NODE, Type.MASK),
         'min_vertex_cover': (Stage.HINT, Location.GRAPH, Type.SCALAR),
     },
-    'three_kinds_dice': {
+    'three_kinds_dice_jarvis_march': {
         "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
-        'N_faces1': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
-        'N_faces2': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
         'values_D1': (Stage.INPUT, Location.NODE, Type.SCALAR),
         'values_D2': (Stage.INPUT, Location.NODE, Type.SCALAR),
         'output_score_D1': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
+        'output_score_D2': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
         'score_D1': (Stage.HINT, Location.NODE, Type.SCALAR),
         'score_D2': (Stage.HINT, Location.NODE, Type.SCALAR),
         "in_hull": (Stage.HINT, Location.NODE, Type.MASK)
