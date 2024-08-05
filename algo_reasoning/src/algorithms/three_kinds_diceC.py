@@ -6,16 +6,16 @@ import math
 from algo_reasoning.src.data import CLRSData
 from algo_reasoning.src.specs import Stage, Location, Type
 
-# three_kinds_dice_jarvis_march_specs = {
-#     "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
-#     'values_D1': (Stage.INPUT, Location.NODE, Type.SCALAR),
-#     'values_D2': (Stage.INPUT, Location.NODE, Type.SCALAR),
-#     'output_score_D1': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
-#     'output_score_D2': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
-#     'score_D1': (Stage.HINT, Location.NODE, Type.SCALAR),
-#     'score_D2': (Stage.HINT, Location.NODE, Type.SCALAR),
-#     "in_hull": (Stage.HINT, Location.NODE, Type.MASK)
-# }
+three_kinds_dice_jarvis_march_specs = {
+    "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'values_D1': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'values_D2': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'output_score_D1': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
+    'output_score_D2': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
+    'score_D1': (Stage.HINT, Location.NODE, Type.SCALAR),
+    'score_D2': (Stage.HINT, Location.NODE, Type.SCALAR),
+    "in_hull": (Stage.HINT, Location.NODE, Type.MASK)
+}
 
 def jarvis_march(xs, ys):
     """Jarvis' march convex hull (Jarvis, 1973)."""
