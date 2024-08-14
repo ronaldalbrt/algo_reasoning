@@ -1,10 +1,9 @@
-import itertools
 import os
 import torch
-import numpy as np
-import math
 from algo_reasoning.src.data import CLRSData
 from algo_reasoning.src.specs import Stage, Location, Type
+
+# GEOMETRY / CONVEX HULL
 
 three_kinds_dice_jarvis_march_specs = {
     "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
