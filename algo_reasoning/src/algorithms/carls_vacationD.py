@@ -94,13 +94,19 @@ def point_segment_distance(px, py, x1, y1, x2, y2):
 
 carls_vacation_specs = {
     "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
-    'x1': (Stage.INPUT, Location.NODE, Type.SCALAR),
-    'y1': (Stage.INPUT, Location.NODE, Type.SCALAR),
-    'x2': (Stage.INPUT, Location.NODE, Type.SCALAR),
-    'y2': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'x1': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+    'y1': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+    'x2': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+    'y2': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
     'height1': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
     'height2': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
     'distance': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
+    'faces1_x': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'faces1_y': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'faces2_x': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'faces2_y': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'selected_segment1': (Stage.HINT, Location.NODE, Type.MASK),
+    'selected_segment2': (Stage.HINT, Location.NODE, Type.MASK),
     }
 
 def carls_vacation(x1, x2, y1, y2, height1, height2, nb_nodes):
@@ -114,6 +120,33 @@ def carls_vacation(x1, x2, y1, y2, height1, height2, nb_nodes):
 
   inputs['height1'] = torch.tensor([height1]).float()
   inputs['height2'] = torch.tensor([height2]).float()
+
+  min_distance = float('inf')
+  for i in range(nb_nodes):
+    for j in range(nb_nodes):
+      segment_x = [x1[i % nb_nodes], x1[(i + 1) % nb_nodes], x2[j % nb_nodes], x2[(j + 1) % nb_nodes]]
+      segment_y = [y1[i % nb_nodes], y1[(i + 1) % nb_nodes], y2[j % nb_nodes], y2[(j + 1) % nb_nodes]]
+
+      current_distance = segments_distance(segment_x, segment_y)
+      if current_distance < min_distance:
+        min_distance = current_distance
+        selected_segment1 = i
+        selected_segment2 = j
+
+  return min_distance, selected_segment1, selected_segment2
+
+
+if __name__ == "__main__":
+
+  x1 = torch.tensor([0, 1, 1, 0])
+  y1 = torch.tensor([0, 0, 1, 1])
+  x2 = torch.tensor([0, 1, 1, 0])
+  y2 = torch.tensor([0, 0, 1, 1])
+  height1 = 1
+  height2 = 1
+  nb_nodes = 4
+
+  print(carls_vacation(x1, x2, y1, y2, height1, height2, nb_nodes=nb_nodes))
 
   
 
