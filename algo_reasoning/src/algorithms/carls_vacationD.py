@@ -1,4 +1,5 @@
 import torch
+import torch.linalg as LA
 import math
 from algo_reasoning.src.data import CLRSData
 from algo_reasoning.src.specs import Stage, Location, Type
@@ -91,43 +92,74 @@ def point_segment_distance(px, py, x1, y1, x2, y2):
 
   return math.hypot(dx, dy)
 
+def square_from_segment(p1, p2):
+  dx = p2[0] - p1[0]
+  dy = p2[1] - p1[1]
+
+  distance = LA.norm(p1 - p2)
+  
+  ux = dx / distance
+  uy = dy / distance
+
+  if dy < 0:
+    adjacent_ux = uy
+    adjacent_uy = -ux
+  else:
+    adjacent_ux = -uy
+    adjacent_uy = ux
+  
+  p3 = torch.tensor([p1[0] + adjacent_ux * distance, p1[1] + adjacent_uy * distance])
+  p4 = torch.tensor([p2[0] + adjacent_ux * distance, p2[1] + adjacent_uy * distance])
+
+  return torch.stack([p1, p2, p4, p3])
 
 carls_vacation_specs = {
     "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
-    'x1': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
-    'y1': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
-    'x2': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
-    'y2': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+    'x': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'y': (Stage.INPUT, Location.NODE, Type.SCALAR),
     'height1': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
     'height2': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
     'distance': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
-    'faces1_x': (Stage.INPUT, Location.NODE, Type.SCALAR),
-    'faces1_y': (Stage.INPUT, Location.NODE, Type.SCALAR),
-    'faces2_x': (Stage.INPUT, Location.NODE, Type.SCALAR),
-    'faces2_y': (Stage.INPUT, Location.NODE, Type.SCALAR),
+    'faces1_x': (Stage.HINT, Location.NODE, Type.SCALAR),
+    'faces1_y': (Stage.HINT, Location.NODE, Type.SCALAR),
+    'faces2_x': (Stage.HINT, Location.NODE, Type.SCALAR),
+    'faces2_y': (Stage.HINT, Location.NODE, Type.SCALAR),
     'selected_segment1': (Stage.HINT, Location.NODE, Type.MASK),
     'selected_segment2': (Stage.HINT, Location.NODE, Type.MASK),
     }
 
-def carls_vacation(x1, x2, y1, y2, height1, height2, nb_nodes):
+def carls_vacation(x, y, height1, height2, nb_nodes):
   inputs = CLRSData()
   inputs['pos'] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
 
-  inputs['x1'] = x1.float().unsqueeze(0)
-  inputs['y1'] = y1.float().unsqueeze(0)
-  inputs['x2'] = x2.float().unsqueeze(0)
-  inputs['y2'] = y2.float().unsqueeze(0)
+  inputs['x'] = x.float().unsqueeze(0)
+  inputs['y'] = y.float().unsqueeze(0)
 
   inputs['height1'] = torch.tensor([height1]).float()
   inputs['height2'] = torch.tensor([height2]).float()
 
+  p1, p2, p3, p4 = (torch.tensor([x[0], y[0]]), torch.tensor([x[1], y[1]]), torch.tensor([x[2], y[2]]), torch.tensor([x[3], y[3]]))
+
+  faces1 = square_from_segment(p1, p2)
+  faces2 = square_from_segment(p3, p4)
+
+  hints = CLRSData()
+  hints['faces1_x'] = faces1[:, 0].float().unsqueeze(0).unsqueeze(0)
+  hints['faces1_y'] = faces1[:, 1].float().unsqueeze(0).unsqueeze(0)
+  hints['faces2_x'] = faces2[:, 0].float().unsqueeze(0).unsqueeze(0)
+  hints['faces2_y'] = faces2[:, 1].float().unsqueeze(0).unsqueeze(0)
+
   min_distance = float('inf')
   for i in range(nb_nodes):
     for j in range(nb_nodes):
-      segment_x = [x1[i % nb_nodes], x1[(i + 1) % nb_nodes], x2[j % nb_nodes], x2[(j + 1) % nb_nodes]]
-      segment_y = [y1[i % nb_nodes], y1[(i + 1) % nb_nodes], y2[j % nb_nodes], y2[(j + 1) % nb_nodes]]
+      segment_x = torch.tensor([faces1[i % nb_nodes, 0], faces1[(i + 1) % nb_nodes, 0], faces2[j % nb_nodes, 0], faces2[(j + 1) % nb_nodes, 0]])
+      segment_y = torch.tensor([faces1[i % nb_nodes, 1], faces1[(i + 1) % nb_nodes, 1], faces2[j % nb_nodes, 1], faces2[(j + 1) % nb_nodes, 1]])
+
+      print(segment_x)
+      print(segment_y)
 
       current_distance = segments_distance(segment_x, segment_y)
+      print("i: ", i, " j: ", j, "| Distance: ", current_distance)
       if current_distance < min_distance:
         min_distance = current_distance
         selected_segment1 = i
