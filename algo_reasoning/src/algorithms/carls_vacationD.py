@@ -113,25 +113,9 @@ def square_from_segment(p1, p2):
 
   return torch.stack([p1, p2, p4, p3])
 
-def rotate_around_axis(point, angle, axis):
-  c = torch.cos(angle).item()
-  s = torch.sin(angle).item()
-  C = 1 - c
 
-  x = axis[0].item()
-  y = axis[1].item()
-  z = axis[2].item()
-
-  Q = torch.tensor([
-    [x * x * C + c, x * y * C - z * s, x * z * C + y * s],
-    [y * x * C + z * s, y * y * C + c, y * z * C - x * s],
-    [z * x * C - y * s, z * y * C + x * s, z * z * C + c]
-  ])
-
-  print("Q: ", Q)
-  
-  return Q @ point
-
+def cross_product(a, b):
+  return (a[0]*b[1] - a[1]*b[0]).item()
 
 carls_vacation_specs = {
     "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
@@ -174,38 +158,62 @@ def carls_vacation(x, y, height1, height2, nb_nodes):
 
   min_distance = float('inf')
   for i in range(nb_nodes):
+    segment1 = faces1[[(i % nb_nodes), ((i + 1) % nb_nodes)]]
+    mo1 = torch.mean(segment1, dim=0) 
+    p1 = (segment1[0] - segment1[1])[[1, 0]]
+    p1[1] = -p1[1]
+    mid1 = mo1 + p1 / 2
+
+
+    print("mid1: ", mid1)
+
     for j in range(nb_nodes):
-      segment_x = torch.tensor([faces1[i % nb_nodes, 0], faces1[(i + 1) % nb_nodes, 0], faces2[j % nb_nodes, 0], faces2[(j + 1) % nb_nodes, 0]])
-      segment_y = torch.tensor([faces1[i % nb_nodes, 1], faces1[(i + 1) % nb_nodes, 1], faces2[j % nb_nodes, 1], faces2[(j + 1) % nb_nodes, 1]])
+      segment2 = faces2[[(j % nb_nodes), ((j + 1) % nb_nodes)]]
+      mo2 = torch.mean(segment2, dim=0)
+      p2 = (segment2[0] - segment2[1])[[1, 0]]
+      p2[1] = -p2[1]
+      mid2 = mo2 + p2 / 2
 
-      current_distance = segments_distance(segment_x, segment_y)
-      if current_distance < min_distance:
-        segment1 = faces1[[(i % nb_nodes), ((i + 1) % nb_nodes)]]
-        segment2 = faces2[[(j % nb_nodes), ((j + 1) % nb_nodes)]]
+      print("mid2: ", mid2)
 
-        mo1 = torch.mean(segment1, dim=0) 
-        mo2 = torch.mean(segment2, dim=0)
+      for diag1 in range(2):
+        len1 = LA.vector_norm(torch.cat((segment1[0], torch.tensor([0]))) - top1).item() if diag1 else 0.0
 
         top1_mo1 = top1 - torch.cat((mo1, torch.tensor([0])))
-        top2_mo2 = top2 - torch.cat((mo2, torch.tensor([0])))
-
         top_mo_distance1 = LA.vector_norm(top1_mo1)
-        top_mo_distance2 = LA.vector_norm(top2_mo2)
-
         unit_vector1 = top1_mo1[:2] / LA.vector_norm(top1_mo1[:2])
-        unit_vector2 = top2_mo2[:2] / LA.vector_norm(top2_mo2[:2])
 
         rotated_top1 = mo1[:2] + unit_vector1 * top_mo_distance1
-        rotated_top2 = mo2[:2] + unit_vector2 * top_mo_distance2
+          
+        at = segment1[0] if diag1 else rotated_top1
+        
+        for diag2 in range(2):
+          len2 = LA.vector_norm(torch.cat((segment2[0], torch.tensor([0]))) - top2).item()  if diag2 else 0.0
 
-        if segments_intersect(torch.cat((torch.tensor([rotated_top1[0], rotated_top2[0]]), segment1[:, 0])), torch.cat((torch.tensor([rotated_top1[1], rotated_top2[1]]), segment1[:, 1]))) and \
-          segments_intersect(torch.cat((torch.tensor([rotated_top1[0], rotated_top2[0]]), segment2[:, 0])), torch.cat((torch.tensor([rotated_top1[1], rotated_top2[1]]), segment2[:, 1]))):
+          top2_mo2 = top2 - torch.cat((mo2, torch.tensor([0])))
+          top_mo_distance2 = LA.vector_norm(top2_mo2)
+          unit_vector2 = top2_mo2[:2] / LA.vector_norm(top2_mo2[:2])
 
-          min_distance = current_distance
-          selected_segment1 = i
-          selected_segment2 = j
-        else:
-          continue
+          rotated_top2 = mo2[:2] + unit_vector2 * top_mo_distance2
+
+          bt = segment2[0] if diag2 else rotated_top2
+
+          tops_segment1_x = torch.cat((torch.tensor([at[0], bt[0]]), segment1[:, 0]))
+          tops_segment1_y = torch.cat((torch.tensor([at[1], bt[1]]), segment1[:, 1]))
+
+          tops_segment2_x = torch.cat((torch.tensor([at[0], bt[0]]), segment2[:, 0]))
+          tops_segment2_y = torch.cat((torch.tensor([at[1], bt[1]]), segment2[:, 1]))
+        
+          current_distance = len1 + len2 + LA.vector_norm(at - bt).item()
+
+          if (not diag1) and (cross_product(mid2-segment1[0], segment1[1]-segment1[0]) < 0 or not segments_intersect(tops_segment1_x, tops_segment1_y)):
+            continue
+          if (not diag2) and (cross_product(mid1-segment2[0], segment2[1]-segment2[0]) < 0 or not segments_intersect(tops_segment2_x, tops_segment2_y)):
+            continue
+          else:
+            min_distance = min(min_distance, current_distance)
+            selected_segment1 = i
+            selected_segment2 = j
 
   aranged_nb_nodes = torch.arange(nb_nodes)
   aranged_selected_segment1 = torch.isin(aranged_nb_nodes, torch.tensor([(selected_segment1 % nb_nodes), ((selected_segment1 + 1) % nb_nodes)]))
@@ -213,34 +221,28 @@ def carls_vacation(x, y, height1, height2, nb_nodes):
   hints['selected_segment1'] = aranged_selected_segment1.unsqueeze(0).unsqueeze(0)
   hints['selected_segment2'] = aranged_selected_segment2.unsqueeze(0).unsqueeze(0)
 
-  segment1 = faces1[[(selected_segment1 % nb_nodes), ((selected_segment1 + 1) % nb_nodes)]]
-  segment2 = faces2[[(selected_segment2 % nb_nodes), ((selected_segment2 + 1) % nb_nodes)]]
-
-  mo1 = torch.mean(segment1, dim=0) 
-  mo2 = torch.mean(segment2, dim=0)
-
-  top1_mo1 = top1 - torch.cat((mo1, torch.tensor([0])))
-  top2_mo2 = top2 - torch.cat((mo2, torch.tensor([0])))
-
-  top_mo_distance1 = LA.vector_norm(top1_mo1)
-  top_mo_distance2 = LA.vector_norm(top2_mo2)
-
-  unit_vector1 = top1_mo1[:2] / LA.vector_norm(top1_mo1[:2])
-  unit_vector2 = top2_mo2[:2] / LA.vector_norm(top2_mo2[:2])
-
-  rotated_top1 = mo1[:2] + unit_vector1 * top_mo_distance1
-  rotated_top2 = mo2[:2] + unit_vector2 * top_mo_distance2
-
-  return LA.vector_norm(rotated_top1 - rotated_top2).item()
+  return min_distance
 
 if __name__ == "__main__":
-
-  x = torch.tensor([0., 30., 50., 80.])
-  y = torch.tensor([0., 0., 20., 20.])
+    
+  # 0 0 100 100 20
+  # 23 23 18 18 2
+  
+  x = torch.tensor([0., 100., 23., 18.])
+  y = torch.tensor([0., 100., 23., 18.])
   height1 = 20
-  height2 = 20
+  height2 = 2
   nb_nodes = 4
 
+
+  # 0 0 10 0 4
+  # 9 18 34 26 42
+  
+  # x = torch.tensor([0., 10., 9., 34.])
+  # y = torch.tensor([0., 0., 18., 26.])
+  # height1 = 4
+  # height2 = 42
+  # nb_nodes = 4
   print(carls_vacation(x, y, height1, height2, nb_nodes=nb_nodes))
 
   
