@@ -5,7 +5,7 @@ from algo_reasoning.src.specs import Stage, Location, Type
 
 # GEOMETRY / CONVEX HULL
 
-three_kinds_dice_jarvis_march_specs = {
+three_kinds_dice_specs = {
     "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
     'values_D1': (Stage.INPUT, Location.NODE, Type.SCALAR),
     'values_D2': (Stage.INPUT, Location.NODE, Type.SCALAR),
@@ -49,7 +49,7 @@ def jarvis_march(xs, ys):
 
     return in_hull
 
-def three_kinds_dice_jarvis_march(values_D1, values_D2, nb_nodes):
+def three_kinds_dice(values_D1, values_D2, nb_nodes):
     inputs = CLRSData()
     inputs['pos'] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
 
@@ -121,13 +121,13 @@ def three_kinds_dice_jarvis_march(values_D1, values_D2, nb_nodes):
     outputs['output_score_D1'] = torch.tensor([output_score_D1]).float()
     outputs['output_score_D2'] = torch.tensor([output_score_D2]).float()
 
-    return CLRSData(inputs=inputs, hints=hints, length=torch.tensor(length).float(), outputs=outputs, algorithm="three_kinds_dice_jarvis_march")
+    return CLRSData(inputs=inputs, hints=hints, length=torch.tensor(length).float(), outputs=outputs, algorithm="three_kinds_dice")
     
 
 if __name__ == "__main__":
-    os.mkdir("tmp/CLRS30/three_kinds_dice_jarvis_march")
+    os.mkdir("tmp/CLRS30/three_kinds_dice")
     
-    os.mkdir("tmp/CLRS30/three_kinds_dice_jarvis_march/train")
+    os.mkdir("tmp/CLRS30/three_kinds_dice/train")
 
     # Sampling Training set
     N_faces1_train = torch.randint(1, 100, (1000,)).tolist()
@@ -140,13 +140,13 @@ if __name__ == "__main__":
         values_D1 = torch.randint(1, nb_nodes, (N_faces1, ))
         values_D2 = torch.randint(1, nb_nodes, (N_faces1, ))
 
-        data_point = three_kinds_dice_jarvis_march(values_D1, values_D2, nb_nodes)
+        data_point = three_kinds_dice(values_D1, values_D2, nb_nodes)
         train_datapoints.append(data_point)
         curr_length = data_point.length.long().item()
         max_length = curr_length if curr_length > max_length else max_length
 
 
-    os.mkdir("tmp/CLRS30/three_kinds_dice_jarvis_march/val")
+    os.mkdir("tmp/CLRS30/three_kinds_dice/val")
     val_datapoints = []
     # Sampling Validation set
     N_faces1_val = torch.randint(1, 100, (32,)).tolist()
@@ -157,13 +157,13 @@ if __name__ == "__main__":
         values_D1 = torch.randint(1, nb_nodes, (N_faces1, ))
         values_D2 = torch.randint(1, nb_nodes, (N_faces1, ))
 
-        data_point = three_kinds_dice_jarvis_march(values_D1, values_D2, nb_nodes)
+        data_point = three_kinds_dice(values_D1, values_D2, nb_nodes)
         val_datapoints.append(data_point)
         curr_length = data_point.length.long().item()
         max_length = curr_length if curr_length > max_length else max_length
 
 
-    os.mkdir("tmp/CLRS30/three_kinds_dice_jarvis_march/test")
+    os.mkdir("tmp/CLRS30/three_kinds_dice/test")
     test_datapoints = []
     # Sampling Test set
     N_faces1_test = torch.randint(1, 100, (32,)).tolist()
@@ -174,19 +174,19 @@ if __name__ == "__main__":
         values_D1 = torch.randint(1, nb_nodes, (N_faces1, ))
         values_D2 = torch.randint(1, nb_nodes, (N_faces1, ))
 
-        data_point = three_kinds_dice_jarvis_march(values_D1, values_D2, nb_nodes)
+        data_point = three_kinds_dice(values_D1, values_D2, nb_nodes)
         test_datapoints.append(data_point)
         curr_length = data_point.length.long().item()
         max_length = curr_length if curr_length > max_length else max_length
 
     for i, data_point in enumerate(train_datapoints):
         data_point["max_length"] = max_length
-        torch.save(data_point, f"tmp/CLRS30/three_kinds_dice_jarvis_march/train/{i}")
+        torch.save(data_point, f"tmp/CLRS30/three_kinds_dice/train/{i}")
 
     for i, data_point in enumerate(val_datapoints):
         data_point["max_length"] = max_length
-        torch.save(data_point, f"tmp/CLRS30/three_kinds_dice_jarvis_march/val/{i}")
+        torch.save(data_point, f"tmp/CLRS30/three_kinds_dice/val/{i}")
 
     for i, data_point in enumerate(test_datapoints):
         data_point["max_length"] = max_length
-        torch.save(data_point, f"tmp/CLRS30/three_kinds_dice_jarvis_march/test/{i}")
+        torch.save(data_point, f"tmp/CLRS30/three_kinds_dice/test/{i}")

@@ -93,23 +93,19 @@ def point_segment_distance(px, py, x1, y1, x2, y2):
   return math.hypot(dx, dy)
 
 def square_from_segment(p1, p2):
-  dx = p2[0] - p1[0]
-  dy = p2[1] - p1[1]
+  dx1 = p2[0] - p1[0]
+  dy1 = p2[1] - p1[1]
 
-  distance = LA.norm(p1 - p2)
+  mov1 = torch.tensor([-dy1, dx1])
   
-  ux = dx / distance
-  uy = dy / distance
+  p3 = p2 + mov1
+  
+  dx2 = p3[0] - p2[0]
+  dy2 = p3[1] - p2[1]
 
-  if dy < 0:
-    adjacent_ux = uy
-    adjacent_uy = -ux
-  else:
-    adjacent_ux = -uy
-    adjacent_uy = ux
-  
-  p3 = torch.tensor([p1[0] + adjacent_ux * distance, p1[1] + adjacent_uy * distance])
-  p4 = torch.tensor([p2[0] + adjacent_ux * distance, p2[1] + adjacent_uy * distance])
+  mov2 = torch.tensor([-dy2, dx2 ])
+
+  p4 = p3 + mov2
 
   return torch.stack([p1, p2, p4, p3])
 
@@ -157,6 +153,7 @@ def carls_vacation(x, y, height1, height2, nb_nodes):
   hints['faces2_y'] = faces2[:, 1].float().unsqueeze(0).unsqueeze(0)
 
   min_distance = float('inf')
+  length = 1
   for i in range(nb_nodes):
     segment1 = faces1[[(i % nb_nodes), ((i + 1) % nb_nodes)]]
     mo1 = torch.mean(segment1, dim=0) 
@@ -164,17 +161,12 @@ def carls_vacation(x, y, height1, height2, nb_nodes):
     p1[1] = -p1[1]
     mid1 = mo1 + p1 / 2
 
-
-    print("mid1: ", mid1)
-
     for j in range(nb_nodes):
       segment2 = faces2[[(j % nb_nodes), ((j + 1) % nb_nodes)]]
       mo2 = torch.mean(segment2, dim=0)
       p2 = (segment2[0] - segment2[1])[[1, 0]]
       p2[1] = -p2[1]
       mid2 = mo2 + p2 / 2
-
-      print("mid2: ", mid2)
 
       for diag1 in range(2):
         len1 = LA.vector_norm(torch.cat((segment1[0], torch.tensor([0]))) - top1).item() if diag1 else 0.0
@@ -221,7 +213,10 @@ def carls_vacation(x, y, height1, height2, nb_nodes):
   hints['selected_segment1'] = aranged_selected_segment1.unsqueeze(0).unsqueeze(0)
   hints['selected_segment2'] = aranged_selected_segment2.unsqueeze(0).unsqueeze(0)
 
-  return min_distance
+  outputs = CLRSData()
+  outputs['distance'] = torch.tensor([min_distance]).float()
+
+  return CLRSData(inputs=inputs, hints=hints, length=torch.tensor(length).float(), outputs=outputs, algorithm="carls_vacation")
 
 if __name__ == "__main__":
     
