@@ -67,12 +67,16 @@ def three_kinds_dice(values_D1, values_D2, nb_nodes):
     score_D2 = torch.tensor([(torch.sum(v > values_D2) + torch.sum(v == values_D2)/2).item()/values_D2.size(0) for v in torch.arange(start=1, end=nb_nodes + 1)])
     hints['score_D1'] = score_D1.float().unsqueeze(0).unsqueeze(0)
     hints['score_D2'] = score_D2.float().unsqueeze(0).unsqueeze(0)
+    hints['in_hull'] = torch.zeros(nb_nodes).unsqueeze(0).unsqueeze(0)
 
     in_hull_output = jarvis_march(score_D1[min_value:max_value], score_D2[min_value:max_value])
     in_hull = torch.zeros(nb_nodes)
     in_hull[min_value:max_value] = in_hull_output
 
-    hints['in_hull'] = in_hull.unsqueeze(0).unsqueeze(0)
+    length += 1
+    hints['score_D1'] = torch.cat((hints['score_D1'], score_D1.float().unsqueeze(0).unsqueeze(0)), 1)
+    hints['score_D2'] = torch.cat((hints['score_D2'], score_D2.float().unsqueeze(0).unsqueeze(0)), 1)
+    hints['in_hull'] = torch.cat((hints['in_hull'], in_hull.unsqueeze(0).unsqueeze(0)), 1)
 
     output_score_D1 = 0
     output_score_D2 = 1

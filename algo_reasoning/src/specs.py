@@ -544,6 +544,20 @@ SPECS = types.MappingProxyType({
         'score_D1': (Stage.HINT, Location.NODE, Type.SCALAR),
         'score_D2': (Stage.HINT, Location.NODE, Type.SCALAR),
         "in_hull": (Stage.HINT, Location.NODE, Type.MASK)
+    },
+    'carls_vacation': {
+        "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
+        'x': (Stage.INPUT, Location.NODE, Type.SCALAR),
+        'y': (Stage.INPUT, Location.NODE, Type.SCALAR),
+        'height1': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+        'height2': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+        'distance': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
+        'faces1_x': (Stage.HINT, Location.NODE, Type.SCALAR),
+        'faces1_y': (Stage.HINT, Location.NODE, Type.SCALAR),
+        'faces2_x': (Stage.HINT, Location.NODE, Type.SCALAR),
+        'faces2_y': (Stage.HINT, Location.NODE, Type.SCALAR),
+        'selected_segment1': (Stage.HINT, Location.NODE, Type.MASK),
+        'selected_segment2': (Stage.HINT, Location.NODE, Type.MASK),
     }
 })
 

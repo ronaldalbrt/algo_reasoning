@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.linalg as LA
 import math
@@ -109,6 +110,23 @@ def square_from_segment(p1, p2):
 
   return torch.stack([p1, p2, p4, p3])
 
+def generate_non_intersecting_squares():
+  p3 = ((torch.rand((2)) * (10**3 + 10**2)) - 10**2)
+  p4 = p3 + torch.rand((2)) * 10**2
+
+  distance = LA.vector_norm(p3 - p4).item()
+  diameter = distance * math.sqrt(2)
+  
+  p1 = (p3 - diameter) - torch.rand((2)) * 10**2
+  p2 = p1 - torch.rand((2)) * 10**2
+
+  height1, height2 = ((torch.rand((2)) * (10**2 + 10**2)) - 10**2)
+
+  x = torch.tensor([p1[0], p2[0], p3[0], p4[0]])
+  y = torch.tensor([p1[1], p2[1], p3[1], p4[1]])
+
+  return x, y, height1.item(), height2.item()
+
 
 def cross_product(a, b):
   return (a[0]*b[1] - a[1]*b[0]).item()
@@ -130,6 +148,7 @@ carls_vacation_specs = {
 
 def carls_vacation(x, y, height1, height2, nb_nodes):
   inputs = CLRSData()
+  length = 1
   inputs['pos'] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
 
   inputs['x'] = x.float().unsqueeze(0)
@@ -151,9 +170,10 @@ def carls_vacation(x, y, height1, height2, nb_nodes):
   hints['faces1_y'] = faces1[:, 1].float().unsqueeze(0).unsqueeze(0)
   hints['faces2_x'] = faces2[:, 0].float().unsqueeze(0).unsqueeze(0)
   hints['faces2_y'] = faces2[:, 1].float().unsqueeze(0).unsqueeze(0)
+  hints['selected_segment1'] = torch.zeros(1, 1, nb_nodes)
+  hints['selected_segment2'] = torch.zeros(1, 1, nb_nodes)
 
   min_distance = float('inf')
-  length = 1
   for i in range(nb_nodes):
     segment1 = faces1[[(i % nb_nodes), ((i + 1) % nb_nodes)]]
     mo1 = torch.mean(segment1, dim=0) 
@@ -210,8 +230,14 @@ def carls_vacation(x, y, height1, height2, nb_nodes):
   aranged_nb_nodes = torch.arange(nb_nodes)
   aranged_selected_segment1 = torch.isin(aranged_nb_nodes, torch.tensor([(selected_segment1 % nb_nodes), ((selected_segment1 + 1) % nb_nodes)]))
   aranged_selected_segment2 = torch.isin(aranged_nb_nodes, torch.tensor([(selected_segment2 % nb_nodes), ((selected_segment2 + 1) % nb_nodes)]))
-  hints['selected_segment1'] = aranged_selected_segment1.unsqueeze(0).unsqueeze(0)
-  hints['selected_segment2'] = aranged_selected_segment2.unsqueeze(0).unsqueeze(0)
+  length += 1
+
+  hints['faces1_x'] = torch.cat((hints['faces1_x'], faces1[:, 0].float().unsqueeze(0).unsqueeze(0)), 1)
+  hints['faces1_y'] = torch.cat((hints['faces1_x'], faces1[:, 1].float().unsqueeze(0).unsqueeze(0)), 1)
+  hints['faces2_x'] = torch.cat((hints['faces2_x'], faces2[:, 0].float().unsqueeze(0).unsqueeze(0)), 1)
+  hints['faces2_y'] = torch.cat((hints['faces2_y'], faces2[:, 1].float().unsqueeze(0).unsqueeze(0)), 1)
+  hints['selected_segment1'] = torch.cat((hints['selected_segment1'], aranged_selected_segment1.unsqueeze(0).unsqueeze(0)), 1)
+  hints['selected_segment2'] = torch.cat((hints['selected_segment2'], aranged_selected_segment2.unsqueeze(0).unsqueeze(0)), 1)
 
   outputs = CLRSData()
   outputs['distance'] = torch.tensor([min_distance]).float()
@@ -219,27 +245,88 @@ def carls_vacation(x, y, height1, height2, nb_nodes):
   return CLRSData(inputs=inputs, hints=hints, length=torch.tensor(length).float(), outputs=outputs, algorithm="carls_vacation")
 
 if __name__ == "__main__":
-    
-  # 0 0 100 100 20
-  # 23 23 18 18 2
-  
-  x = torch.tensor([0., 100., 23., 18.])
-  y = torch.tensor([0., 100., 23., 18.])
-  height1 = 20
-  height2 = 2
-  nb_nodes = 4
+    os.mkdir("tmp/CLRS30/carls_vacation")
+    os.mkdir("tmp/CLRS30/carls_vacation/train")
+
+    # Sampling Training set
+    x_train = []
+    y_train = []
+    height1_train = []
+    height2_train = []
+    for _ in range(1000):
+        x, y, height1, height2 = generate_non_intersecting_squares()
+        x_train.append(x)
+        y_train.append(y)
+        height1_train.append(height1)
+        height2_train.append(height2)
+
+    train_datapoints = []
+    max_length = -1
+    for x, y, height1, height2 in zip(x_train, y_train, height1_train, height2_train):
+        nb_nodes = 4
+
+        data_point = carls_vacation(x, y, height1, height2, nb_nodes)
+        train_datapoints.append(data_point)
+        curr_length = data_point.length.long().item()
+        max_length = curr_length if curr_length > max_length else max_length
 
 
-  # 0 0 10 0 4
-  # 9 18 34 26 42
-  
-  # x = torch.tensor([0., 10., 9., 34.])
-  # y = torch.tensor([0., 0., 18., 26.])
-  # height1 = 4
-  # height2 = 42
-  # nb_nodes = 4
-  print(carls_vacation(x, y, height1, height2, nb_nodes=nb_nodes))
+    os.mkdir("tmp/CLRS30/carls_vacation/val")
+    val_datapoints = []
+    # Sampling Validation set
+    x_val = []
+    y_val = []
+    height1_val = []
+    height2_val = []
+    for _ in range(1000):
+        x, y, height1, height2 = generate_non_intersecting_squares()
+        x_val.append(x)
+        y_val.append(y)
+        height1_val.append(height1)
+        height2_val.append(height2)
 
+    for x, y, height1, height2 in zip(x_val, y_val, height1_val, height2_val):
+        nb_nodes = 4
+
+        data_point = carls_vacation(x, y, height1, height2, nb_nodes)
+        val_datapoints.append(data_point)
+        curr_length = data_point.length.long().item()
+        max_length = curr_length if curr_length > max_length else max_length
+
+
+    os.mkdir("tmp/CLRS30/carls_vacation/test")
+    test_datapoints = []
+    # Sampling Test set
+    x_test = []
+    y_test = []
+    height1_test = []
+    height2_test = []
+    for _ in range(1000):
+        x, y, height1, height2 = generate_non_intersecting_squares()
+        x_test.append(x)
+        y_test.append(y)
+        height1_test.append(height1)
+        height2_test.append(height2)
+
+    for x, y, height1, height2 in zip(x_val, y_val, height1_val, height2_val):
+        nb_nodes = 4
+
+        data_point = carls_vacation(x, y, height1, height2, nb_nodes)
+        test_datapoints.append(data_point)
+        curr_length = data_point.length.long().item()
+        max_length = curr_length if curr_length > max_length else max_length
+
+    for i, data_point in enumerate(train_datapoints):
+        data_point["max_length"] = max_length
+        torch.save(data_point, f"tmp/CLRS30/carls_vacation/train/{i}")
+
+    for i, data_point in enumerate(val_datapoints):
+        data_point["max_length"] = max_length
+        torch.save(data_point, f"tmp/CLRS30/carls_vacation/val/{i}")
+
+    for i, data_point in enumerate(test_datapoints):
+        data_point["max_length"] = max_length
+        torch.save(data_point, f"tmp/CLRS30/carls_vacation/test/{i}")
   
 
   
