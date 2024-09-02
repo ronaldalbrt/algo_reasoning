@@ -46,7 +46,6 @@ algos = [
     'topological_sort',
 ]
 
-# Algorithms not used: ['bridges', 'lcs_length', 'naive_vertex_cover']
 
 def list_of_strings(arg):
     return arg.split(',')
@@ -64,7 +63,7 @@ if __name__ == '__main__':
     ap.add_argument('--model_name', default="ThreeKindsDice_NotPretrained", type=str, help="Model's name")
     ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
     ap.add_argument('--checkpoint_model', default="", type=str, help="Path for pretrained checkpoint model")
-    ap.add_argument("--accelerator", default="cpu", type=str, help="Device for the model to be trained on")
+    ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
     ap.add_argument("--devices",  default=1, type=str, help="Number of devices used for training")
     ap.add_argument("--processor_pretrained_path", default="", type=str, help="Path for processor's weights folder")
     ap.add_argument("--freeze_processor", default=False, type=bool, help="Whether or not to freeze processor's weights.")

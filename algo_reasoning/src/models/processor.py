@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from loguru import logger
 
 ######################
 
@@ -13,7 +12,6 @@ class PGN(nn.Module):
     def __init__(self, in_channels, out_channels, aggr="max", activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8, gated=False):
         super().__init__()
         
-        logger.info(f"PGN: in_channels: {in_channels}, out_channels: {out_channels}")
         self.in_channels = in_channels
         self.mid_channels = out_channels
         self.out_channels = out_channels

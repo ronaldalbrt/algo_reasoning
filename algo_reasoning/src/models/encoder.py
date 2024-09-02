@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from loguru import logger
 from algo_reasoning.src.data import CLRSData
 from algo_reasoning.src.specs import Stage, Location, Type, SPECS, CATEGORIES_DIMENSIONS
 
@@ -42,8 +41,6 @@ class Encoder(nn.Module):
 
             if stage == Stage.OUTPUT:
                 continue
-
-            logger.debug(f"Building Encoder for {k}.")
 
             input_dim = 1
             if type_ == Type.CATEGORICAL:

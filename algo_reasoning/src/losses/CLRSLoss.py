@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from algo_reasoning.src.specs import SPECS, Type, OutputClass
-from loguru import logger
     
 class CLRSLoss(nn.Module):
     def __init__(self, hint_loss_weight=0.1):
@@ -48,7 +47,6 @@ class CLRSLoss(nn.Module):
         output_loss = torch.zeros(1, device=device)
         for key, value in pred.outputs:
             if torch.isnan(value).any(): 
-                logger.warning(f"NaN in {key} output")
                 raise Exception(f"NaN in {key} output")
             
             _, _, type_ = specs[key]
@@ -59,9 +57,6 @@ class CLRSLoss(nn.Module):
         if self.hint_loss:
             hint_loss = torch.zeros(1, device=device)
             for key, value in pred.hints:
-                
-                if torch.isnan(value).any():
-                    logger.warning(f"NaN in {key} hint")
                 _, _, type_ = specs[key]
 
                 mask = torch.arange(max_length, device=device).unsqueeze(0) <= (batch.length - 1).unsqueeze(1)

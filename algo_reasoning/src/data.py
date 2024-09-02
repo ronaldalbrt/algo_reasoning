@@ -9,7 +9,6 @@ import numpy as np
 from torch_geometric.data import Data, Batch
 from torch.utils.data import Dataset, Sampler
 import tensorflow_datasets as tfds
-from loguru import logger
 from typing import List
 import torch
 import random
@@ -120,7 +119,6 @@ def load_dataset(algorithm, split, local_dir):
     try:
         dataset = tfds.load(f'clrs_dataset/{algorithm}_{split}', data_dir=local_dir, split=split, download=False)
     except:
-        logger.info(f"Downloading dataset for algorithm '{algorithm}'...")
         clrs.create_dataset(folder=local_dir, algorithm=algorithm, split=split, batch_size=32)
         dataset = tfds.load(f'clrs_dataset/{algorithm}_{split}', data_dir=local_dir, split=split, download=False)
 

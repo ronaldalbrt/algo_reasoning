@@ -13,6 +13,24 @@
 # limitations under the License.
 # ==============================================================================
 
+"""
+CLRS30 Taxonomy
+
+Greedy: ["Jet Lag - H"] 
+
+Graphs: ["Turning Red - G", "Alea Lacta Est - K"]
+
+Dynamic Programming: ["A Recurring Problem - E", "Bridging the Gap -J"]
+
+Geometry: ["Three Kinds of Dice - C", "Carl's Vacation - D", "Waterworld - I"]
+
+Strings: ["Tilting Tiles - F"]
+
+Search: ["Schedule - B"]
+
+???: ["Riddle of the Sphinx - A"]
+"""
+
 """Algorithm specs.
 
 The "spec" of each algorithm is a static set of `(stage, loc, type)`-tuples.
