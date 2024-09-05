@@ -107,7 +107,10 @@ class EncodeProcessDecode(torch.nn.Module):
     
     def forward(self, batch):
         algorithm = batch.algorithm
-        batch_size = len(batch.inputs.batch)
+        if batch.inputs.batch is not None:
+            batch_size = len(batch.inputs.batch)
+        else:
+            batch_size = 1
         nb_nodes = batch.inputs.pos.shape[1]
         device = batch.inputs.pos.device
         
@@ -118,11 +121,14 @@ class EncodeProcessDecode(torch.nn.Module):
 
         output_pred, hidden, lstm_state = self._one_step_prediction(batch, hidden, lstm_state=lstm_state)
         hints = output_pred.hints
+        hidden_embeddings = [hidden]
         if max_len > 0:
             for step in range(max_len):
                 output_step, hidden, lstm_state = self._one_step_prediction(batch, hidden, hints=hints, hint_step=step, lstm_state=lstm_state)
+                hidden_embeddings.append(hidden)
                 hints.concat(output_step.hints)
         else:
             output_step, hidden, lstm_state = self._one_step_prediction(batch, hidden, hints=hints, hint_step=0, lstm_state=lstm_state)
-            
-        return CLRSData(inputs=batch.inputs, hints=hints, length=max_len, outputs=output_step.outputs, algorithm=algorithm)
+            hidden_embeddings.append(hidden)
+
+        return CLRSData(inputs=batch.inputs, hints=hints, length=max_len, outputs=output_step.outputs, algorithm=algorithm), hidden_embeddings

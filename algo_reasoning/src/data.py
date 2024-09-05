@@ -87,7 +87,7 @@ def _preprocess(data_point, algorithm=None):
             hints[name] = to_torch(np.copy(data)).unsqueeze(0)
             max_length = hints[name].shape[1]
     
-    return CLRSData(inputs=inputs, hints=hints, length=length, outputs=outputs, max_length=max_length, algorithm=algorithm)
+    return CLRSData(inputs=inputs, hints=hints, length=length, outputs=outputs, max_length=torch.tensor(max_length), algorithm=algorithm)
 
 def collate(batch):
     """Collate a batch of data points."""

@@ -91,7 +91,10 @@ class Encoder(nn.Module):
         return node_hidden, edge_hidden, graph_hidden, (adj_mat > 0.).to(torch.float)
 
     def forward(self, batch, hints=None, hint_step=None):
-        batch_size = len(batch.inputs.batch)
+        if batch.inputs.batch is not None:
+            batch_size = len(batch.inputs.batch)
+        else:
+            batch_size = 1
         nb_nodes = batch.inputs.pos.shape[1]
         device = batch.inputs.pos.device
         adj_mat = (torch.eye(nb_nodes, device=device)[None, :, :]).repeat(batch_size, 1, 1)
