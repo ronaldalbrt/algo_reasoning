@@ -146,7 +146,7 @@ if __name__ == "__main__":
 
         data_point = three_kinds_dice(values_D1, values_D2, nb_nodes)
         train_datapoints.append(data_point)
-        curr_length = data_point.length.long().item()
+        curr_length = data_point.length.item()
         max_length = curr_length if curr_length > max_length else max_length
 
 
@@ -163,7 +163,7 @@ if __name__ == "__main__":
 
         data_point = three_kinds_dice(values_D1, values_D2, nb_nodes)
         val_datapoints.append(data_point)
-        curr_length = data_point.length.long().item()
+        curr_length = data_point.length.item()
         max_length = curr_length if curr_length > max_length else max_length
 
 
@@ -180,17 +180,17 @@ if __name__ == "__main__":
 
         data_point = three_kinds_dice(values_D1, values_D2, nb_nodes)
         test_datapoints.append(data_point)
-        curr_length = data_point.length.long().item()
+        curr_length = data_point.length.item()
         max_length = curr_length if curr_length > max_length else max_length
 
     for i, data_point in enumerate(train_datapoints):
-        data_point["max_length"] = max_length
+        data_point["max_length"] = torch.tensor(max_length)
         torch.save(data_point, f"tmp/CLRS30/three_kinds_dice/train/{i}")
 
     for i, data_point in enumerate(val_datapoints):
-        data_point["max_length"] = max_length
+        data_point["max_length"] = torch.tensor(max_length)
         torch.save(data_point, f"tmp/CLRS30/three_kinds_dice/val/{i}")
 
     for i, data_point in enumerate(test_datapoints):
-        data_point["max_length"] = max_length
+        data_point["max_length"] = torch.tensor(max_length)
         torch.save(data_point, f"tmp/CLRS30/three_kinds_dice/test/{i}")

@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
         data_point = vertex_cover_naive(graph)
         train_datapoints.append(data_point)
-        curr_length = data_point.length.long().item()
+        curr_length = data_point.length.item()
         max_length = curr_length if curr_length > max_length else max_length
 
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
         data_point = vertex_cover_naive(graph)
         val_datapoints.append(data_point)
-        curr_length = data_point.length.long().item()
+        curr_length = data_point.length.item()
         max_length = curr_length if curr_length > max_length else max_length
 
 
@@ -98,14 +98,14 @@ if __name__ == "__main__":
 
         data_point = vertex_cover_naive(graph)
         test_datapoints.append(data_point)
-        curr_length = data_point.length.long().item()
+        curr_length = data_point.length.item()
         max_length = curr_length if curr_length > max_length else max_length
 
     for i, data_point in enumerate(train_datapoints):
         _, dp_length = data_point.hints.min_vertex_cover.shape
 
         last_value = data_point.hints.min_vertex_cover[0, -1]
-        data_point["max_length"] = max_length
+        data_point["max_length"] = torch.tensor(max_length)
         data_point.hints.min_vertex_cover = torch.cat((data_point.hints.min_vertex_cover, torch.full((1, int(max_length) - dp_length), last_value)), dim=1)
         torch.save(data_point, f"tmp/CLRS30/naive_vertex_cover/train/{i}")
 
@@ -113,7 +113,7 @@ if __name__ == "__main__":
         dp_length = data_point.hints.min_vertex_cover.shape[1]
 
         last_value = data_point.hints.min_vertex_cover[0, -1]
-        data_point["max_length"] = max_length
+        data_point["max_length"] = torch.tensor(max_length)
         data_point.hints.min_vertex_cover = torch.cat((data_point.hints.min_vertex_cover, torch.full((1, int(max_length) - dp_length), last_value)), dim=1)
         torch.save(data_point, f"tmp/CLRS30/naive_vertex_cover/val/{i}")
 
@@ -121,6 +121,6 @@ if __name__ == "__main__":
         _, dp_length = data_point.hints.min_vertex_cover.shape
 
         last_value = data_point.hints.min_vertex_cover[0, -1]
-        data_point["max_length"] = max_length
+        data_point["max_length"] = torch.tensor(max_length)
         data_point.hints.min_vertex_cover = torch.cat((data_point.hints.min_vertex_cover, torch.full((1, int(max_length) - dp_length), last_value)), dim=1)
         torch.save(data_point, f"tmp/CLRS30/naive_vertex_cover/test/{i}")
