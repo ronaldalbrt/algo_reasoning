@@ -142,6 +142,11 @@ carls_vacation_specs = {
     'faces1_y': (Stage.HINT, Location.NODE, Type.SCALAR),
     'faces2_x': (Stage.HINT, Location.NODE, Type.SCALAR),
     'faces2_y': (Stage.HINT, Location.NODE, Type.SCALAR),
+    'tops_segment1_x': (Stage.HINT, Location.NODE, Type.SCALAR),
+    'tops_segment1_y': (Stage.HINT, Location.NODE, Type.SCALAR),
+    'tops_segment2_x': (Stage.HINT, Location.NODE, Type.SCALAR),
+    'tops_segment2_y': (Stage.HINT, Location.NODE, Type.SCALAR),
+    'faces2_y': (Stage.HINT, Location.NODE, Type.SCALAR),
     'selected_segment1': (Stage.HINT, Location.NODE, Type.MASK),
     'selected_segment2': (Stage.HINT, Location.NODE, Type.MASK),
     }
@@ -170,6 +175,10 @@ def carls_vacation(x, y, height1, height2, nb_nodes):
   hints['faces1_y'] = faces1[:, 1].float().unsqueeze(0).unsqueeze(0)
   hints['faces2_x'] = faces2[:, 0].float().unsqueeze(0).unsqueeze(0)
   hints['faces2_y'] = faces2[:, 1].float().unsqueeze(0).unsqueeze(0)
+  hints['tops_segment1_x'] = torch.zeros(1, 1, nb_nodes)
+  hints['tops_segment1_y'] = torch.zeros(1, 1, nb_nodes)
+  hints['tops_segment2_x'] = torch.zeros(1, 1, nb_nodes)
+  hints['tops_segment2_y'] = torch.zeros(1, 1, nb_nodes)
   hints['selected_segment1'] = torch.zeros(1, 1, nb_nodes)
   hints['selected_segment2'] = torch.zeros(1, 1, nb_nodes)
 
@@ -223,9 +232,14 @@ def carls_vacation(x, y, height1, height2, nb_nodes):
           if (not diag2) and (cross_product(mid1-segment2[0], segment2[1]-segment2[0]) < 0 or not segments_intersect(tops_segment2_x, tops_segment2_y)):
             continue
           else:
-            min_distance = min(min_distance, current_distance)
-            selected_segment1 = i
-            selected_segment2 = j
+            if min_distance > current_distance:
+              min_distance = current_distance
+              selected_segment1 = i
+              selected_segment2 = j
+              selected_tops_segment1_x = tops_segment1_x
+              selected_tops_segment1_y = tops_segment1_y
+              selected_tops_segment2_x = tops_segment2_x
+              selected_tops_segment2_y = tops_segment2_y
 
   aranged_nb_nodes = torch.arange(nb_nodes)
   aranged_selected_segment1 = torch.isin(aranged_nb_nodes, torch.tensor([(selected_segment1 % nb_nodes), ((selected_segment1 + 1) % nb_nodes)]))
@@ -236,6 +250,10 @@ def carls_vacation(x, y, height1, height2, nb_nodes):
   hints['faces1_y'] = torch.cat((hints['faces1_x'], faces1[:, 1].float().unsqueeze(0).unsqueeze(0)), 1)
   hints['faces2_x'] = torch.cat((hints['faces2_x'], faces2[:, 0].float().unsqueeze(0).unsqueeze(0)), 1)
   hints['faces2_y'] = torch.cat((hints['faces2_y'], faces2[:, 1].float().unsqueeze(0).unsqueeze(0)), 1)
+  hints['tops_segment1_x'] = torch.cat((hints['tops_segment1_x'], selected_tops_segment1_x.unsqueeze(0).unsqueeze(0)), 1)
+  hints['tops_segment1_y'] = torch.cat((hints['tops_segment1_y'], selected_tops_segment1_y.unsqueeze(0).unsqueeze(0)), 1)
+  hints['tops_segment2_x'] = torch.cat((hints['tops_segment2_x'], selected_tops_segment2_x.unsqueeze(0).unsqueeze(0)), 1)
+  hints['tops_segment2_y'] = torch.cat((hints['tops_segment2_y'], selected_tops_segment2_y.unsqueeze(0).unsqueeze(0)), 1)
   hints['selected_segment1'] = torch.cat((hints['selected_segment1'], aranged_selected_segment1.unsqueeze(0).unsqueeze(0)), 1)
   hints['selected_segment2'] = torch.cat((hints['selected_segment2'], aranged_selected_segment2.unsqueeze(0).unsqueeze(0)), 1)
 
