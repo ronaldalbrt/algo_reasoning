@@ -41,7 +41,7 @@ class CLRSLoss(nn.Module):
         algorithm = batch.algorithm
         specs = SPECS[algorithm]
         nb_nodes = batch.inputs.pos.shape[1]
-        max_length = batch.max_length.item()
+        max_length = batch.max_length.long().item()
         device = batch.length.device
 
         output_loss = torch.zeros(1, device=device)
