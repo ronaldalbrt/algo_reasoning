@@ -574,6 +574,11 @@ SPECS = types.MappingProxyType({
         'faces1_y': (Stage.HINT, Location.NODE, Type.SCALAR),
         'faces2_x': (Stage.HINT, Location.NODE, Type.SCALAR),
         'faces2_y': (Stage.HINT, Location.NODE, Type.SCALAR),
+        'tops_segment1_x': (Stage.HINT, Location.NODE, Type.SCALAR),
+        'tops_segment1_y': (Stage.HINT, Location.NODE, Type.SCALAR),
+        'tops_segment2_x': (Stage.HINT, Location.NODE, Type.SCALAR),
+        'tops_segment2_y': (Stage.HINT, Location.NODE, Type.SCALAR),
+        'faces2_y': (Stage.HINT, Location.NODE, Type.SCALAR),
         'selected_segment1': (Stage.HINT, Location.NODE, Type.MASK),
         'selected_segment2': (Stage.HINT, Location.NODE, Type.MASK),
     }
