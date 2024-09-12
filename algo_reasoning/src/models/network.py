@@ -131,4 +131,4 @@ class EncodeProcessDecode(torch.nn.Module):
             output_step, hidden, lstm_state = self._one_step_prediction(batch, hidden, hints=hints, hint_step=0, lstm_state=lstm_state)
             hidden_embeddings.append(hidden)
 
-        return CLRSData(inputs=batch.inputs, hints=hints, length=max_len, outputs=output_step.outputs, algorithm=algorithm), hidden_embeddings
+        return CLRSData(inputs=batch.inputs, hints=hints, length=max_len, outputs=output_step.outputs, algorithm=algorithm), torch.concat(hidden_embeddings, dim=0)
