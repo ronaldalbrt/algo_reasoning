@@ -17,7 +17,7 @@ class CLRSTask(L.LightningModule):
 
     def _batch_loss(self, batch, calculate_metrics=False, prefix="val"):
         input_batch = batch.clone()
-        preds = self.model(input_batch)
+        preds = self.model(input_batch)["output"]
 
         loss = self.loss_fn(preds, batch)
 

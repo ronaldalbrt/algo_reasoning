@@ -11,7 +11,7 @@ from torch.utils.data import Dataset, Sampler
 import tensorflow_datasets as tfds
 from typing import List
 import torch
-import random
+from collections import OrderedDict
 
 SPLITS = ["train", "val", "test"]
 
@@ -50,10 +50,6 @@ SAMPLERS = [
     'jarvis_march',
     'schedule'
 ]
-
-# Loader Example:
-# from torch.utils.data import DataLoader
-# loader = DataLoader(ds, 32, collate_fn=collate)
 
 def to_torch(value):
     if isinstance(value, np.ndarray):
@@ -147,7 +143,6 @@ class CLRSData(Data):
             else:
                 self[key] = value
 
-
 class CLRSDataset(Dataset):
     def __init__(self, algorithms, split, data_folder="tmp/CLRS30"):
         self.algorithms = algorithms
@@ -161,7 +156,6 @@ class CLRSDataset(Dataset):
 
         for algorithm in self.algorithms:
             if os.path.isdir(f"{self.data_folder}/{algorithm}/{self.split}"):
-                #self.n_datapoints[algorithm] = len(os.listdir(f"{self.data_folder}/{algorithm}/{self.split}"))
                 self.n_datapoints[algorithm] = 1000 if split == "train" else 32
                 continue
             else:
@@ -172,7 +166,6 @@ class CLRSDataset(Dataset):
 
                 ds = load_dataset(algorithm, self.split, self.data_folder)
 
-                #self.n_datapoints[algorithm] = len(ds)
                 self.n_datapoints[algorithm] = 1000 if split == "train" else 32
                 
                 for i, obj in enumerate(ds):
@@ -197,7 +190,6 @@ class CLRSDataset(Dataset):
                 break
 
         return torch.load(f"{self.data_folder}/{algorithm}/{self.split}/{data_idx}")
-
 
 class CLRSSampler(Sampler[List[int]]):
     def __init__(self, dataset, algorithms, batch_size, replacement=False, generator=None):
@@ -256,4 +248,9 @@ class CLRSSampler(Sampler[List[int]]):
 
                 yield (self.algo_start_idx[batch] + idx_order[alg][idx_min:idx_max]).tolist()
 
-   
+class CLRSOutput(OrderedDict):
+    def __init__(self, **kwargs):
+        super(CLRSOutput, self).__init__(**kwargs)
+
+        assert "output" in kwargs, "output key must be provided to CLRSOutput."
+        assert "hidden_embeddings" in kwargs, "hidden_embeddings key must be provided to CLRSOutput."
