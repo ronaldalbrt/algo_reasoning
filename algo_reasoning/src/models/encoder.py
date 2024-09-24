@@ -6,9 +6,9 @@ from algo_reasoning.src.specs import Stage, Location, Type, SPECS, CATEGORIES_DI
 
 _Tensor = torch.Tensor
 
-def preprocess(data:_Tensor, _type:str, nb_nodes) -> _Tensor:
-    if _type != Type.CATEGORICAL:
-        if _type == Type.POINTER:
+def preprocess(data:_Tensor, type_:str, nb_nodes) -> _Tensor:
+    if type_ != Type.CATEGORICAL:
+        if type_ == Type.POINTER:
             data = F.one_hot(data.long(), nb_nodes).unsqueeze(-1).to(torch.float32)
         else:
             data = data.unsqueeze(-1)
@@ -28,11 +28,12 @@ class LinearEncoder(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, algorithm, encode_hints=True, hidden_dim=128):
+    def __init__(self, algorithm, encode_hints=True, soft_hints=True, hidden_dim=128):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.algorithm = algorithm
         self.encode_hints = encode_hints
+        self.soft_hint = soft_hints
         self.encoder = nn.ModuleDict()
 
         self.specs = SPECS[algorithm]
@@ -61,17 +62,20 @@ class Encoder(nn.Module):
                 value = value[:, hint_step]
             
             _, loc, type_ = SPECS[self.algorithm][k]
+            
+            if not self.soft_hint or hint_step is None:
+                input = preprocess(value, type_, nb_nodes)
+            else:
+                input = value.unsqueeze(-1) if type_ != Type.CATEGORICAL else value
 
-            data = preprocess(value, type_, nb_nodes)
-
-            encoding = self.encoder[k](data)
+            encoding = self.encoder[k](input)
 
             if (loc == Location.NODE and type_ != Type.POINTER) or (loc == Location.GRAPH and type_ == Type.POINTER):
                 node_hidden += encoding
 
             elif loc == Location.EDGE or (loc == Location.NODE and type_ == Type.POINTER):
                 if loc == Location.EDGE and type_ == Type.POINTER:
-                    encoding2 = self.encoder[k+"_2"](data)
+                    encoding2 = self.encoder[k+"_2"](input)
 
                     edge_hidden += torch.mean(encoding, dim=1) + torch.mean(encoding2, dim=2)
                 else:
@@ -81,12 +85,12 @@ class Encoder(nn.Module):
                 graph_hidden += encoding
 
             if loc == Location.NODE and type_ == Type.POINTER:
-                data = data.squeeze(-1)
-                adj_mat += ((data + data.permute((0, 2, 1))) > 0.5)
+                input = input.squeeze(-1)
+                adj_mat += ((input + input.permute((0, 2, 1))) > 0.5)
                 
             elif loc == Location.EDGE and type_ == Type.MASK:
-                data = data.squeeze(-1)
-                adj_mat += ((data + data.permute((0, 2, 1))) > 0.0)
+                input = input.squeeze(-1)
+                adj_mat += ((input + input.permute((0, 2, 1))) > 0.0)
 
         return node_hidden, edge_hidden, graph_hidden, (adj_mat > 0.).to(torch.float)
 

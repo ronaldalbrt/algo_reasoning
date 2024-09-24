@@ -9,29 +9,6 @@ from algo_reasoning.src.data import CLRSData, CLRSOutput
 from algo_reasoning.src.specs import SPECS, Type, Stage, Location, CATEGORIES_DIMENSIONS
 
 
-def process_hints(hints, algorithm, batch_nb_nodes=16):
-    for key, value in hints.items():
-        _, _, type_ = SPECS[algorithm][key]
-    
-        if type_ == Type.POINTER:
-            new_value = torch.argmax(value, dim=-1)
-
-        elif type_ == Type.CATEGORICAL:
-            new_value = F.one_hot(torch.argmax(value, dim=-1), CATEGORIES_DIMENSIONS[algorithm][key]).float()
-        
-        elif type_ == Type.MASK_ONE:
-            new_value = F.one_hot(torch.argmax(value, dim=-1), batch_nb_nodes).float()
-        
-        elif type_ == Type.MASK:
-            new_value = torch.sigmoid(value).long().float()
-        else:
-            new_value = value
-
-        hints[key] = new_value
-
-    return hints
-
-
 class EncodeProcessDecode(torch.nn.Module):
     def __init__(self, 
                  algorithms, 
@@ -42,17 +19,19 @@ class EncodeProcessDecode(torch.nn.Module):
                  teacher_force_prob=0,
                  encode_hints=True,
                  decode_hints=True,
+                 soft_hints=True,
                  freeze_processor=False,
                  pretrained_processor=None):
         super().__init__()
         self.msg_passing_steps = msg_passing_steps
         self.hidden_dim = hidden_dim
+        self.soft_hints = soft_hints
         self.use_lstm = use_lstm
         self.teacher_force_prob = teacher_force_prob
         self.encoders = nn.ModuleDict()
         self.decoders = nn.ModuleDict()
         for algorithm in algorithms:
-            self.encoders[algorithm] = Encoder(algorithm, encode_hints=encode_hints, hidden_dim=hidden_dim)
+            self.encoders[algorithm] = Encoder(algorithm, encode_hints=encode_hints, hidden_dim=hidden_dim, soft_hints=self.soft_hints)
             self.decoders[algorithm] = Decoder(algorithm, hidden_dim=hidden_dim, decode_hints=decode_hints)
 
         if pretrained_processor is None:
@@ -69,6 +48,28 @@ class EncodeProcessDecode(torch.nn.Module):
         
         if use_lstm:
             self.lstm = nn.LSTM(hidden_dim, hidden_dim)
+
+    def process_hints(self, hints, algorithm, batch_nb_nodes=16):
+        for key, value in hints.items():
+            _, _, type_ = SPECS[algorithm][key]
+        
+            if type_ == Type.POINTER:
+                new_value = torch.softmax(value, dim=-1) if self.soft_hints else torch.argmax(value, dim=-1)
+
+            elif type_ == Type.CATEGORICAL:
+                new_value = torch.softmax(value, dim=-1) if self.soft_hints else F.one_hot(torch.argmax(value, dim=-1), CATEGORIES_DIMENSIONS[algorithm][key]).float()
+            
+            elif type_ == Type.MASK_ONE:
+                new_value = torch.softmax(value, dim=-1) if self.soft_hints else F.one_hot(torch.argmax(value, dim=-1), batch_nb_nodes).float()
+            
+            elif type_ == Type.MASK:
+                new_value = torch.sigmoid(value) if self.soft_hints else torch.sigmoid(value).long().float()
+            else:
+                new_value = value
+
+            hints[key] = new_value
+
+        return hints
     
     def _one_step_prediction(self, batch, hidden, hints=None, hint_step=None, lstm_state=None):
         algorithm = batch.algorithm
@@ -76,9 +77,9 @@ class EncodeProcessDecode(torch.nn.Module):
         
         if hints is not None:
             if self.training and self.teacher_force_prob > torch.rand(1).item():
-                    hints = batch.hints
+                hints = batch.hints
             else:
-                hints = process_hints(hints.clone(), algorithm=algorithm, batch_nb_nodes=nb_nodes)
+                hints = self.process_hints(hints.clone(), algorithm=algorithm, batch_nb_nodes=nb_nodes)
 
         node_fts, edge_fts, graph_fts, adj_mat = self.encoders[algorithm](batch, hints=hints, hint_step=hint_step)
 
@@ -133,5 +134,7 @@ class EncodeProcessDecode(torch.nn.Module):
 
         output = CLRSData(inputs=batch.inputs, hints=hints, length=max_len, outputs=output_step.outputs, algorithm=algorithm)
         hidden_embeddings = torch.concat(hidden_embeddings, dim=0)
+
+        print(output.hints.pred_h)
 
         return CLRSOutput(output=output, hidden_embeddings=hidden_embeddings)

@@ -10,41 +10,8 @@ import lightning as L
 from torch.utils.data import DataLoader
 import argparse
 from lightning.pytorch.callbacks import ModelCheckpoint
-from lightning.pytorch.profilers import AdvancedProfiler
-from lightning.pytorch.strategies import DDPStrategy
 
 torch.set_float32_matmul_precision('high')
-
-algos = [
-    'articulation_points',
-    'activity_selector',
-    'bellman_ford',
-    'bfs',
-    'binary_search',
-    'bubble_sort',
-    'dag_shortest_paths',
-    'dfs',
-    'dijkstra',
-    'find_maximum_subarray_kadane',
-    'floyd_warshall',
-    'graham_scan',
-    'heapsort',
-    'insertion_sort',
-    'jarvis_march',
-    'kmp_matcher',
-    'matrix_chain_order',
-    'minimum',
-    'mst_kruskal',
-    'mst_prim',
-    'naive_string_matcher',
-    'optimal_bst',
-    'quickselect',
-    'quicksort',
-    'segments_intersect',
-    'strongly_connected_components',
-    'task_scheduling',
-    'topological_sort',
-]
 
 
 def list_of_strings(arg):
@@ -52,7 +19,7 @@ def list_of_strings(arg):
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Training Parser Options')
-    ap.add_argument('--algorithms', default=["three_kinds_dice"], type=list_of_strings, help="Algorithms for the model to be trained on.")
+    ap.add_argument('--algorithms', default=CLRS_30_ALGS, type=list_of_strings, help="Algorithms for the model to be trained on.")
     ap.add_argument('--path', default="tmp/CLRS30", type=str, help="Path to the dataset folder")
     ap.add_argument('--batch_size', default=8, type=int, help="Number of samples in each training batch")
     ap.add_argument('--n_epochs', default=100, type=int, help="Number of training epochs")
@@ -60,7 +27,8 @@ if __name__ == '__main__':
     ap.add_argument('--lr', default=1e-3, type=float, help="Initial Learning Rate for ADAM Optimizer")
     ap.add_argument('--lr_decrease_factor', default=0.1, type=float, help="Factor by which the learning rate is going to be reduced after lr_patience epochs without Evaluation perfomance improvement.")
     ap.add_argument('--lr_patience', default=10, type=int, help="Number of epochs without improvement for the learning rate to de decreased")
-    ap.add_argument('--model_name', default="ThreeKindsDice_NotPretrained", type=str, help="Model's name")
+    ap.add_argument('--grad_clip', default=1, type=float, help="Gradient clipping value")
+    ap.add_argument('--model_name', default="Generalist_GMPNN", type=str, help="Model's name")
     ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
     ap.add_argument('--checkpoint_model', default="", type=str, help="Path for pretrained checkpoint model")
     ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
@@ -71,7 +39,7 @@ if __name__ == '__main__':
 
     processor = None
     if args.processor_pretrained_path != "":
-        processor = EncodeProcessDecode(algos).processor
+        processor = EncodeProcessDecode(CLRS_30_ALGS).processor
         state_dict = torch.load(args.processor_pretrained_path, map_location=torch.device("cpu"))["state_dict"]
         new_state_dict = {}
         for key in state_dict:
@@ -121,6 +89,7 @@ if __name__ == '__main__':
                         accelerator=args.accelerator, 
                         callbacks=[checkpoint_callback],
                         use_distributed_sampler=False,
+                        gradient_clip_val=args.grad_clip,
                         )
     
     trainer.fit(lightning_module, train_dataloader, val_dataloader)
