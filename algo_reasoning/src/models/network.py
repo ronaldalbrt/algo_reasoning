@@ -135,6 +135,4 @@ class EncodeProcessDecode(torch.nn.Module):
         output = CLRSData(inputs=batch.inputs, hints=hints, length=max_len, outputs=output_step.outputs, algorithm=algorithm)
         hidden_embeddings = torch.concat(hidden_embeddings, dim=0)
 
-        print(output.hints.pred_h)
-
         return CLRSOutput(output=output, hidden_embeddings=hidden_embeddings)
