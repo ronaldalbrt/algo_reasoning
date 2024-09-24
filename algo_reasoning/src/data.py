@@ -189,7 +189,7 @@ class CLRSDataset(Dataset):
 
                 break
 
-        return torch.load(f"{self.data_folder}/{algorithm}/{self.split}/{data_idx}")
+        return torch.load(f"{self.data_folder}/{algorithm}/{self.split}/{data_idx}", weights_only=False)
 
 class CLRSSampler(Sampler[List[int]]):
     def __init__(self, dataset, algorithms, batch_size, replacement=False, generator=None):
