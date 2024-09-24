@@ -61,7 +61,9 @@ class CLRSLoss(nn.Module):
 
                 mask = torch.arange(max_length, device=device).unsqueeze(0) <= (batch.length - 1).unsqueeze(1)
                 obj_dim = value.dim()
-                mask = mask[:, :, *[None for _ in range(obj_dim - 2)]]
+                #mask = mask[:, :, *[None for _ in range(obj_dim - 2)]]
+                for _ in range(obj_dim - 2):
+                    mask = mask.unsqueeze(-1)
 
                 ground_truth = batch.hints[key][:, :max_length]
 
