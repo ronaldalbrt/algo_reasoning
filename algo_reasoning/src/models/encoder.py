@@ -15,18 +15,6 @@ def preprocess(data:_Tensor, type_:str, nb_nodes) -> _Tensor:
   
     return data
 
-class LinearEncoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim=128):
-        super().__init__()
-        self.hidden_dim = hidden_dim
-        self.input_dim = input_dim
-        self.lin = nn.Linear(input_dim, hidden_dim)
-
-    def forward(self, x):
-        x = self.lin(x)
-        return x
-
-
 class Encoder(nn.Module):
     def __init__(self, algorithm, encode_hints=True, soft_hints=True, hidden_dim=128):
         super().__init__()
@@ -47,11 +35,11 @@ class Encoder(nn.Module):
             if type_ == Type.CATEGORICAL:
                 input_dim = CATEGORIES_DIMENSIONS[algorithm][k]
 
-            self.encoder[k] = LinearEncoder(input_dim, hidden_dim)
+            self.encoder[k] = nn.Linear(input_dim, hidden_dim)
 
             # Edge Pointers admit encoders on receiver and sender nodes
             if loc == Location.EDGE and type_ == Type.POINTER:
-                self.encoder[k+"_2"] = LinearEncoder(input_dim, hidden_dim)
+                self.encoder[k+"_2"] = nn.Linear(input_dim, hidden_dim)
 
         self.reset_parameters()
 
