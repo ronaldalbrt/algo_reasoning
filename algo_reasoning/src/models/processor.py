@@ -56,13 +56,9 @@ class PGN(nn.Module):
             self.gate2 = nn.Linear(self.mid_channels, out_channels)
             self.gate3 = nn.Linear(out_channels, out_channels)
 
-        self.init_weights()
+        self.reset_parameters()
 
-    def init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_normal_(m.weight, gain=nn.init.calculate_gain('relu'))
-
+    def reset_parameters(self):
         if self.gated:
             nn.init.constant_(self.gate3.weight, -3)
 

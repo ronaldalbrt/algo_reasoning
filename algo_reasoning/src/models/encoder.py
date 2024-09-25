@@ -53,12 +53,15 @@ class Encoder(nn.Module):
             if loc == Location.EDGE and type_ == Type.POINTER:
                 self.encoder[k+"_2"] = LinearEncoder(input_dim, hidden_dim)
 
-        self.init_weights()
+        self.reset_parameters()
 
-    def init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_normal_(m.weight)
+    def reset_parameters(self):
+        for k, v in self.encoder.items(): 
+            stage, _, type_ = self.specs[k]
+            m = self.encoder[k]
+
+            if stage == Stage.HINT and type_ == Type.SCALAR:
+                nn.init.xavier_normal_(m.weight) 
 
     def _encode_CLRSData(self, data, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes, hint_step=None):    
         for k, value in data:

@@ -35,6 +35,14 @@ class CLRSTask(L.LightningModule):
 
         self.log("train_loss", loss)
 
+        for p in self.model.parameters():
+            param_norm = p.grad.data.norm(2)
+            total_norm += param_norm.item() ** 2
+        
+        total_norm = total_norm ** (1. / 2)
+
+        self.log("gradient_norm", total_norm)
+
         return loss
     
 

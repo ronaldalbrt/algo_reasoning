@@ -6,7 +6,7 @@ from .encoder import Encoder
 from .decoder import Decoder
 from .processor import PGN, MPNN
 from algo_reasoning.src.data import CLRSData, CLRSOutput
-from algo_reasoning.src.specs import SPECS, Type, Stage, Location, CATEGORIES_DIMENSIONS
+from algo_reasoning.src.specs import SPECS, CATEGORIES_DIMENSIONS, Type
 
 
 class EncodeProcessDecode(torch.nn.Module):

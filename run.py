@@ -13,7 +13,6 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 
 torch.set_float32_matmul_precision('high')
 
-
 def list_of_strings(arg):
     return arg.split(',')
 
@@ -25,8 +24,6 @@ if __name__ == '__main__':
     ap.add_argument('--n_epochs', default=100, type=int, help="Number of training epochs")
     ap.add_argument('--n_workers', default=8, type=int, help="Number of Data Loading Workers")
     ap.add_argument('--lr', default=1e-3, type=float, help="Initial Learning Rate for ADAM Optimizer")
-    ap.add_argument('--lr_decrease_factor', default=0.1, type=float, help="Factor by which the learning rate is going to be reduced after lr_patience epochs without Evaluation perfomance improvement.")
-    ap.add_argument('--lr_patience', default=10, type=int, help="Number of epochs without improvement for the learning rate to de decreased")
     ap.add_argument('--grad_clip', default=1, type=float, help="Gradient clipping value")
     ap.add_argument('--model_name', default="Generalist_GMPNN", type=str, help="Model's name")
     ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
