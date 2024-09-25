@@ -44,11 +44,11 @@ class Encoder(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        for k, v in self.encoder.items(): 
-            stage, _, type_ = self.specs[k]
-            m = self.encoder[k]
+        for k, v in self.specs.items():
+            stage, _, type_ = v
 
             if stage == Stage.HINT and type_ == Type.SCALAR:
+                m = self.encoder[k]
                 nn.init.xavier_normal_(m.weight) 
 
     def _encode_CLRSData(self, data, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes, hint_step=None):    
