@@ -55,6 +55,15 @@ class PGN(nn.Module):
             self.gate1 = nn.Linear(in_channels*2, out_channels)
             self.gate2 = nn.Linear(self.mid_channels, out_channels)
             self.gate3 = nn.Linear(out_channels, out_channels)
+
+        self.init_weights()
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_normal_(m.weight, gain=nn.init.calculate_gain('relu'))
+
+        if self.gated:
             nn.init.constant_(self.gate3.weight, -3)
 
     def get_triplet_msgs(self, node_fts, edge_fts, graph_fts):

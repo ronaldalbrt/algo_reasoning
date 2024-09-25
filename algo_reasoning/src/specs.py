@@ -546,13 +546,6 @@ SPECS = types.MappingProxyType({
         "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
         'C': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR)
     },
-    'naive_vertex_cover': {
-        "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
-        'A': (Stage.INPUT, Location.EDGE, Type.SCALAR),
-        'adj': (Stage.INPUT, Location.EDGE, Type.MASK),
-        'in_cover':(Stage.OUTPUT, Location.NODE, Type.MASK),
-        'min_vertex_cover': (Stage.HINT, Location.GRAPH, Type.SCALAR),
-    },
     'three_kinds_dice': {
         "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
         'values_D1': (Stage.INPUT, Location.NODE, Type.SCALAR),

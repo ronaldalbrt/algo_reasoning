@@ -157,6 +157,13 @@ class Decoder(nn.Module):
             if k not in self.decoder:
                 self.decoder[k] = _DECODER_MAP[(loc, type_)](spec_dim, hidden_dim)
 
+        self.init_weights()
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_normal_(m.weight)
+
     def forward(self, node_fts, edge_fts, graph_fts):
         outputs = dict()
         hints = dict()
