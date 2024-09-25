@@ -3,6 +3,7 @@ import torch
 import torch.nn.functional as F
 import lightning as L
 from algo_reasoning.src.eval import eval_function
+from lightning.pytorch.utilities import grad_norm
 
 
 class CLRSTask(L.LightningModule):
@@ -35,18 +36,6 @@ class CLRSTask(L.LightningModule):
 
         self.log("train_loss", loss)
 
-        loss.backward()
-
-        for p in self.model.parameters():
-            param_norm = p.grad.data.norm(2)
-            total_norm += param_norm.item() ** 2
-        
-        total_norm = total_norm ** (1. / 2)
-
-        self.log("gradient_norm", total_norm)
-
-        self.optimizer.zero_grad()
-
         return loss
     
 
@@ -64,6 +53,10 @@ class CLRSTask(L.LightningModule):
         self.log_dict(metrics, sync_dist=True)
 
         return metrics["test_loss"]
+
+    def on_before_optimizer_step(self, optimizer):
+        norms = grad_norm(self.model, norm_type=2)
+        self.log_dict(norms)
 
     def configure_optimizers(self):
         optimizer = self.optim_method(self.parameters(), lr=self.lr)
