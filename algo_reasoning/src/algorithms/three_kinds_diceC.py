@@ -2,6 +2,7 @@ import os
 import torch
 from algo_reasoning.src.data import CLRSData
 from algo_reasoning.src.specs import Stage, Location, Type
+from random import sample
 
 # GEOMETRY / CONVEX HULL
 
@@ -140,9 +141,9 @@ if __name__ == "__main__":
     train_datapoints = []
     max_length = -1
     for N_faces1, N_faces2 in zip(N_faces1_train, N_faces2_train):
-        nb_nodes = 16
+        nb_nodes = sample([4, 7, 11, 13, 16], 1)[0]
         values_D1 = torch.randint(1, nb_nodes, (N_faces1, ))
-        values_D2 = torch.randint(1, nb_nodes, (N_faces1, ))
+        values_D2 = torch.randint(1, nb_nodes, (N_faces2, ))
 
         data_point = three_kinds_dice(values_D1, values_D2, nb_nodes)
         train_datapoints.append(data_point)
@@ -159,7 +160,7 @@ if __name__ == "__main__":
     for N_faces1, N_faces2 in zip(N_faces1_val, N_faces2_val):
         nb_nodes = 16
         values_D1 = torch.randint(1, nb_nodes, (N_faces1, ))
-        values_D2 = torch.randint(1, nb_nodes, (N_faces1, ))
+        values_D2 = torch.randint(1, nb_nodes, (N_faces2, ))
 
         data_point = three_kinds_dice(values_D1, values_D2, nb_nodes)
         val_datapoints.append(data_point)
@@ -176,7 +177,7 @@ if __name__ == "__main__":
     for N_faces1, N_faces2 in zip(N_faces1_test, N_faces2_test):
         nb_nodes = 64
         values_D1 = torch.randint(1, nb_nodes, (N_faces1, ))
-        values_D2 = torch.randint(1, nb_nodes, (N_faces1, ))
+        values_D2 = torch.randint(1, nb_nodes, (N_faces2, ))
 
         data_point = three_kinds_dice(values_D1, values_D2, nb_nodes)
         test_datapoints.append(data_point)
