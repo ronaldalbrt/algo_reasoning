@@ -574,6 +574,15 @@ SPECS = types.MappingProxyType({
         'faces2_y': (Stage.HINT, Location.NODE, Type.SCALAR),
         'selected_segment1': (Stage.HINT, Location.NODE, Type.MASK),
         'selected_segment2': (Stage.HINT, Location.NODE, Type.MASK),
+    },
+    "waterworld": {
+        "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
+        'n': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+        'm': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+        'area_percentages': (Stage.INPUT, Location.NODE, Type.SCALAR),
+        'surface_percentage':(Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
+        'total_area': (Stage.HINT, Location.GRAPH, Type.SCALAR),
+        'area_sums': (Stage.HINT, Location.GRAPH, Type.SCALAR)
     }
 })
 

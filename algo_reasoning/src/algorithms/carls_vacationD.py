@@ -296,7 +296,7 @@ if __name__ == "__main__":
     y_val = []
     height1_val = []
     height2_val = []
-    for _ in range(1000):
+    for _ in range(32):
         x, y, height1, height2 = generate_non_intersecting_squares()
         x_val.append(x)
         y_val.append(y)
@@ -319,7 +319,7 @@ if __name__ == "__main__":
     y_test = []
     height1_test = []
     height2_test = []
-    for _ in range(1000):
+    for _ in range(32):
         x, y, height1, height2 = generate_non_intersecting_squares()
         x_test.append(x)
         y_test.append(y)
