@@ -11,17 +11,17 @@ from torch.utils.data import DataLoader
 import argparse
 from lightning.pytorch.callbacks import ModelCheckpoint
 
-torch.set_float32_matmul_precision('high')
+torch.set_float32_matmul_precision('highest')
 
 def list_of_strings(arg):
     return arg.split(',')
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Training Parser Options')
-    ap.add_argument('--algorithms', default=CLRS_30_ALGS, type=list_of_strings, help="Algorithms for the model to be trained on.")
+    ap.add_argument('--algorithms', default=["insertion_sort"], type=list_of_strings, help="Algorithms for the model to be trained on.")
     ap.add_argument('--path', default="tmp/CLRS30", type=str, help="Path to the dataset folder")
-    ap.add_argument('--batch_size', default=8, type=int, help="Number of samples in each training batch")
-    ap.add_argument('--n_epochs', default=100, type=int, help="Number of training epochs")
+    ap.add_argument('--batch_size', default=32, type=int, help="Number of samples in each training batch")
+    ap.add_argument('--n_epochs', default=61, type=int, help="Number of training epochs")
     ap.add_argument('--n_workers', default=8, type=int, help="Number of Data Loading Workers")
     ap.add_argument('--lr', default=1e-3, type=float, help="Initial Learning Rate for ADAM Optimizer")
     ap.add_argument('--grad_clip', default=1, type=float, help="Gradient clipping value")
@@ -31,6 +31,7 @@ if __name__ == '__main__':
     ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
     ap.add_argument("--devices",  default=1, type=str, help="Number of devices used for training")
     ap.add_argument("--processor_pretrained_path", default="", type=str, help="Path for processor's weights folder")
+    ap.add_argument("--pretrained_path", default="checkpoints/Generalist_GMPNN/Generalist_GMPNN-epoch=39-val_loss=1.29.ckpt", type=str, help="Path for model's weights folder")
     ap.add_argument("--freeze_processor", default=False, type=bool, help="Whether or not to freeze processor's weights.")
     args = ap.parse_args()
 
@@ -60,6 +61,15 @@ if __name__ == '__main__':
     test_dataloader = DataLoader(test_dataset, batch_sampler=test_sampler, num_workers=args.n_workers, persistent_workers=True, collate_fn=collate)
 
     model = EncodeProcessDecode(args.algorithms, freeze_processor=args.freeze_processor, pretrained_processor=processor)
+
+    if args.pretrained_path != "":
+        state_dict = torch.load(args.pretrained_path, map_location=torch.device("cpu"))["state_dict"]
+        new_state_dict = {}
+        for key in state_dict:
+            if "model" in key:
+                new_state_dict[key.replace("model.", "")] = state_dict[key]
+
+        model.load_state_dict(new_state_dict)
 
     loss_fn = CLRSLoss()
 
