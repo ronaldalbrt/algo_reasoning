@@ -20,7 +20,7 @@ Greedy: ["Jet Lag - H"]
 
 Graphs: ["Turning Red - G", "Alea Lacta Est - K"]
 
-Dynamic Programming: ["A Recurring Problem - E", "Bridging the Gap -J"]
+Dynamic Programming: ["A Recurring Problem - E", "Bridging the Gap - J"]
 
 Geometry: ["Three Kinds of Dice - C", "Carl's Vacation - D", "Waterworld - I"]
 
