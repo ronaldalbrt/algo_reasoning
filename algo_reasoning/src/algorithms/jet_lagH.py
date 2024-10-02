@@ -23,6 +23,9 @@ def jet_lag(b, e, nb_nodes):
 
     s = torch.tensor([])
     t = torch.tensor([])
+    
+    b = torch.concat((torch.tensor([0]), b))
+    e = torch.concat((torch.tensor([0]), e))
 
     impossible = False
 
@@ -37,13 +40,13 @@ def jet_lag(b, e, nb_nodes):
             j -= 1
             continue
         elif e[j - 1] >= interval - 1:
-            s = torch.concat((s, e[j-1].unsqueeze()))
-            t = torch.concat((t, (b[j] - (e[j - 1] == interval - 1 and e[i] - b[j] == 1).long().unsqueeze())))
+            s = torch.concat((s, e[j-1].unsqueeze(0)))
+            t = torch.concat((t, (b[j] - (e[j - 1] == interval - 1 and e[i] - b[j] == 1).long().unsqueeze(0))))
         else:
-            s = torch.concat((s, interval.unsqueeze()))
-            t = torch.concat((t, b[j].unsqueeze()))
-            s = torch.concat((s, e[j-1].unsqueeze()))
-            t = torch.concat((t, ((e[j-1]+interval)/2).unsqueeze()))
+            s = torch.concat((s, interval.unsqueeze(0)))
+            t = torch.concat((t, b[j].unsqueeze(0)))
+            s = torch.concat((s, e[j-1].unsqueeze(0)))
+            t = torch.concat((t, ((e[j-1]+interval)/2).unsqueeze(0)))
         
         j -= 1
         i = j
