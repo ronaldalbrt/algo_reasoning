@@ -26,11 +26,13 @@ def jet_lag(b, e, nb_nodes):
     
     b = torch.concat((torch.tensor([0]), b))
     e = torch.concat((torch.tensor([0]), e))
+    length = 0
 
     impossible = False
 
     i = j = nb_nodes
     while i > 0:
+        length += 1
         if j == 0:
             impossible = True
             break
@@ -50,8 +52,11 @@ def jet_lag(b, e, nb_nodes):
         
         j -= 1
         i = j
+
+    outputs = CLRSData()
+    outputs['impossible'] = torch.tensor([impossible]).float()
   
-    return s, t, impossible
+    return CLRSData(inputs=inputs, hints=CLRSData(), length=torch.tensor(length).float(), outputs=outputs, algorithm="jet_lag")
 
 if __name__ == "__main__":
     nb_nodes = 3
