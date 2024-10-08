@@ -6,24 +6,28 @@ from algo_reasoning.src.data import CLRSData
 from algo_reasoning.src.specs import Stage, Location, Type
 
 schedule_specs = {
-    'N': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
-    'W': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+    'n': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+    'w': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
     "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
-    'C': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
-    'infinity':(Stage.OUTPUT, Location.GRAPH, Type.MASK)
+    'c': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
+    'infinity':(Stage.OUTPUT, Location.GRAPH, Type.MASK),
+    'c_h': (Stage.HINT, Location.GRAPH, Type.SCALAR)
 }
 
 def schedule(N, W, nb_nodes):
     inputs = CLRSData()
-    inputs['N'] = torch.tensor([N]).float()
-    inputs['W'] = torch.tensor([W]).float()
+    inputs['n'] = torch.tensor([N]).float()
+    inputs['w'] = torch.tensor([W]).float()
     inputs['pos'] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
     length = 0
     infinity = 0
     c = 4
+    hints['c_h'] = torch.tensor([c]).float().unsqueeze(0)
 
+    hints=CLRSData()
     while c <= W:
         length += 1
+        
         sch = []
         cur = ([1] * (c//2)) + ([2] * (c  - c//2))
 
@@ -32,18 +36,18 @@ def schedule(N, W, nb_nodes):
             
             sch.append(list(perm))
 
-
         if len(sch) >= N:
             break
 
         c += 1
+        torch.cat((hints['c_h'], torch.tensor([c]).float().unsqueeze(0)), 1)
 
     if c > W:
         infinity = 1
         c = -1
 
     outputs = CLRSData()
-    outputs['C'] = torch.tensor([c]).float()
+    outputs['c'] = torch.tensor([c]).float()
     outputs['infinity'] = torch.tensor([infinity]).float()
 
     return CLRSData(inputs=inputs, hints=CLRSData(), length=torch.tensor(length).float(), outputs=outputs, algorithm="schedule")

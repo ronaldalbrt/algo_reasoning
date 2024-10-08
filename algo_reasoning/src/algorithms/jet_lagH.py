@@ -30,29 +30,40 @@ def jet_lag(b, e, nb_nodes):
 
     impossible = False
 
-    i = j = nb_nodes
-    while i > 0:
-        length += 1
-        if j == 0:
-            impossible = True
-            break
+    # i = j = nb_nodes
+    # while i > 0:
+    #     if j == 0:
+    #         impossible = True
+    #         break
 
-        interval = b[j] - (e[i] - b[j]+1)//2
-        if e[j - 1] > interval:
-            j -= 1
-            continue
-        elif e[j - 1] >= interval - 1:
-            s = torch.concat((s, e[j-1].unsqueeze(0)))
-            t = torch.concat((t, (b[j] - (e[j - 1] == interval - 1 and e[i] - b[j] == 1).long().unsqueeze(0))))
-        else:
-            s = torch.concat((s, interval.unsqueeze(0)))
-            t = torch.concat((t, b[j].unsqueeze(0)))
-            s = torch.concat((s, e[j-1].unsqueeze(0)))
-            t = torch.concat((t, ((e[j-1]+interval)/2).unsqueeze(0)))
+    #     interval = b[j] - (e[i] - b[j]+1)//2
+    #     if e[j - 1] > interval:
+    #         j -= 1
+    #         continue
         
-        j -= 1
-        i = j
+    #     length += 1
+    #     if e[j - 1] >= interval - 1:
+    #         s = torch.concat((s, e[j-1].unsqueeze(0)))
+    #         t = torch.concat((t, (b[j] - (e[j - 1] == interval - 1 and e[i] - b[j] == 1).long().unsqueeze(0))))
+    #     else:
+    #         s = torch.concat((s, interval.unsqueeze(0)))
+    #         t = torch.concat((t, b[j].unsqueeze(0)))
+    #         s = torch.concat((s, e[j-1].unsqueeze(0)))
+    #         t = torch.concat((t, ((e[j-1]+interval)/2).unsqueeze(0)))
+        
+    #     j -= 1
+    #     i = j
 
+    for i in range(nb_nodes):
+        s = torch.concat((s, e[i].unsqueeze(0)))
+        t = torch.concat((t, b[i+1].unsqueeze(0)))
+
+        if i > 0:
+            if (s[i] + s[i - 1])/2 < t[i]:
+                t[i] = (s[i] + s[i - 1])/2
+
+    print(s)
+    print(t)
     outputs = CLRSData()
     outputs['impossible'] = torch.tensor([impossible]).float()
   

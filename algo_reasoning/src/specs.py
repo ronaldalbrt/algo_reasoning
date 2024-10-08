@@ -541,10 +541,12 @@ SPECS = types.MappingProxyType({
         'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL)
     },
     'schedule': {
-        'N': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
-        'W': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+        'n': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+        'w': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
         "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
-        'C': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR)
+        'c': (Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
+        'infinity':(Stage.OUTPUT, Location.GRAPH, Type.MASK),
+        'c_h': (Stage.HINT, Location.GRAPH, Type.SCALAR)
     },
     'three_kinds_dice': {
         "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
