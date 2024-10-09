@@ -585,6 +585,13 @@ SPECS = types.MappingProxyType({
         'surface_percentage':(Stage.OUTPUT, Location.GRAPH, Type.SCALAR),
         'total_area': (Stage.HINT, Location.GRAPH, Type.SCALAR),
         'area_sums': (Stage.HINT, Location.GRAPH, Type.SCALAR)
+    },
+    "jet_lag": {
+        "pos": (Stage.INPUT, Location.NODE, Type.SCALAR),
+        'b': (Stage.INPUT, Location.NODE, Type.SCALAR),
+        'e': (Stage.INPUT, Location.NODE, Type.SCALAR),
+        'N': (Stage.INPUT, Location.GRAPH, Type.SCALAR),
+        'impossible': (Stage.OUTPUT, Location.GRAPH, Type.MASK),
     }
 })
 

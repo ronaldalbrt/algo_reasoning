@@ -22,9 +22,9 @@ def schedule(N, W, nb_nodes):
     length = 0
     infinity = 0
     c = 4
+    hints=CLRSData()
     hints['c_h'] = torch.tensor([c]).float().unsqueeze(0)
 
-    hints=CLRSData()
     while c <= W:
         length += 1
         
@@ -53,59 +53,56 @@ def schedule(N, W, nb_nodes):
     return CLRSData(inputs=inputs, hints=CLRSData(), length=torch.tensor(length).float(), outputs=outputs, algorithm="schedule")
 
 if __name__ == "__main__":
-    result = schedule(792, 10, 16)
-    print(result.outputs.C)
-    print(result.outputs.infinity)
-    # os.mkdir("tmp/CLRS30/schedule")
+    os.mkdir("tmp/CLRS30/schedule")
     
-    # os.mkdir("tmp/CLRS30/schedule/train")
+    os.mkdir("tmp/CLRS30/schedule/train")
 
-    # # Sampling Training set
-    # N_train = torch.randint(2, 10**2 + 1, (1000,)).tolist()
-    # W_train = torch.randint(1, 53, (1000,)).tolist()
+    # Sampling Training set
+    N_train = torch.randint(2, 10**2 + 1, (1000,)).tolist()
+    W_train = torch.randint(1, 53, (1000,)).tolist()
 
-    # train_datapoints = []
-    # max_length = -1
-    # for N, W in zip(N_train, W_train):
-    #     data_point = schedule(N, W, 16)
-    #     train_datapoints.append(data_point)
-    #     curr_length = data_point.length.item()
-    #     max_length = curr_length if curr_length > max_length else max_length
-
-
-    # os.mkdir("tmp/CLRS30/schedule/val")
-    # val_datapoints = []
-    # # Sampling Validation set
-    # N_val = torch.randint(2, 10**2 + 1, (32,)).tolist()
-    # W_val = torch.randint(1, 53, (32,)).tolist()
-
-    # for N, W in zip(N_val, W_val):
-    #     data_point = schedule(N, W, 16)
-    #     val_datapoints.append(data_point)
-    #     curr_length = data_point.length.item()
-    #     max_length = curr_length if curr_length > max_length else max_length
+    train_datapoints = []
+    max_length = -1
+    for N, W in zip(N_train, W_train):
+        data_point = schedule(N, W, 16)
+        train_datapoints.append(data_point)
+        curr_length = data_point.length.item()
+        max_length = curr_length if curr_length > max_length else max_length
 
 
-    # os.mkdir("tmp/CLRS30/schedule/test")
-    # test_datapoints = []
-    # # Sampling Test set
-    # N_test = torch.randint(2, 10**2 + 1, (32,)).tolist()
-    # W_test = torch.randint(1, 53, (32,)).tolist()
+    os.mkdir("tmp/CLRS30/schedule/val")
+    val_datapoints = []
+    # Sampling Validation set
+    N_val = torch.randint(2, 10**2 + 1, (32,)).tolist()
+    W_val = torch.randint(1, 53, (32,)).tolist()
 
-    # for N, W in zip(N_test, W_test):
-    #     data_point = schedule(N, W, 64)
-    #     test_datapoints.append(data_point)
-    #     curr_length = data_point.length.item()
-    #     max_length = curr_length if curr_length > max_length else max_length
+    for N, W in zip(N_val, W_val):
+        data_point = schedule(N, W, 16)
+        val_datapoints.append(data_point)
+        curr_length = data_point.length.item()
+        max_length = curr_length if curr_length > max_length else max_length
 
-    # for i, data_point in enumerate(train_datapoints):
-    #     data_point["max_length"] = torch.tensor(max_length)
-    #     torch.save(data_point, f"tmp/CLRS30/schedule/train/{i}")
 
-    # for i, data_point in enumerate(val_datapoints):
-    #     data_point["max_length"] = torch.tensor(max_length)
-    #     torch.save(data_point, f"tmp/CLRS30/schedule/val/{i}")
+    os.mkdir("tmp/CLRS30/schedule/test")
+    test_datapoints = []
+    # Sampling Test set
+    N_test = torch.randint(2, 10**2 + 1, (32,)).tolist()
+    W_test = torch.randint(1, 53, (32,)).tolist()
 
-    # for i, data_point in enumerate(test_datapoints):
-    #     data_point["max_length"] = torch.tensor(max_length)
-    #     torch.save(data_point, f"tmp/CLRS30/schedule/test/{i}")
+    for N, W in zip(N_test, W_test):
+        data_point = schedule(N, W, 64)
+        test_datapoints.append(data_point)
+        curr_length = data_point.length.item()
+        max_length = curr_length if curr_length > max_length else max_length
+
+    for i, data_point in enumerate(train_datapoints):
+        data_point["max_length"] = torch.tensor(max_length)
+        torch.save(data_point, f"tmp/CLRS30/schedule/train/{i}")
+
+    for i, data_point in enumerate(val_datapoints):
+        data_point["max_length"] = torch.tensor(max_length)
+        torch.save(data_point, f"tmp/CLRS30/schedule/val/{i}")
+
+    for i, data_point in enumerate(test_datapoints):
+        data_point["max_length"] = torch.tensor(max_length)
+        torch.save(data_point, f"tmp/CLRS30/schedule/test/{i}")
