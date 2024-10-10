@@ -50,7 +50,7 @@ def schedule(N, W, nb_nodes):
     outputs['c'] = torch.tensor([c]).float()
     outputs['infinity'] = torch.tensor([infinity]).float()
 
-    return CLRSData(inputs=inputs, hints=CLRSData(), length=torch.tensor(length).float(), outputs=outputs, algorithm="schedule")
+    return CLRSData(inputs=inputs, hints=hints, length=torch.tensor(length).float(), outputs=outputs, algorithm="schedule")
 
 if __name__ == "__main__":
     os.mkdir("tmp/CLRS30/schedule")
