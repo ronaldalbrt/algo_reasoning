@@ -15,18 +15,18 @@ schedule_specs = {
 }
 
 def schedule(N, W, nb_nodes):
-    inputs = CLRSData()
-    inputs['n'] = torch.tensor([N]).float()
-    inputs['w'] = torch.tensor([W]).float()
-    inputs['pos'] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
-    length = 0
+    data = CLRSData()
+    data.set_inputs({
+        'n': torch.tensor([N]).float(),
+        'w': torch.tensor([W]).float(),
+        'pos': ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
+    })
+
     infinity = 0
     c = 4
-    hints=CLRSData()
-    hints['c_h'] = torch.tensor([c]).float().unsqueeze(0)
+    data.increase_hints({'c_h': torch.tensor([c]).float().unsqueeze(0)})
 
     while c <= W:
-        length += 1
         
         sch = []
         cur = ([1] * (c//2)) + ([2] * (c  - c//2))
@@ -40,17 +40,18 @@ def schedule(N, W, nb_nodes):
             break
 
         c += 1
-        torch.cat((hints['c_h'], torch.tensor([c]).float().unsqueeze(0)), 1)
+        data.increase_hints({'c_h': torch.tensor([c]).float().unsqueeze(0)})
 
     if c > W:
         infinity = 1
         c = -1
 
-    outputs = CLRSData()
-    outputs['c'] = torch.tensor([c]).float()
-    outputs['infinity'] = torch.tensor([infinity]).float()
+    data.set_outputs({
+        'c': torch.tensor([c]).float(),
+        'infinity': torch.tensor([infinity]).float()
+    })
 
-    return CLRSData(inputs=inputs, hints=hints, length=torch.tensor(length).float(), outputs=outputs, algorithm="schedule")
+    return data
 
 if __name__ == "__main__":
     os.mkdir("tmp/CLRS30/schedule")

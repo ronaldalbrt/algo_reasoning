@@ -127,6 +127,35 @@ class CLRSData(Data):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+    def set_inputs(self, inputs):
+        """Set the inputs of the algorithm being executed."""
+        self["inputs"] = CLRSData()
+
+        for key, value in inputs.items():
+            self["inputs"][key] = value
+
+    def set_outputs(self, outputs):
+        """Set the outputs of the algorithm being executed."""
+        self["outputs"] = CLRSData()
+
+        for key, value in outputs.items():
+            self["outputs"][key] = value
+
+    def increase_hints(self, hints):
+        """Set the hints of the algorithm being executed."""
+        if "hints" not in self.keys():
+            self["hints"] = CLRSData()
+            self["length"] = torch.tensor(0).float()
+
+            for key, value in hints.items():
+                self["hints"][key] = value
+        else:
+            for key, value in hints.items():
+                self["hints"][key] = torch.cat([self["hints"][key], value], dim=1)
+
+            self["length"] += 1      
+            
+
     def concat(self, other):
         """Concatenate two CLRSData objects."""
         for key, value in other.items():
