@@ -15,6 +15,7 @@ waterworld_specs = {
     'area_sums': (Stage.HINT, Location.GRAPH, Type.SCALAR)
 }
 
+# TODO: REVIEW SAMPLING NUMBER OF NODES DO NOT MATCH
 def waterworld(n, m, area_percentages, nb_nodes):
     inputs = CLRSData()
     inputs['pos'] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
@@ -96,13 +97,10 @@ if __name__ == "__main__":
         max_length = curr_length if curr_length > max_length else max_length
 
     for i, data_point in enumerate(train_datapoints):
-        data_point["max_length"] = torch.tensor(max_length)
         torch.save(data_point, f"tmp/CLRS30/waterworld/train/{i}")
 
     for i, data_point in enumerate(val_datapoints):
-        data_point["max_length"] = torch.tensor(max_length)
         torch.save(data_point, f"tmp/CLRS30/waterworld/val/{i}")
 
     for i, data_point in enumerate(test_datapoints):
-        data_point["max_length"] = torch.tensor(max_length)
         torch.save(data_point, f"tmp/CLRS30/waterworld/test/{i}")

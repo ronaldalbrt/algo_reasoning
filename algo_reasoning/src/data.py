@@ -1,7 +1,3 @@
-""" This file contains custom data classes for CLRS data. It mainly concerns with with sparseing the graphs and converting them into pytorch geometric data objects.
-Further it provides a custom dataloader that automatically pads hints to the maximum length of the batch. This is necessary because the hints are not padded in the dataset."""
-
-
 import os
 import clrs
 import numpy as np
@@ -85,16 +81,45 @@ def _preprocess(data_point, algorithm=None):
     
     return CLRSData(inputs=inputs, hints=hints, length=length, outputs=outputs, max_length=torch.tensor(max_length).long(), algorithm=algorithm)
 
+def _batch_hints(hints, hint_lengths):
+    """Batches a trajectory of hints samples along the time axis per probe.
+
+    Unlike i/o, hints have a variable-length time dimension. Before batching, each
+    trajectory is padded to the maximum trajectory length.
+
+    Args:
+    hints: A hint trajectory of `DataPoints`s indexed by time then probe
+
+    Returns:
+    A |num probes| list of `DataPoint`s with the time axis stacked into `data`,
+    and a |sample| list containing the length of each trajectory.
+    """
+    max_length = torch.max(hint_lengths).item()
+
+    batched_hints = CLRSData()
+    for sample_idx, cur_sample in enumerate(hints):
+        for k, v in cur_sample.items():
+            new_shape = (len(hints), max_length) + v.shape[2:]
+            batched_hints[k] = torch.zeros(*new_shape)
+            
+            cur_length = v.size(1)
+            batched_hints[k][sample_idx:sample_idx+1, :cur_length] = v
+
+    return batched_hints, max_length
+
 def collate(batch):
     """Collate a batch of data points."""
     batch = Batch.from_data_list(batch)
 
     batch.algorithm = batch[0].algorithm
-    batch.max_length = batch[0].max_length
 
     batch.inputs = Batch.from_data_list(batch.inputs)
-    batch.hints = Batch.from_data_list(batch.hints)
     batch.outputs = Batch.from_data_list(batch.outputs)
+
+    batched_hints, max_length =_batch_hints(batch.hints, batch.length)
+
+    batch.hints = batched_hints
+    batch.max_length = max_length
     return batch
 
 def load_dataset(algorithm, split, local_dir):
