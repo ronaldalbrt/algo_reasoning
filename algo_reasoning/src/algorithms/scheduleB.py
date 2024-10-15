@@ -15,7 +15,7 @@ schedule_specs = {
 }
 
 def schedule(N, W, nb_nodes):
-    data = CLRSData()
+    data = CLRSData(algorithm="schedule")
     data.set_inputs({
         'n': torch.tensor([N]).float(),
         'w': torch.tensor([W]).float(),

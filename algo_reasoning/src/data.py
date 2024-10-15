@@ -94,7 +94,7 @@ def _batch_hints(hints, hint_lengths):
     A |num probes| list of `DataPoint`s with the time axis stacked into `data`,
     and a |sample| list containing the length of each trajectory.
     """
-    max_length = torch.max(hint_lengths).item()
+    max_length = torch.max(hint_lengths).long().item()
 
     batched_hints = CLRSData()
     for sample_idx, cur_sample in enumerate(hints):
@@ -155,6 +155,7 @@ class CLRSData(Data):
     def set_inputs(self, inputs):
         """Set the inputs of the algorithm being executed."""
         self["inputs"] = CLRSData()
+        self["length"] = torch.tensor(0).float()
 
         for key, value in inputs.items():
             self["inputs"][key] = value
@@ -162,24 +163,22 @@ class CLRSData(Data):
     def set_outputs(self, outputs):
         """Set the outputs of the algorithm being executed."""
         self["outputs"] = CLRSData()
+        self["max_length"] = self["length"].clone()
 
         for key, value in outputs.items():
             self["outputs"][key] = value
 
     def increase_hints(self, hints):
         """Set the hints of the algorithm being executed."""
+        self["length"] += 1
         if "hints" not in self.keys():
             self["hints"] = CLRSData()
-            self["length"] = torch.tensor(0).float()
 
             for key, value in hints.items():
                 self["hints"][key] = value
         else:
             for key, value in hints.items():
                 self["hints"][key] = torch.cat([self["hints"][key], value], dim=1)
-
-            self["length"] += 1      
-            
 
     def concat(self, other):
         """Concatenate two CLRSData objects."""
