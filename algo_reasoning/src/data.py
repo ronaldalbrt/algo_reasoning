@@ -149,16 +149,29 @@ def load_dataset(algorithm, split, local_dir):
 
 class CLRSData(Data):
     """A data object for CLRS data."""
-    def __init__(self, **kwargs):
+    def __init__(self,
+                pos_generator=None, 
+                **kwargs):
         super().__init__(**kwargs)
 
-    def set_inputs(self, inputs):
+        if pos_generator is not None:
+            self.pos_generator = pos_generator
+
+    def set_inputs(self, inputs, nb_nodes):
         """Set the inputs of the algorithm being executed."""
         self["inputs"] = CLRSData()
         self["length"] = torch.tensor(0).float()
 
         for key, value in inputs.items():
             self["inputs"][key] = value
+
+        self["inputs"]["pos"] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
+
+        if hasattr(self, 'pos_generator'):
+            random_perm = torch.randperm(nb_nodes, generator=self.pos_generator)
+            self["inputs"]["pos"] = self["inputs"]["pos"][:, random_perm]
+
+            del self.pos_generator
 
     def set_outputs(self, outputs):
         """Set the outputs of the algorithm being executed."""

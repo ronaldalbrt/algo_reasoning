@@ -4,7 +4,6 @@ from algo_reasoning.src.specs import Stage, Location, Type, SPECS, CATEGORIES_DI
 from algo_reasoning.src.data import CLRSData
 
 
-## TODO: AJUSTAR DECODERS!!!
 ## Node decoders
 class NodeBaseDecoder(nn.Module):
     def __init__(self, spec_dim, hidden_dim=128):

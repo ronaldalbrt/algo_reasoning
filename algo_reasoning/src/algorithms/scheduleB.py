@@ -14,13 +14,13 @@ schedule_specs = {
     'c_h': (Stage.HINT, Location.GRAPH, Type.SCALAR)
 }
 
-def schedule(N, W, nb_nodes):
-    data = CLRSData(algorithm="schedule")
+def schedule(N, W, nb_nodes, *args, **kwargs):
+    data = CLRSData(algorithm="schedule", *args, **kwargs)
+    
     data.set_inputs({
         'n': torch.tensor([N]).float(),
-        'w': torch.tensor([W]).float(),
-        'pos': ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
-    })
+        'w': torch.tensor([W]).float()
+    }, nb_nodes)
 
     infinity = 0
     c = 4
