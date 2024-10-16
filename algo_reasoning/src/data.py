@@ -97,11 +97,14 @@ def _batch_hints(hints, hint_lengths):
     max_length = torch.max(hint_lengths).long().item()
 
     batched_hints = CLRSData()
+    aux_hint = hints[0]
+    for k, v in aux_hint.items():
+        new_shape = (len(hints), max_length) + v.shape[2:]
+
+        batched_hints[k] = torch.zeros(*new_shape)
+    
     for sample_idx, cur_sample in enumerate(hints):
         for k, v in cur_sample.items():
-            new_shape = (len(hints), max_length) + v.shape[2:]
-            batched_hints[k] = torch.zeros(*new_shape)
-            
             cur_length = v.size(1)
             batched_hints[k][sample_idx:sample_idx+1, :cur_length] = v
 
