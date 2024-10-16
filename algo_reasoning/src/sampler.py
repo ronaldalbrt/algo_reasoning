@@ -19,7 +19,11 @@ import torch
 from typing import Any, Callable, List, Optional, Tuple
 
 from algo_reasoning.src.data import CLRSData, collate
+
+# Import algorithms
 from algo_reasoning.src.algorithms.scheduleB import schedule
+from algo_reasoning.src.algorithms.three_kinds_diceC import three_kinds_dice
+from algo_reasoning.src.algorithms.waterworldI import waterworld
 
 Algorithm = Callable[..., Any]
 
@@ -56,7 +60,7 @@ class BaseAlgorithmSampler():
         num_samples: int,
         nb_nodes: int, 
         seed: Optional[int] = None,
-        randomize_pos = False,
+        randomize_pos = True,
         *args,
         **kwargs,
     ):
@@ -212,7 +216,7 @@ class BaseAlgorithmSampler():
 #     return mat
 
 class ScheduleSampler(BaseAlgorithmSampler):
-    """Scedule sampler."""    
+    """Scedule - B sampler."""  
     def __init__(self, *args, **kwargs):
         algorithm = schedule
         super().__init__(algorithm, *args, **kwargs)
@@ -220,10 +224,10 @@ class ScheduleSampler(BaseAlgorithmSampler):
     def _sample_data(
         self,
         nb_nodes: int,
-        n_min = 2,
-        n_max =  10**2,
-        w_min = 1,
-        w_max = 53
+        n_min: int = 2,
+        n_max: int =  10**2,
+        w_min: int = 1,
+        w_max: int = 53
     ):
         """Sample inputs."""
         n = torch.randint(n_min, n_max, (), generator=self._generator).item()
@@ -232,16 +236,16 @@ class ScheduleSampler(BaseAlgorithmSampler):
         return [n, w, nb_nodes]
   
 class ThreeKindsDiceSampler(BaseAlgorithmSampler):
-    """Three Kinds Dice Sampler."""
+    """Three Kinds Dice - C Sampler."""
     def __init__(self, *args, **kwargs):
-        algorithm = schedule
+        algorithm = three_kinds_dice
         super().__init__(algorithm, *args, **kwargs)
 
     def _sample_data(
         self,
         nb_nodes: int,
-        faces_min = 1,
-        faces_max = 10**2
+        faces_min: int = 1,
+        faces_max: int = 10**2
     ):
         N_faces1 = torch.randint(faces_min, faces_max, (), generator=self._generator).item()
         N_faces2 = torch.randint(faces_min, faces_max, (), generator=self._generator).item()
@@ -250,3 +254,26 @@ class ThreeKindsDiceSampler(BaseAlgorithmSampler):
         values_D2 = torch.randint(1, nb_nodes, (N_faces2, ))
    
         return [values_D1, values_D2, nb_nodes]
+    
+class WaterworldSampler(BaseAlgorithmSampler):
+    """Waterworld - I Sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = waterworld
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(
+        self,
+        nb_nodes: int
+    ):
+        
+        factors = []
+        for i in range(1, int(nb_nodes**0.5) + 1):
+            if nb_nodes % i == 0:
+                factors.append((i, nb_nodes // i))
+
+        idx = torch.randint(len(factors), (), generator=self._generator).item()
+        n, m = factors[idx]
+
+        ap = torch.randint(101, (nb_nodes,), generator=self._generator)
+
+        return [n, m, ap, nb_nodes]
