@@ -16,34 +16,37 @@ waterworld_specs = {
 }
 
 # TODO: REVIEW SAMPLING NUMBER OF NODES DO NOT MATCH
-def waterworld(n, m, area_percentages, nb_nodes):
-    inputs = CLRSData()
-    inputs['pos'] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
+def waterworld(n, m, area_percentages, nb_nodes, *args, **kwargs):
+    data = CLRSData(algorithm='waterworld', *args, **kwargs)
     
-    inputs['n'] = torch.tensor([n]).float()
-    inputs['m'] = torch.tensor([m]).float()
+    data.set_inputs({
+        'n': torch.tensor([n]).float(),
+        'm':  torch.tensor([m]).float(),
+        'area_percentages': area_percentages.unsqueeze(0)
+    }, nb_nodes)
 
-    inputs['area_percentages'] = area_percentages.unsqueeze(0)
-    length = 0
-
-    hints = CLRSData()
     area_sums = 0
     total_area = n*m
 
-    hints["total_area"] = torch.tensor([total_area]).unsqueeze(0).float()
-    hints["area_sums"] = torch.tensor([area_sums]).unsqueeze(0).float()
+    data.increase_hints({
+        'total_area': torch.tensor([total_area]).unsqueeze(0).float(),
+        'area_sums': torch.tensor([area_sums]).unsqueeze(0).float()
+    })
     for i in range(n*m):
-        length += 1
-
         area_sums += area_percentages[i].item()
-        hints['total_area'] = torch.cat((hints['total_area'], torch.tensor([total_area]).unsqueeze(0).float()), 1)
-        hints['area_sums'] = torch.cat((hints['area_sums'],  torch.tensor([area_sums]).unsqueeze(0).float()), 1)
 
+        data.increase_hints({
+            'total_area': torch.tensor([total_area]).unsqueeze(0).float(),
+            'area_sums': torch.tensor([area_sums]).unsqueeze(0).float()
+        })
+        
     surface_percentage = area_sums/total_area
-    outputs = CLRSData()
-    outputs['surface_percentage'] = torch.tensor([surface_percentage]).float()
 
-    return CLRSData(inputs=inputs, hints=hints, length=torch.tensor(length).float(), outputs=outputs, algorithm="waterworld")
+    data.set_outputs({
+        'surface_percentage': torch.tensor([surface_percentage]).float()
+    })
+
+    return data
 
 if __name__ == "__main__":
     os.mkdir("tmp/CLRS30/waterworld")

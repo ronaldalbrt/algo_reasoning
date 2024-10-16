@@ -50,34 +50,35 @@ def jarvis_march(xs, ys):
 
     return in_hull
 
-def three_kinds_dice(values_D1, values_D2, nb_nodes):
-    inputs = CLRSData()
-    inputs['pos'] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
-
-    inputs['values_D1'] = torch.bincount(values_D1, minlength=nb_nodes).float().unsqueeze(0)
-    inputs['values_D2'] = torch.bincount(values_D2, minlength=nb_nodes).float().unsqueeze(0)
+def three_kinds_dice(values_D1, values_D2, nb_nodes, *args, **kwargs):
+    data = CLRSData(algorithm="three_kinds_dice", *args, **kwargs)
+    
+    data.set_inputs({
+        'values_D1': torch.bincount(values_D1, minlength=nb_nodes).float().unsqueeze(0),
+        'values_D2':  torch.bincount(values_D2, minlength=nb_nodes).float().unsqueeze(0)
+    }, nb_nodes)
 
     max_value = torch.max(torch.concat((values_D1, values_D2))).item() + 1
     min_value = torch.min(torch.concat((values_D1, values_D2))).item() - 2
     min_value = 0 if min_value < 0 else min_value
 
-    length = 1
-
-    hints = CLRSData() 
     score_D1 = torch.tensor([(torch.sum(v > values_D1) + torch.sum(v == values_D1)/2).item()/values_D1.size(0) for v in torch.arange(start=1, end=nb_nodes + 1)])
     score_D2 = torch.tensor([(torch.sum(v > values_D2) + torch.sum(v == values_D2)/2).item()/values_D2.size(0) for v in torch.arange(start=1, end=nb_nodes + 1)])
-    hints['score_D1'] = score_D1.float().unsqueeze(0).unsqueeze(0)
-    hints['score_D2'] = score_D2.float().unsqueeze(0).unsqueeze(0)
-    hints['in_hull'] = torch.zeros(nb_nodes).unsqueeze(0).unsqueeze(0)
+    data.increase_hints({
+        'score_D1': score_D1.float().unsqueeze(0).unsqueeze(0),
+        'score_D2': score_D2.float().unsqueeze(0).unsqueeze(0),
+        'in_hull': torch.zeros(nb_nodes).unsqueeze(0).unsqueeze(0)
+    })
 
     in_hull_output = jarvis_march(score_D1[min_value:max_value], score_D2[min_value:max_value])
     in_hull = torch.zeros(nb_nodes)
     in_hull[min_value:max_value] = in_hull_output
 
-    length += 1
-    hints['score_D1'] = torch.cat((hints['score_D1'], score_D1.float().unsqueeze(0).unsqueeze(0)), 1)
-    hints['score_D2'] = torch.cat((hints['score_D2'], score_D2.float().unsqueeze(0).unsqueeze(0)), 1)
-    hints['in_hull'] = torch.cat((hints['in_hull'], in_hull.unsqueeze(0).unsqueeze(0)), 1)
+    data.increase_hints({
+        'score_D1': score_D1.float().unsqueeze(0).unsqueeze(0),
+        'score_D2': score_D2.float().unsqueeze(0).unsqueeze(0),
+        'in_hull': in_hull.unsqueeze(0).unsqueeze(0)
+    })
 
     output_score_D1 = 0
     output_score_D2 = 1
@@ -122,12 +123,12 @@ def three_kinds_dice(values_D1, values_D2, nb_nodes):
         scores = torch.flip(scores, dims=[0, 1])
         scores = 1 - scores
 
-    outputs = CLRSData()
-    outputs['output_score_D1'] = torch.tensor([output_score_D1]).float()
-    outputs['output_score_D2'] = torch.tensor([output_score_D2]).float()
+    data.set_outputs({
+        'output_score_D1': torch.tensor([output_score_D1]).float(),
+        'output_score_D2': torch.tensor([output_score_D2]).float()
+    })
 
-    return CLRSData(inputs=inputs, hints=hints, length=torch.tensor(length).float(), outputs=outputs, algorithm="three_kinds_dice")
-    
+    return data
 
 if __name__ == "__main__":
     os.mkdir("tmp/CLRS30/three_kinds_dice")

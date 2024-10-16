@@ -28,20 +28,20 @@ def sample_tasks(nb_nodes, max_activity_dur, max_interval):
 
     return b, e
 
-def jet_lag(b, e, nb_nodes):
-    inputs = CLRSData()
-    inputs['pos'] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
-    
-    inputs['b'] = b.float().unsqueeze(0) 
-    inputs['e'] = e.float().unsqueeze(0) 
-    inputs['n'] = torch.tensor([nb_nodes]).float()
+def jet_lag(b, e, nb_nodes, *args, **kwargs):
+    data = CLRSData(algorithm="jet_lag", *args, **kwargs)
+
+    data.set_inputs({
+        'b':  b.float().unsqueeze(0),
+        'e':  e.float().unsqueeze(0),
+        'n': torch.tensor([nb_nodes]).float()
+    }, nb_nodes)
 
     s = torch.tensor([])
     t = torch.tensor([])
     
     b = torch.concat((torch.tensor([0]), b))
     e = torch.concat((torch.tensor([0]), e))
-    length = 0
 
     impossible = False
 
@@ -69,10 +69,11 @@ def jet_lag(b, e, nb_nodes):
         j -= 1
         i = j
 
-    outputs = CLRSData()
-    outputs['impossible'] = torch.tensor([impossible]).float()
+    data.set_outputs({
+        'impossible': torch.tensor([impossible]).float()
+    })
   
-    return CLRSData(inputs=inputs, hints=CLRSData(), length=torch.tensor(length).float(), outputs=outputs, algorithm="jet_lag")
+    return data
 
 if __name__ == "__main__":
     os.mkdir("tmp/CLRS30/jet_lag")
