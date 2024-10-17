@@ -110,23 +110,6 @@ def square_from_segment(p1, p2):
 
     return torch.stack([p1, p2, p4, p3])
 
-def generate_non_intersecting_squares():
-    p3 = ((torch.rand((2)) * (10**3 + 10**2)) - 10**2)
-    p4 = p3 + torch.rand((2)) * 10**2
-
-    distance = LA.vector_norm(p3 - p4).item()
-    diameter = distance * math.sqrt(2)
-    
-    p1 = (p3 - diameter) - torch.rand((2)) * 10**2
-    p2 = p1 - torch.rand((2)) * 10**2
-
-    height1, height2 = ((torch.rand((2)) * (10**2 + 10**2)) - 10**2)
-
-    x = torch.tensor([p1[0], p2[0], p3[0], p4[0]])
-    y = torch.tensor([p1[1], p2[1], p3[1], p4[1]])
-
-    return x, y, height1.item(), height2.item()
-
 def cross_product(a, b):
     return (a[0]*b[1] - a[1]*b[0]).item()
 

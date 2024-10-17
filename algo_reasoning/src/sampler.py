@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
-
-import numpy as np
 import torch
+import torch.linalg as LA
+import math
 from typing import Any, Callable, List, Optional, Tuple
 
 from algo_reasoning.src.data import CLRSData, collate
@@ -23,7 +22,10 @@ from algo_reasoning.src.data import CLRSData, collate
 # Import algorithms
 from algo_reasoning.src.algorithms.scheduleB import schedule
 from algo_reasoning.src.algorithms.three_kinds_diceC import three_kinds_dice
+from algo_reasoning.src.algorithms.carls_vacationD import carls_vacation
+from algo_reasoning.src.algorithms.jet_lagH import jet_lag
 from algo_reasoning.src.algorithms.waterworldI import waterworld
+
 
 Algorithm = Callable[..., Any]
 
@@ -51,14 +53,12 @@ def _idx_batched_data(idx: int, batched_data: CLRSData) -> CLRSData:
         length=length,
     )
 
-class BaseAlgorithmSampler():
+class BaseAlgorithmSampler:
     """Sampler abstract base class."""
 
     def __init__(
         self,
         algorithm: Algorithm,
-        num_samples: int,
-        nb_nodes: int, 
         seed: Optional[int] = None,
         randomize_pos = True,
         *args,
@@ -68,161 +68,59 @@ class BaseAlgorithmSampler():
 
         Args:
         algorithm: The algorithm to sample from
-        num_samples: Number of algorithm unrolls to sample. If positive, all the
-            samples will be generated in the constructor, and at each call of the
-            `next` method a batch will be randomly selected among them. If -1,
-            samples are generated on the fly with each call to `next`.
         seed: RNG seed.
+        randomize_pos: Whether to randomize input position of nodes,
         *args: Algorithm args.
         **kwargs: Algorithm kwargs.
         """
 
         self._generator = torch.Generator()
-        self._num_samples = num_samples
         self._algorithm = algorithm
         self.randomize_pos = randomize_pos
-        self.nb_nodes = nb_nodes
         self._args = args
         self._kwargs = kwargs
 
         if seed is not None:
             self._generator.manual_seed(seed)
 
-        if num_samples >= 0:
-            self.clrs_data = self._make_batch(num_samples, algorithm, *args, **kwargs)
+    def sample(self, nb_nodes: int, batch_size: int, *args, **kwargs):
+        """Samples trajectories from the pre-generated dataset.
+            Args:
+            nb_nodes: Number of nodes in retrieved batch.
+            batch_size: Number of samples to retrieve.
 
-    def _make_batch(self, num_samples: int, algorithm: Algorithm, *args, **kwargs):
-        """Generate a batch of data."""
+            Returns:
+            Subsampled trajectories.
+        """
         data_list = []
 
-        for _ in range(num_samples):
-            data = self._sample_data(nb_nodes=self.nb_nodes, *args, **kwargs)
+        for _ in range(batch_size):
+            data = self._sample_data(nb_nodes, *args, **kwargs)
             if self.randomize_pos:
                 random_pos_args = dict(
                     pos_generator=self._generator
                 )
 
-                clrs_data = algorithm(*data, **random_pos_args)
+                clrs_data = self._algorithm(*data, **random_pos_args)
             else: 
-                clrs_data = algorithm(*data) 
+                clrs_data = self._algorithm(*data) 
             data_list.append(clrs_data)
 
         # Batch and pad trajectories to max(T).
         batched_data = collate(data_list)
         return batched_data
 
-    def sample(self, batch_size: Optional[int] = None):
-        """Samples trajectories from the pre-generated dataset.
-        Args:
-        batch_size: Optional batch size. If `None`, returns entire dataset.
-
-        Returns:
-        Subsampled trajectories.
-        """
-
-        if self._num_samples < 0:
-            assert batch_size is not None, "Batch size must be provided when samples are generated on the fly"
-
-        if batch_size:
-            if self._num_samples < 0:
-                batched_data = self._make_batch(
-                    batch_size,
-                    self._algorithm,
-                    *self._args,
-                    **self._kwargs,
-                )
-            else:
-                indices = torch.randint(self._num_samples, (batch_size,), generator=self._generator)
-                batched_data = _idx_batched_data(indices, self.clrs_data)
-        else:
-            batched_data = self.clrs_data
-
-        return batched_data
-
     def _sample_data(self, nb_nodes: int, *args, **kwargs):
         pass
 
-#   def _random_sequence(self, length, low=0.0, high=1.0):
-#     """Random sequence."""
-#     return self._rng.uniform(low=low, high=high, size=(length,))
-
-#   def _random_string(self, length, chars=4):
-#     """Random string."""
-#     return self._rng.randint(0, high=chars, size=(length,))
-
-#   def _random_er_graph(self, nb_nodes, p=0.5, directed=False, acyclic=False,
-#                        weighted=False, low=0.0, high=1.0):
-#     """Random Erdos-Renyi graph."""
-
-#     mat = self._rng.binomial(1, p, size=(nb_nodes, nb_nodes))
-#     if not directed:_sample_data
-#       mat *= np.transpose(mat)
-#     elif acyclic:
-#       mat = np.triu(mat, k=1)
-#       p = self._rng.permutation(nb_nodes)  # To allow nontrivial solutions
-#       mat = mat[p, :][:, p]
-#     if weighted:
-#       weights = self._rng.uniform(low=low, high=high, size=(nb_nodes, nb_nodes))
-#       if not directed:
-#         weights *= np.transpose(weights)
-#         weights = np.sqrt(weights + 1e-3)  # Add epsilon to protect underflow
-#       mat = mat.astype(float) * weights
-#     return mat
-
-#   def _random_community_graph(self, nb_nodes, k=4, p=0.5, eps=0.01,
-#                               directed=False, acyclic=False, weighted=False,
-#                               low=0.0, high=1.0):
-#     """Random perturbed k-community graph."""
-#     mat = np.zeros((nb_nodes, nb_nodes))
-#     if k > nb_nodes:
-#       raise ValueError(f'Cannot generate graph of too many ({k}) communities.')
-#     los, his = [], []
-#     lo = 0
-#     for i in range(k):
-#       if i == k - 1:
-#         hi = nb_nodes
-#       else:
-#         hi = lo + nb_nodes // k
-#       mat[lo:hi, lo:hi] = self._random_er_graph(
-#           hi - lo, p=p, directed=directed,
-#           acyclic=acyclic, weighted=weighted,
-#           low=low, high=high)
-#       los.append(lo)
-#       his.append(hi)
-#       lo = hi
-#     toggle = self._random_er_graph(nb_nodes, p=eps, directed=directed,
-#                                    acyclic=acyclic, weighted=weighted,
-#                                    low=low, high=high)
-
-#     # Prohibit closing new cycles
-#     for i in range(k):
-#       for j in range(i):
-#         toggle[los[i]:his[i], los[j]:his[j]] *= 0
-
-#     mat = np.where(toggle > 0.0, (1.0 - (mat > 0.0)) * toggle, mat)
-#     p = self._rng.permutation(nb_nodes)  # To allow nontrivial solutions
-#     mat = mat[p, :][:, p]
-#     return mat
-
-#   def _random_bipartite_graph(self, n, m, p=0.25):
-#     """Random bipartite graph-based flow network."""
-#     nb_nodes = n + m + 2
-#     s = 0
-#     t = n + m + 1
-#     mat = np.zeros((nb_nodes, nb_nodes))
-#     mat[s, 1:n+1] = 1.0  # supersource
-#     mat[n+1:n+m+1, t] = 1.0  # supersink
-#     mat[1:n+1, n+1:n+m+1] = self._rng.binomial(1, p, size=(n, m))
-#     return mat
-
+# ICPC Problems Samplers
 class ScheduleSampler(BaseAlgorithmSampler):
     """Scedule - B sampler."""  
     def __init__(self, *args, **kwargs):
         algorithm = schedule
         super().__init__(algorithm, *args, **kwargs)
         
-    def _sample_data(
-        self,
+    def _sample_data(self,
         nb_nodes: int,
         n_min: int = 2,
         n_max: int =  10**2,
@@ -241,8 +139,7 @@ class ThreeKindsDiceSampler(BaseAlgorithmSampler):
         algorithm = three_kinds_dice
         super().__init__(algorithm, *args, **kwargs)
 
-    def _sample_data(
-        self,
+    def _sample_data(self,
         nb_nodes: int,
         faces_min: int = 1,
         faces_max: int = 10**2
@@ -254,17 +151,86 @@ class ThreeKindsDiceSampler(BaseAlgorithmSampler):
         values_D2 = torch.randint(1, nb_nodes, (N_faces2, ))
    
         return [values_D1, values_D2, nb_nodes]
+
+class CarlsVacationSampler(BaseAlgorithmSampler):
+    """Carl's Vacation - D Sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = carls_vacation
+        super().__init__(algorithm, *args, **kwargs)
+
+    def generate_non_intersecting_squares(self, max_value: int, max_distance: int, max_height: int):
+        p3 = ((torch.rand((2)) * (max_distance + max_value)) - max_value)
+        p4 = p3 + torch.rand((2)) * max_value
+
+        distance = LA.vector_norm(p3 - p4).item()
+        diameter = distance * math.sqrt(2)
+        
+        p1 = (p3 - diameter) - torch.rand((2)) * max_value
+        p2 = p1 - torch.rand((2)) * max_value
+
+        height1, height2 = ((torch.rand((2)) * (max_height + max_value)) - max_value)
+
+        x = torch.tensor([p1[0], p2[0], p3[0], p4[0]])
+        y = torch.tensor([p1[1], p2[1], p3[1], p4[1]])
+
+        return x, y, height1.item(), height2.item()
+
+    def _sample_data(self, 
+        nb_nodes:int = 4,
+        max_value: int = 10**2,
+        max_distance: int = 10**3,
+        max_height: int = 10**2
+        ):
     
+        assert nb_nodes == 4, "nb_nodes must be 4 for Carl's Vacation - D algorithm"
+
+        x, y, height, height2 = self.generate_non_intersecting_squares(max_value, max_distance, max_height)
+        
+        return [x, y, height, height2, nb_nodes]
+
+class JetLagSampler(BaseAlgorithmSampler):
+    """Jet Lag - H Sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = jet_lag
+        super().__init__(algorithm, *args, **kwargs)
+
+    def sample_tasks(self, 
+                    nb_nodes: int, 
+                    activity_dur: int, 
+                    interval: int):
+        last_e = 0
+        b = torch.tensor([])
+        e = torch.tensor([])
+
+        for _ in range(nb_nodes):
+            last_b = last_e + torch.randint(interval, (1,), generator=self._generator)
+
+            b = torch.concat((b, last_b), dim=0)
+            e = torch.concat((e, last_b + torch.randint(activity_dur, (1,), generator=self._generator)), dim=0)
+
+            last_e = e[-1].item()
+
+        return b, e
+
+    def _sample_data(self,
+        nb_nodes,
+        max_activity_dur: int = 100,
+        max_interval: int = 100):
+
+        activity_dur = torch.randint(5, max_activity_dur, (), generator=self._generator).item()
+        interval = torch.randint(5, max_interval, (), generator=self._generator).item()
+
+        b, e = self.sample_tasks(nb_nodes, activity_dur, interval)
+
+        return [b, e, nb_nodes]
+
 class WaterworldSampler(BaseAlgorithmSampler):
     """Waterworld - I Sampler."""
     def __init__(self, *args, **kwargs):
         algorithm = waterworld
         super().__init__(algorithm, *args, **kwargs)
 
-    def _sample_data(
-        self,
-        nb_nodes: int
-    ):
+    def _sample_data(self, nb_nodes: int):
         
         factors = []
         for i in range(1, int(nb_nodes**0.5) + 1):

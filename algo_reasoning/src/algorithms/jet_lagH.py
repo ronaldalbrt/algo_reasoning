@@ -11,21 +11,6 @@ jet_lag_specs = {
     'impossible': (Stage.OUTPUT, Location.GRAPH, Type.MASK),
     }
 
-def sample_tasks(nb_nodes, max_activity_dur, max_interval):
-    last_e = 0
-    b = torch.tensor([])
-    e = torch.tensor([])
-
-    for _ in range(nb_nodes):
-        last_b = last_e + torch.randint(max_interval, (1,))
-
-        b = torch.concat((b, last_b), dim=0)
-        e = torch.concat((e, last_b + torch.randint(max_activity_dur, (1,))), dim=0)
-
-        last_e = e[-1].item()
-
-    return b, e
-
 def jet_lag(b, e, nb_nodes, *args, **kwargs):
     data = CLRSData(algorithm="jet_lag", *args, **kwargs)
 
