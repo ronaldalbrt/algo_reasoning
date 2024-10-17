@@ -1,8 +1,7 @@
-import os
 import torch
+
 from algo_reasoning.src.data import CLRSData
 from algo_reasoning.src.specs import Stage, Location, Type
-from random import sample
 
 # GEOMETRY / CONVEX HULL
 
@@ -129,67 +128,3 @@ def three_kinds_dice(values_D1, values_D2, nb_nodes, *args, **kwargs):
     })
 
     return data
-
-if __name__ == "__main__":
-    os.mkdir("tmp/CLRS30/three_kinds_dice")
-    
-    os.mkdir("tmp/CLRS30/three_kinds_dice/train")
-
-    # Sampling Training set
-    N_faces1_train = torch.randint(1, 100, (1000,)).tolist()
-    N_faces2_train = torch.randint(1, 100, (1000,)).tolist()
-
-    train_datapoints = []
-    max_length = -1
-    for N_faces1, N_faces2 in zip(N_faces1_train, N_faces2_train):
-        nb_nodes = sample([4, 7, 11, 13, 16], 1)[0]
-        values_D1 = torch.randint(1, nb_nodes, (N_faces1, ))
-        values_D2 = torch.randint(1, nb_nodes, (N_faces2, ))
-
-        data_point = three_kinds_dice(values_D1, values_D2, nb_nodes)
-        train_datapoints.append(data_point)
-        curr_length = data_point.length.item()
-        max_length = curr_length if curr_length > max_length else max_length
-
-
-    os.mkdir("tmp/CLRS30/three_kinds_dice/val")
-    val_datapoints = []
-    # Sampling Validation set
-    N_faces1_val = torch.randint(1, 100, (32,)).tolist()
-    N_faces2_val = torch.randint(1, 100, (32,)).tolist()
-
-    for N_faces1, N_faces2 in zip(N_faces1_val, N_faces2_val):
-        nb_nodes = 16
-        values_D1 = torch.randint(1, nb_nodes, (N_faces1, ))
-        values_D2 = torch.randint(1, nb_nodes, (N_faces2, ))
-
-        data_point = three_kinds_dice(values_D1, values_D2, nb_nodes)
-        val_datapoints.append(data_point)
-        curr_length = data_point.length.item()
-        max_length = curr_length if curr_length > max_length else max_length
-
-
-    os.mkdir("tmp/CLRS30/three_kinds_dice/test")
-    test_datapoints = []
-    # Sampling Test set
-    N_faces1_test = torch.randint(1, 100, (32,)).tolist()
-    N_faces2_test  = torch.randint(1, 100, (32,)).tolist()
-
-    for N_faces1, N_faces2 in zip(N_faces1_test, N_faces2_test):
-        nb_nodes = 64
-        values_D1 = torch.randint(1, nb_nodes, (N_faces1, ))
-        values_D2 = torch.randint(1, nb_nodes, (N_faces2, ))
-
-        data_point = three_kinds_dice(values_D1, values_D2, nb_nodes)
-        test_datapoints.append(data_point)
-        curr_length = data_point.length.item()
-        max_length = curr_length if curr_length > max_length else max_length
-
-    for i, data_point in enumerate(train_datapoints):
-        torch.save(data_point, f"tmp/CLRS30/three_kinds_dice/train/{i}")
-
-    for i, data_point in enumerate(val_datapoints):
-        torch.save(data_point, f"tmp/CLRS30/three_kinds_dice/val/{i}")
-
-    for i, data_point in enumerate(test_datapoints):
-        torch.save(data_point, f"tmp/CLRS30/three_kinds_dice/test/{i}")

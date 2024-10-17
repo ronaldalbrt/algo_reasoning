@@ -1,7 +1,5 @@
-import os
 import torch
-import torch.linalg as LA
-import math
+
 from algo_reasoning.src.data import CLRSData
 from algo_reasoning.src.specs import Stage, Location, Type
 
@@ -74,58 +72,3 @@ def jet_lag(b, e, nb_nodes, *args, **kwargs):
     })
   
     return data
-
-if __name__ == "__main__":
-    os.mkdir("tmp/CLRS30/jet_lag")
-    
-    os.mkdir("tmp/CLRS30/jet_lag/train")
-
-    # Sampling Training set
-    nb_nodes_train = torch.randint(16, 16 + 1, (1000,)).tolist()
-
-    train_datapoints = []
-    max_length = -1
-    for nb_nodes in nb_nodes_train:
-        max_activity_dur, max_interval = torch.randint(5, 100, (2,)).tolist()
-        b, e = sample_tasks(nb_nodes, max_activity_dur, max_interval)
-        data_point = jet_lag(b, e, nb_nodes)
-        train_datapoints.append(data_point)
-        curr_length = data_point.length.item()
-        max_length = curr_length if curr_length > max_length else max_length
-
-
-    os.mkdir("tmp/CLRS30/jet_lag/val")
-    val_datapoints = []
-    # Sampling Validation set
-    nb_nodes_val = torch.randint(16, 16 + 1, (1000,)).tolist()
-
-    for nb_nodes in nb_nodes_val:
-        max_activity_dur, max_interval = torch.randint(5, 100, (2,)).tolist()
-        b, e = sample_tasks(nb_nodes, max_activity_dur, max_interval)
-        data_point = jet_lag(b, e, nb_nodes)
-        val_datapoints.append(data_point)
-        curr_length = data_point.length.item()
-        max_length = curr_length if curr_length > max_length else max_length
-
-
-    os.mkdir("tmp/CLRS30/jet_lag/test")
-    test_datapoints = []
-    # Sampling Test set
-    nb_nodes_test = torch.randint(64, 64 + 1, (1000,)).tolist()
-
-    for nb_nodes in nb_nodes_test:
-        max_activity_dur, max_interval = torch.randint(5, 100, (2,)).tolist()
-        b, e = sample_tasks(nb_nodes, max_activity_dur, max_interval)
-        data_point = jet_lag(b, e, nb_nodes)
-        test_datapoints.append(data_point)
-        curr_length = data_point.length.item()
-        max_length = curr_length if curr_length > max_length else max_length
-
-    for i, data_point in enumerate(train_datapoints):
-        torch.save(data_point, f"tmp/CLRS30/jet_lag/train/{i}")
-
-    for i, data_point in enumerate(val_datapoints):
-        torch.save(data_point, f"tmp/CLRS30/jet_lag/val/{i}")
-
-    for i, data_point in enumerate(test_datapoints):
-        torch.save(data_point, f"tmp/CLRS30/jet_lag/test/{i}")
