@@ -1,3 +1,4 @@
+# TODO: REVIEW Carl's Vacation Implementation
 import torch
 import torch.linalg as LA
 import math
