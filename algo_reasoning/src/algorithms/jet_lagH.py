@@ -47,6 +47,7 @@ def jet_lag(b, e, nb_nodes, *args, **kwargs):
 
     i = j = nb_nodes
     while i > 0:
+        data.increase_hints({})
         if j == 0:
             impossible = True
             break
@@ -55,8 +56,7 @@ def jet_lag(b, e, nb_nodes, *args, **kwargs):
         if e[j - 1] > interval:
             j -= 1
             continue
-        
-        length += 1
+
         if e[j - 1] >= interval - 1:
             s = torch.concat((s, e[j-1].unsqueeze(0)))
             t = torch.concat((t, (b[j] - (e[j - 1] == interval - 1 and e[i] - b[j] == 1).long().unsqueeze(0))))
