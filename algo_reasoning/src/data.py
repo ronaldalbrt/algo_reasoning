@@ -165,9 +165,9 @@ class CLRSData(Data):
         if pos_generator is not None:
             self.pos_generator = pos_generator
 
-    def set_inputs(self, inputs, nb_nodes):
+    def set_inputs(self, inputs, nb_nodes, inplace: bool = False):
         """Set the inputs of the algorithm being executed."""
-        data = self.clone()
+        data = self.clone() if not inplace else self
 
         data["inputs"] = CLRSData()
         data["length"] = torch.tensor(0).float()
@@ -183,11 +183,12 @@ class CLRSData(Data):
 
             del data.pos_generator
         
-        return data
+        if not inplace:
+            return data
 
-    def set_outputs(self, outputs):
+    def set_outputs(self, outputs, inplace: bool = False):
         """Set the outputs of the algorithm being executed."""
-        data = self.clone()
+        data = self.clone() if not inplace else self
 
         data["outputs"] = CLRSData()
         data["max_length"] = data["length"].clone()
@@ -195,11 +196,12 @@ class CLRSData(Data):
         for key, value in outputs.items():
             data["outputs"][key] = value.float()
 
-        return data
+        if not inplace:
+            return data
 
-    def increase_hints(self, hints):
+    def increase_hints(self, hints, inplace: bool = False):
         """Set the hints of the algorithm being executed."""
-        data = self.clone()
+        data = self.clone() if not inplace else self
         
         data["length"] += 1
         if "hints" not in data.keys():
@@ -212,11 +214,12 @@ class CLRSData(Data):
                 unsqueezed_value = value.float().unsqueeze(0)
                 data["hints"][key] = torch.cat([data["hints"][key], unsqueezed_value], dim=0)
         
-        return data
+        if not inplace:
+            return data
 
-    def concat(self, other):
+    def concat(self, other, inplace: bool = False):
         """Concatenate two CLRSData objects."""
-        data = self.clone()
+        data = self.clone() if not inplace else self
 
         for key, value in other.items():
             if key in data:
@@ -232,11 +235,12 @@ class CLRSData(Data):
             else:
                 data[key] = value
 
-        return data
+        if not inplace:
+            return data
 
-    def unsqueeze(self, dim):
+    def unsqueeze(self, dim, inplace: bool = False):
         """Unsqueeze all data in CLRSData objects."""
-        data = self.clone()
+        data = self.clone() if not inplace else self
 
         for key, value in data.items():
             if isinstance(value, str):
@@ -244,13 +248,14 @@ class CLRSData(Data):
             else:
                 data[key] = value.unsqueeze(dim)
 
-        return data
+        if not inplace:
+            return data
     
-    def squeeze(self, dim: Optional[Union[int, List[int]]] = None):
+    def squeeze(self, dim: Optional[Union[int, List[int]]] = None, inplace: bool = False):
         """Squeeze all data in CLRSData objects."""
         squeeze_fn = lambda x: x.squeeze(dim) if dim is not None else x.squeeze()
 
-        data = self.clone()
+        data = self.clone() if not inplace else self
 
         for key, value in data.items():
             if isinstance(value, CLRSData):
@@ -260,7 +265,8 @@ class CLRSData(Data):
             else:
                 data[key] = squeeze_fn(value)
 
-        return data
+        if not inplace:
+            return data
 
 class CLRSDataset(Dataset):
     def __init__(self, algorithms, split, data_folder="tmp/CLRS30"):
