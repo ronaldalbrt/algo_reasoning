@@ -16,14 +16,14 @@ schedule_specs = {
 def schedule(N, W, nb_nodes, *args, **kwargs):
     data = CLRSData(algorithm="schedule", *args, **kwargs)
     
-    data.set_inputs({
-        'n': torch.tensor([N]).float(),
-        'w': torch.tensor([W]).float()
+    data = data.set_inputs({
+        'n': torch.tensor(N),
+        'w': torch.tensor(W)
     }, nb_nodes)
 
     infinity = 0
     c = 4
-    data.increase_hints({'c_h': torch.tensor([c]).float().unsqueeze(0)})
+    data = data.increase_hints({'c_h': torch.tensor(c)})
 
     while c <= W:
         
@@ -39,15 +39,15 @@ def schedule(N, W, nb_nodes, *args, **kwargs):
             break
 
         c += 1
-        data.increase_hints({'c_h': torch.tensor([c]).float().unsqueeze(0)})
+        data = data.increase_hints({'c_h': torch.tensor(c)})
 
     if c > W:
         infinity = 1
         c = -1
 
-    data.set_outputs({
-        'c': torch.tensor([c]).float(),
-        'infinity': torch.tensor([infinity]).float()
+    data = data.set_outputs({
+        'c': torch.tensor(c),
+        'infinity': torch.tensor(infinity)
     })
 
     return data

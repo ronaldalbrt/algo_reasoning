@@ -111,6 +111,7 @@ class EncodeProcessDecode(torch.nn.Module):
         if batch.inputs.batch is not None:
             batch_size = len(batch.inputs.batch)
         else:
+            batch = batch.unsqueeze(0)
             batch_size = 1
         nb_nodes = batch.inputs.pos.shape[1]
         device = batch.inputs.pos.device
@@ -127,7 +128,7 @@ class EncodeProcessDecode(torch.nn.Module):
             for step in range(max_len):
                 output_step, hidden, lstm_state = self._one_step_prediction(batch, hidden, hints=hints, hint_step=step, lstm_state=lstm_state)
                 hidden_embeddings.append(hidden)
-                hints.concat(output_step.hints)
+                hints = hints.concat(output_step.hints)
         else:
             output_step, hidden, lstm_state = self._one_step_prediction(batch, hidden, hints=hints, hint_step=0, lstm_state=lstm_state)
             hidden_embeddings.append(hidden)

@@ -18,31 +18,31 @@ waterworld_specs = {
 def waterworld(n, m, area_percentages, nb_nodes, *args, **kwargs):
     data = CLRSData(algorithm='waterworld', *args, **kwargs)
     
-    data.set_inputs({
-        'n': torch.tensor([n]).float(),
-        'm':  torch.tensor([m]).float(),
-        'area_percentages': area_percentages.unsqueeze(0)
+    data = data.set_inputs({
+        'n': torch.tensor(n),
+        'm': torch.tensor(m),
+        'area_percentages': area_percentages
     }, nb_nodes)
 
     area_sums = 0
     total_area = n*m
 
-    data.increase_hints({
-        'total_area': torch.tensor([total_area]).unsqueeze(0).float(),
-        'area_sums': torch.tensor([area_sums]).unsqueeze(0).float()
+    data = data.increase_hints({
+        'total_area': torch.tensor(total_area),
+        'area_sums': torch.tensor(area_sums)
     })
     for i in range(n*m):
         area_sums += area_percentages[i].item()
 
-        data.increase_hints({
-            'total_area': torch.tensor([total_area]).unsqueeze(0).float(),
-            'area_sums': torch.tensor([area_sums]).unsqueeze(0).float()
+        data = data.increase_hints({
+            'total_area': torch.tensor(total_area),
+            'area_sums': torch.tensor(area_sums)
         })
         
     surface_percentage = area_sums/total_area
 
-    data.set_outputs({
-        'surface_percentage': torch.tensor([surface_percentage]).float()
+    data = data.set_outputs({
+        'surface_percentage': torch.tensor(surface_percentage)
     })
 
     return data

@@ -29,10 +29,10 @@ def sample_tasks(nb_nodes, max_activity_dur, max_interval):
 def jet_lag(b, e, nb_nodes, *args, **kwargs):
     data = CLRSData(algorithm="jet_lag", *args, **kwargs)
 
-    data.set_inputs({
-        'b':  b.float().unsqueeze(0),
-        'e':  e.float().unsqueeze(0),
-        'n': torch.tensor([nb_nodes]).float()
+    data = data.set_inputs({
+        'b':  b,
+        'e':  e,
+        'n': torch.tensor(nb_nodes)
     }, nb_nodes)
 
     s = torch.tensor([])
@@ -45,7 +45,7 @@ def jet_lag(b, e, nb_nodes, *args, **kwargs):
 
     i = j = nb_nodes
     while i > 0:
-        data.increase_hints({})
+        data = data.increase_hints({})
         if j == 0:
             impossible = True
             break
@@ -67,8 +67,8 @@ def jet_lag(b, e, nb_nodes, *args, **kwargs):
         j -= 1
         i = j
 
-    data.set_outputs({
-        'impossible': torch.tensor([impossible]).float()
+    data = data.set_outputs({
+        'impossible': torch.tensor(impossible)
     })
   
     return data

@@ -112,6 +112,11 @@ def _batch_hints(hints, hint_lengths):
 
 def collate(batch):
     """Collate a batch of data points."""
+    for data in batch:
+        assert isinstance(data, CLRSData), f"Data must be of type CLRSData, got {type(data)}."
+        
+        data.unsqueeze(0)
+
     batch = Batch.from_data_list(batch)
 
     batch.algorithm = batch[0].algorithm
@@ -162,55 +167,86 @@ class CLRSData(Data):
 
     def set_inputs(self, inputs, nb_nodes):
         """Set the inputs of the algorithm being executed."""
-        self["inputs"] = CLRSData()
-        self["length"] = torch.tensor(0).float()
+        data = self.clone()
+
+        data["inputs"] = CLRSData()
+        data["length"] = torch.tensor(0).float()
 
         for key, value in inputs.items():
-            self["inputs"][key] = value
+            data["inputs"][key] = value.float()
 
-        self["inputs"]["pos"] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).unsqueeze(0)
+        data["inputs"]["pos"] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).float()
 
-        if hasattr(self, 'pos_generator'):
-            random_perm = torch.randperm(nb_nodes, generator=self.pos_generator)
-            self["inputs"]["pos"] = self["inputs"]["pos"][:, random_perm]
+        if hasattr(data, 'pos_generator'):
+            random_perm = torch.randperm(nb_nodes, generator=data.pos_generator)
+            data["inputs"]["pos"] = data["inputs"]["pos"][random_perm]
 
-            del self.pos_generator
+            del data.pos_generator
+        
+        return data
 
     def set_outputs(self, outputs):
         """Set the outputs of the algorithm being executed."""
-        self["outputs"] = CLRSData()
-        self["max_length"] = self["length"].clone()
+        data = self.clone()
+
+        data["outputs"] = CLRSData()
+        data["max_length"] = data["length"].clone()
 
         for key, value in outputs.items():
-            self["outputs"][key] = value
+            data["outputs"][key] = value.float()
+
+        return data
 
     def increase_hints(self, hints):
         """Set the hints of the algorithm being executed."""
-        self["length"] += 1
-        if "hints" not in self.keys():
-            self["hints"] = CLRSData()
+        data = self.clone()
+        
+        data["length"] += 1
+        if "hints" not in data.keys():
+            data["hints"] = CLRSData()
 
             for key, value in hints.items():
-                self["hints"][key] = value
+                data["hints"][key] = value.float().unsqueeze(0)
         else:
             for key, value in hints.items():
-                self["hints"][key] = torch.cat([self["hints"][key], value], dim=1)
+                unsqueezed_value = value.float().unsqueeze(0)
+                data["hints"][key] = torch.cat([data["hints"][key], unsqueezed_value], dim=0)
+        
+        return data
 
     def concat(self, other):
         """Concatenate two CLRSData objects."""
+        data = self.clone()
+
         for key, value in other.items():
-            if key in self:
+            if key in data:
                 if isinstance(value, CLRSData):
-                    self[key].concat(value)
+                    data[key].concat(value)
                 elif isinstance(value, str):
-                    self[key] = value
+                    data[key] = value
                 elif value.dim() > 0:
-                    self[key] = torch.cat([self[key], value], dim=1)
+                    data[key] = torch.cat([data[key], value], dim=1)
                 elif value.dim() == 0:
-                    self[key] = torch.tensor([self[key], value], dtype=torch.float32)
+                    data[key] = torch.tensor([data[key], value], dtype=torch.float32)
                 
             else:
+                data[key] = value
+
+        return data
+
+    def unsqueeze(self, dim):
+        """Unsqueeze all data in CLRSData objects."""
+        data = self.clone()
+
+        for key, value in self.items():
+            if isinstance(value, CLRSData):
+                self[key].unsqueeze(dim)
+            elif isinstance(value, str):
                 self[key] = value
+            else:
+                self[key] = value.unsqueeze(dim)
+
+        return data
 
 class CLRSDataset(Dataset):
     def __init__(self, algorithms, split, data_folder="tmp/CLRS30"):

@@ -153,11 +153,11 @@ carls_vacation_specs = {
 def carls_vacation(x, y, height1, height2, nb_nodes, *args, **kwargs):
     data = CLRSData(algorithm='carls_vacation', *args, **kwargs)
     
-    data.set_inputs({
-        'x': x.float().unsqueeze(0),
-        'y': y.float().unsqueeze(0),
-        'height1': torch.tensor([height1]).float(),
-        'height2': torch.tensor([height2]).float()
+    data = data.set_inputs({
+        'x': x,
+        'y': y,
+        'height1': torch.tensor(height1),
+        'height2': torch.tensor(height2)
     }, nb_nodes)
 
     p1, p2, p3, p4 = (torch.tensor([x[0], y[0]]), torch.tensor([x[1], y[1]]), torch.tensor([x[2], y[2]]), torch.tensor([x[3], y[3]]))
@@ -168,17 +168,17 @@ def carls_vacation(x, y, height1, height2, nb_nodes, *args, **kwargs):
     top1 = torch.cat((torch.mean(faces1, dim=0), torch.tensor([height1])), dim=0)
     top2 = torch.cat((torch.mean(faces2, dim=0), torch.tensor([height2])), dim=0)
 
-    data.increase_hints({
-        'faces1_x': faces1[:, 0].float().unsqueeze(0).unsqueeze(0),
-        'faces1_y': faces1[:, 1].float().unsqueeze(0).unsqueeze(0),
-        'faces2_x': faces2[:, 0].float().unsqueeze(0).unsqueeze(0),
-        'faces2_y': faces2[:, 1].float().unsqueeze(0).unsqueeze(0),
-        'tops_segment1_x': torch.zeros(1, 1, nb_nodes),
-        'tops_segment1_y': torch.zeros(1, 1, nb_nodes),
-        'tops_segment2_x': torch.zeros(1, 1, nb_nodes),
-        'tops_segment2_x': torch.zeros(1, 1, nb_nodes),
-        'selected_segment1': torch.zeros(1, 1, nb_nodes),
-        'selected_segment2': torch.zeros(1, 1, nb_nodes)
+    data = data.increase_hints({
+        'faces1_x': faces1[:, 0],
+        'faces1_y': faces1[:, 1],
+        'faces2_x': faces2[:, 0],
+        'faces2_y': faces2[:, 1],
+        'tops_segment1_x': torch.zeros(nb_nodes),
+        'tops_segment1_y': torch.zeros(nb_nodes),
+        'tops_segment2_x': torch.zeros(nb_nodes),
+        'tops_segment2_x': torch.zeros(nb_nodes),
+        'selected_segment1': torch.zeros(nb_nodes),
+        'selected_segment2': torch.zeros(nb_nodes)
     })
 
     min_distance = float('inf')
@@ -244,21 +244,21 @@ def carls_vacation(x, y, height1, height2, nb_nodes, *args, **kwargs):
     aranged_selected_segment1 = torch.isin(aranged_nb_nodes, torch.tensor([(selected_segment1 % nb_nodes), ((selected_segment1 + 1) % nb_nodes)]))
     aranged_selected_segment2 = torch.isin(aranged_nb_nodes, torch.tensor([(selected_segment2 % nb_nodes), ((selected_segment2 + 1) % nb_nodes)]))
 
-    data.increase_hints({
-        'faces1_x': faces1[:, 0].float().unsqueeze(0).unsqueeze(0),
-        'faces1_y': faces1[:, 1].float().unsqueeze(0).unsqueeze(0),
-        'faces2_x': faces2[:, 0].float().unsqueeze(0).unsqueeze(0),
-        'faces2_y': faces2[:, 1].float().unsqueeze(0).unsqueeze(0),
-        'tops_segment1_x': selected_tops_segment1_x.unsqueeze(0).unsqueeze(0),
-        'tops_segment1_y': selected_tops_segment1_y.unsqueeze(0).unsqueeze(0),
-        'tops_segment2_x': selected_tops_segment2_x.unsqueeze(0).unsqueeze(0),
-        'tops_segment2_x': selected_tops_segment2_y.unsqueeze(0).unsqueeze(0),
-        'selected_segment1': aranged_selected_segment1.unsqueeze(0).unsqueeze(0),
-        'selected_segment2': aranged_selected_segment2.unsqueeze(0).unsqueeze(0)
+    data = data.increase_hints({
+        'faces1_x': faces1[:, 0],
+        'faces1_y': faces1[:, 1],
+        'faces2_x': faces2[:, 0],
+        'faces2_y': faces2[:, 1],
+        'tops_segment1_x': selected_tops_segment1_x,
+        'tops_segment1_y': selected_tops_segment1_y,
+        'tops_segment2_x': selected_tops_segment2_x,
+        'tops_segment2_x': selected_tops_segment2_y,
+        'selected_segment1': aranged_selected_segment1,
+        'selected_segment2': aranged_selected_segment2
     })
 
-    data.set_outputs({
-        'distance': torch.tensor([min_distance]).float()
+    data = data.set_outputs({
+        'distance': torch.tensor(min_distance)
     })
 
     return data

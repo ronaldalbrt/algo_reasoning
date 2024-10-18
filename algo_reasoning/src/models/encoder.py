@@ -96,6 +96,7 @@ class Encoder(nn.Module):
         if batch.inputs.batch is not None:
             batch_size = len(batch.inputs.batch)
         else:
+            batch = batch.unsqueeze(0)
             batch_size = 1
         nb_nodes = batch.inputs.pos.shape[1]
         device = batch.inputs.pos.device
