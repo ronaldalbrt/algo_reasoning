@@ -142,13 +142,13 @@ def heapsort(A, nb_nodes, *args, **kwargs):
     """Heapsort (Williams, 1964)."""
     data = CLRSData(algorithm="heapsort", *args, **kwargs)
     
-    data = data.set_inputs({
+    data.set_inputs({
         'key': A
-    }, nb_nodes)
+    }, nb_nodes, inplace=True)
 
     A_pos = torch.arange(A.size(0))
 
-    data = data.increase_hints({
+    data.increase_hints({
           'pred_h': probe_array(A_pos.clone()),
           'parent': heap(A_pos.clone(), A.size(0)),
           'i': mask_one(A.size(0) - 1, A.size(0)),
@@ -156,7 +156,7 @@ def heapsort(A, nb_nodes, *args, **kwargs):
           'largest': mask_one(A.size(0) - 1, A.size(0)),
           'heap_size': mask_one(A.size(0) - 1, A.size(0)),
           'phase': mask_one(0, 3)
-    })
+    }, inplace=True)
 
 
     def max_heapify(A, i, heap_size, ind, phase, data):
@@ -172,7 +172,7 @@ def heapsort(A, nb_nodes, *args, **kwargs):
             A[i], A[largest] = A[largest].item(), A[i].item()
             A_pos[i], A_pos[largest] = A_pos[largest].item(), A_pos[i].item()
 
-        data = data.increase_hints({
+        data.increase_hints({
           'pred_h': probe_array(A_pos.clone()),
           'parent': heap(A_pos.clone(), heap_size),
           'i': mask_one(A_pos[ind].item(), A.size(0)),
@@ -180,7 +180,7 @@ def heapsort(A, nb_nodes, *args, **kwargs):
           'largest': mask_one(A_pos[largest].item(), A.size(0)),
           'heap_size': mask_one(A_pos[heap_size - 1].item(), A.size(0)),
           'phase': mask_one(phase, 3)
-        })
+        }, inplace=True)
 
         if largest != i:
             max_heapify(A, largest, heap_size, ind, phase, data)
@@ -198,7 +198,7 @@ def heapsort(A, nb_nodes, *args, **kwargs):
 
         heap_size -= 1
 
-        data = data.increase_hints({
+        data.increase_hints({
           'pred_h': probe_array(A_pos.clone()),
           'parent': heap(A_pos.clone(), heap_size),
           'i': mask_one(A_pos[0].item(), A.size(0)),
@@ -206,14 +206,14 @@ def heapsort(A, nb_nodes, *args, **kwargs):
           'largest': mask_one(0, A.size(0)),
           'heap_size': mask_one(A_pos[heap_size - 1].item(), A.size(0)),
           'phase': mask_one(1, 3)
-        })
+        }, inplace=True)
 
 
         max_heapify(A, 0, heap_size, i, 2, data) 
 
-    data = data.set_outputs({
+    data.set_outputs({
        'pred': probe_array(A_pos.clone())
-    })
+    }, inplace=True)
 
     return data
 
