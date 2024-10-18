@@ -60,7 +60,7 @@ class BaseAlgorithmSampler:
         self,
         algorithm: Algorithm,
         seed: Optional[int] = None,
-        randomize_pos = True,
+        randomize_pos : bool = True,
         *args,
         **kwargs,
     ):

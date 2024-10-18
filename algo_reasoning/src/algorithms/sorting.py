@@ -230,24 +230,24 @@ def quicksort(A, nb_nodes, A_pos=None, p=None, r=None, data=None, *args, **kwarg
                 A[i], A[j] = A[j], A[i]
                 A_pos[i], A_pos[j] = A_pos[j], A_pos[i]
             
-            data = data.increase_hints({
+            data.increase_hints({
                 'pred_h': probe_array(A_pos.clone()),
                 'p': mask_one(A_pos[p].item(), A.size(0)),
                 'r': mask_one(A_pos[r].item(), A.size(0)),
                 'i': mask_one(A_pos[i + 1].item(), A.size(0)),
                 'j': mask_one(A_pos[j].item(), A.size(0))
-            })
+            }, inplace=True)
 
         A[i + 1], A[r] = A[r].item(), A[i + 1].item()
         A_pos[i + 1], A_pos[r] = A_pos[r].item(), A_pos[i + 1].item()
 
-        data = data.increase_hints({
+        data.increase_hints({
             'pred_h': probe_array(A_pos.clone()),
             'p': mask_one(A_pos[p].item(), A.size(0)),
             'r': mask_one(A_pos[r].item(), A.size(0)),
             'i': mask_one(A_pos[i + 1].item(), A.size(0)),
             'j': mask_one(A_pos[r].item(), A.size(0))
-        })
+        }, inplace=True)
 
         return i + 1
 
@@ -260,9 +260,9 @@ def quicksort(A, nb_nodes, A_pos=None, p=None, r=None, data=None, *args, **kwarg
     if data is None:
         data = CLRSData(algorithm="quicksort", *args, **kwargs)
 
-        data = data.set_inputs({
+        data.set_inputs({
             'key': A
-        }, nb_nodes)
+        }, nb_nodes, inplace=True)
 
     if p < r:
         q = partition(A, A_pos, p, r, data)
@@ -270,8 +270,8 @@ def quicksort(A, nb_nodes, A_pos=None, p=None, r=None, data=None, *args, **kwarg
         quicksort(A, nb_nodes, A_pos, q + 1, r, data, *args, **kwargs)
 
     if p == 0 and r == len(A) - 1:
-        data = data.set_outputs({
+        data.set_outputs({
             'pred': probe_array(A_pos.clone())
-        })
+        }, inplace=True)
         
     return data
