@@ -238,13 +238,13 @@ class CLRSData(Data):
         """Unsqueeze all data in CLRSData objects."""
         data = self.clone()
 
-        for key, value in self.items():
+        for key, value in data.items():
             if isinstance(value, CLRSData):
-                self[key].unsqueeze(dim)
+                data[key].unsqueeze(dim)
             elif isinstance(value, str):
-                self[key] = value
+                data[key] = value
             else:
-                self[key] = value.unsqueeze(dim)
+                data[key] = value.unsqueeze(dim)
 
         return data
 
