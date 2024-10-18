@@ -5,7 +5,7 @@ import numpy as np
 from torch_geometric.data import Data, Batch
 from torch.utils.data import Dataset, Sampler
 import tensorflow_datasets as tfds
-from typing import List
+from typing import List, Optional, Union
 import torch
 from collections import OrderedDict
 
@@ -239,12 +239,26 @@ class CLRSData(Data):
         data = self.clone()
 
         for key, value in data.items():
-            if isinstance(value, CLRSData):
-                data[key].unsqueeze(dim)
-            elif isinstance(value, str):
+            if isinstance(value, str):
                 data[key] = value
             else:
                 data[key] = value.unsqueeze(dim)
+
+        return data
+    
+    def squeeze(self, dim: Optional[Union[int, List[int]]] = None):
+        """Squeeze all data in CLRSData objects."""
+        squeeze_fn = lambda x: x.squeeze(dim) if dim is not None else x.squeeze()
+
+        data = self.clone()
+
+        for key, value in data.items():
+            if isinstance(value, CLRSData):
+                data[key] = data[key].squeeze(dim)
+            elif isinstance(value, str):
+                data[key] = value
+            else:
+                data[key] = squeeze_fn(value)
 
         return data
 
