@@ -221,7 +221,6 @@ def quicksort(A, nb_nodes, A_pos=None, p=None, r=None, data=None, *args, **kwarg
     """Quicksort (Hoare, 1962)."""
 
     def partition(A, A_pos, p, r, data):
-        print("Partitioning", data)
         x = A[r]
         i = p - 1
         for j in range(p, r):
@@ -266,8 +265,8 @@ def quicksort(A, nb_nodes, A_pos=None, p=None, r=None, data=None, *args, **kwarg
 
     if p < r:
         q = partition(A, A_pos, p, r, data)
-        quicksort(A, nb_nodes, A_pos, p, q - 1, data, *args, **kwargs)
-        quicksort(A, nb_nodes, A_pos, q + 1, r, data, *args, **kwargs)
+        quicksort(A, nb_nodes, A_pos, p, q - 1, data)
+        quicksort(A, nb_nodes, A_pos, q + 1, r, data)
 
     if p == 0 and r == len(A) - 1:
         data.set_outputs({
