@@ -159,7 +159,7 @@ def heapsort(A, nb_nodes, *args, **kwargs):
     }, inplace=True)
 
 
-    def max_heapify(A, i, heap_size, ind, phase, data):
+    def max_heapify(A, i, heap_size, ind, phase):
         l = 2 * i + 1
         r = 2 * i + 2
         if l < heap_size and A[l] > A[i]:
@@ -183,11 +183,11 @@ def heapsort(A, nb_nodes, *args, **kwargs):
         }, inplace=True)
 
         if largest != i:
-            max_heapify(A, largest, heap_size, ind, phase, data)
+            max_heapify(A, largest, heap_size, ind, phase)
 
     def build_max_heap(A):
         for i in reversed(range(A.size(0))):
-            max_heapify(A, i, A.size(0), i, 0, data)
+            max_heapify(A, i, A.size(0), i, 0)
 
     build_max_heap(A)
     heap_size = A.size(0)
@@ -209,7 +209,7 @@ def heapsort(A, nb_nodes, *args, **kwargs):
         }, inplace=True)
 
 
-        max_heapify(A, 0, heap_size, i, 2, data) 
+        max_heapify(A, 0, heap_size, i, 2) 
 
     data.set_outputs({
        'pred': probe_array(A_pos.clone())
@@ -217,60 +217,60 @@ def heapsort(A, nb_nodes, *args, **kwargs):
 
     return data
 
-def quicksort(A, nb_nodes, A_pos=None, p=None, r=None, data=None, *args, **kwargs):
+def quicksort(A, nb_nodes, *args, **kwargs):
     """Quicksort (Hoare, 1962)."""
+    
+    data = CLRSData(algorithm="quicksort", *args, **kwargs)
 
-    def partition(A, A_pos, p, r, data):
-        x = A[r]
-        i = p - 1
-        for j in range(p, r):
-            if A[j] <= x:
-                i += 1
-                A[i], A[j] = A[j], A[i]
-                A_pos[i], A_pos[j] = A_pos[j], A_pos[i]
-            
+    data.set_inputs({
+        'key': A
+    }, nb_nodes, inplace=True)
+
+    A_pos = torch.arange(A.size(0))
+    p = 0
+    r = A.size(0) - 1
+
+    def recursive_quicksort(A, A_pos, p, r):
+        def partition(A, A_pos, p, r):
+            x = A[r].item()
+            i = p - 1
+            for j in range(p, r):
+                if A[j] <= x:
+                    i += 1
+                    A[i], A[j] = A[j].item(), A[i].item()
+                    A_pos[i], A_pos[j] = A_pos[j].item(), A_pos[i].item()
+                
+                data.increase_hints({
+                    'pred_h': probe_array(A_pos.clone()),
+                    'p': mask_one(A_pos[p].item(), A.size(0)),
+                    'r': mask_one(A_pos[r].item(), A.size(0)),
+                    'i': mask_one(A_pos[i + 1].item(), A.size(0)),
+                    'j': mask_one(A_pos[j].item(), A.size(0))
+                }, inplace=True)
+
+            A[i + 1], A[r] = A[r].item(), A[i + 1].item()
+            A_pos[i + 1], A_pos[r] = A_pos[r].item(), A_pos[i + 1].item()
+
             data.increase_hints({
                 'pred_h': probe_array(A_pos.clone()),
                 'p': mask_one(A_pos[p].item(), A.size(0)),
                 'r': mask_one(A_pos[r].item(), A.size(0)),
                 'i': mask_one(A_pos[i + 1].item(), A.size(0)),
-                'j': mask_one(A_pos[j].item(), A.size(0))
+                'j': mask_one(A_pos[r].item(), A.size(0))
             }, inplace=True)
 
-        A[i + 1], A[r] = A[r].item(), A[i + 1].item()
-        A_pos[i + 1], A_pos[r] = A_pos[r].item(), A_pos[i + 1].item()
+            return i + 1
 
-        data.increase_hints({
-            'pred_h': probe_array(A_pos.clone()),
-            'p': mask_one(A_pos[p].item(), A.size(0)),
-            'r': mask_one(A_pos[r].item(), A.size(0)),
-            'i': mask_one(A_pos[i + 1].item(), A.size(0)),
-            'j': mask_one(A_pos[r].item(), A.size(0))
-        }, inplace=True)
+        if p < r:
+            q = partition(A, A_pos, p, r)
+            recursive_quicksort(A, A_pos, p, q - 1)
+            recursive_quicksort(A, A_pos, q + 1, r)
 
-        return i + 1
+        if p == 0 and r == len(A) - 1:
+            data.set_outputs({
+                'pred': probe_array(A_pos.clone())
+            }, inplace=True)
 
-    if A_pos is None:
-        A_pos = torch.arange(A.size(0))
-    if p is None:
-        p = 0
-    if r is None:
-        r = A.size(0) - 1
-    if data is None:
-        data = CLRSData(algorithm="quicksort", *args, **kwargs)
+    recursive_quicksort(A, A_pos, p, r)
 
-        data.set_inputs({
-            'key': A
-        }, nb_nodes, inplace=True)
-
-    if p < r:
-        q = partition(A, A_pos, p, r, data)
-        quicksort(A, nb_nodes, A_pos, p, q - 1, data)
-        quicksort(A, nb_nodes, A_pos, q + 1, r, data)
-
-    if p == 0 and r == len(A) - 1:
-        data.set_outputs({
-            'pred': probe_array(A_pos.clone())
-        }, inplace=True)
-        
     return data
