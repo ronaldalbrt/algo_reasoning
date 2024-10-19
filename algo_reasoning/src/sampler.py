@@ -15,7 +15,7 @@
 import torch
 import torch.linalg as LA
 import math
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, Optional
 
 from algo_reasoning.src.data import CLRSData, collate
 
@@ -26,32 +26,10 @@ from algo_reasoning.src.algorithms.carls_vacationD import carls_vacation
 from algo_reasoning.src.algorithms.jet_lagH import jet_lag
 from algo_reasoning.src.algorithms.waterworldI import waterworld
 
+from algo_reasoning.src.algorithms.sorting import insertion_sort, bubble_sort, heapsort, quicksort
+
 
 Algorithm = Callable[..., Any]
-
-def _idx_batched_data(idx: int, batched_data: CLRSData) -> CLRSData:
-    """Get itens at idx for batched data."""
-    inputs_dict = {k: v[idx] for k, v in batched_data.inputs.items()}
-    inputs = CLRSData(**inputs_dict)
-
-    outputs_dict = {k: v[idx] for k, v in batched_data.outputs.items()}
-    outputs = CLRSData(**outputs_dict)
-
-    hints_dict = {k: v[idx] for k, v in batched_data.hints.items()}
-    hints = CLRSData(**hints_dict)
-
-    algorithm = batched_data.algorithm
-    length = batched_data.length[idx]
-    max_length = torch.max(length).long().item()
-
-    return CLRSData(
-        algorithm=algorithm,
-        inputs=inputs,
-        outputs=outputs,
-        hints=hints,
-        max_length=max_length,
-        length=length,
-    )
 
 class BaseAlgorithmSampler:
     """Sampler abstract base class."""
@@ -243,3 +221,42 @@ class WaterworldSampler(BaseAlgorithmSampler):
         ap = torch.randint(101, (nb_nodes,), generator=self._generator)
 
         return [n, m, ap, nb_nodes]
+    
+# Sorting Algorithms Samplers
+class BaseSortingSampler(BaseAlgorithmSampler):
+    """Sorting Algorithms Sampler."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _sample_data(self, 
+                    nb_nodes: int,
+                    low: float = 0.0,
+                    high: int = 1.0):
+
+        A = torch.randint(1, 100, (nb_nodes,), generator=self._generator)
+
+        return [A, nb_nodes]
+class InsertionSortSampler(BaseSortingSampler):
+    """Insertion Sort Sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = insertion_sort
+        super().__init__(algorithm, *args, **kwargs)
+
+class BubbleSortSampler(BaseSortingSampler):
+    """Bubble Sort Sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = bubble_sort
+        super().__init__(algorithm, *args, **kwargs)
+
+class HeapSortSampler(BaseSortingSampler):
+    """Heap Sort Sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = heapsort
+        super().__init__(algorithm, *args, **kwargs)
+
+class QuickSortSampler(BaseSortingSampler):
+    """Quick Sort Sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = quicksort
+        super().__init__(algorithm, *args, **kwargs)
+
