@@ -27,6 +27,7 @@ from algo_reasoning.src.algorithms.jet_lagH import jet_lag
 from algo_reasoning.src.algorithms.waterworldI import waterworld
 
 from algo_reasoning.src.algorithms.sorting import insertion_sort, bubble_sort, heapsort, quicksort
+from algo_reasoning.src.algorithms.greedy import activity_selector, task_scheduling
 
 
 Algorithm = Callable[..., Any]
@@ -233,7 +234,7 @@ class BaseSortingSampler(BaseAlgorithmSampler):
                     low: float = 0.0,
                     high: int = 1.0):
 
-        A = torch.randint(1, 100, (nb_nodes,), generator=self._generator)
+        A = torch.rand((nb_nodes,), generator=self._generator) * (high - low) + low 
 
         return [A, nb_nodes]
 class InsertionSortSampler(BaseSortingSampler):
@@ -260,3 +261,35 @@ class QuickSortSampler(BaseSortingSampler):
         algorithm = quicksort
         super().__init__(algorithm, *args, **kwargs)
 
+
+# Greedy Algorithms Samplers
+class ActivitySelectionSampler(BaseAlgorithmSampler):
+    """Activity Selection Sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = activity_selector
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self, 
+                    nb_nodes: int,
+                    low: float = 0.,
+                    high: float = 1.,):
+
+        arr_1 = torch.rand((nb_nodes,), generator=self._generator) * (high - low) + low 
+        arr_2 = torch.rand((nb_nodes,), generator=self._generator) * (high - low) + low
+
+        return [torch.minimum(arr_1, arr_2), torch.maximum(arr_1, arr_2), nb_nodes]
+    
+class TaskSchedulingSampler(BaseAlgorithmSampler):
+    def __init__(self, *args, **kwargs):
+        algorithm = task_scheduling
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self, 
+                    nb_nodes: int,
+                    low: float = 0.,
+                    high: float = 1.,):
+
+        d = torch.randint(high=nb_nodes, size=(nb_nodes,), generator=self._generator) + 1
+        w = torch.rand((nb_nodes,), generator=self._generator) * (high - low) + low
+
+        return [d, w, nb_nodes]
