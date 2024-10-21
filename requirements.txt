@@ -1,7 +1,6 @@
 torch
 torch_geometric
 torcheval
-dm-clrs
 lightning
 tensorboard
 torchmetrics

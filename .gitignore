@@ -189,3 +189,5 @@ tmp/
 checkpoints/
 
 .DS_Store
+
+.vscode/
