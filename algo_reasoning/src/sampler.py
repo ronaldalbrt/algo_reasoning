@@ -28,6 +28,8 @@ from algo_reasoning.src.algorithms.waterworldI import waterworld
 
 from algo_reasoning.src.algorithms.sorting import insertion_sort, bubble_sort, heapsort, quicksort
 from algo_reasoning.src.algorithms.greedy import activity_selector, task_scheduling
+from algo_reasoning.src.algorithms.dynamic_programming import matrix_chain_order, lcs_length, optimal_bst
+from algo_reasoning.src.algorithms.searching import minimum, binary_search, quickselect
 
 
 Algorithm = Callable[..., Any]
@@ -232,11 +234,12 @@ class BaseSortingSampler(BaseAlgorithmSampler):
     def _sample_data(self, 
                     nb_nodes: int,
                     low: float = 0.0,
-                    high: int = 1.0):
+                    high: float = 1.0):
 
         A = torch.rand((nb_nodes,), generator=self._generator) * (high - low) + low 
 
         return [A, nb_nodes]
+
 class InsertionSortSampler(BaseSortingSampler):
     """Insertion Sort Sampler."""
     def __init__(self, *args, **kwargs):
@@ -293,3 +296,72 @@ class TaskSchedulingSampler(BaseAlgorithmSampler):
         w = torch.rand((nb_nodes,), generator=self._generator) * (high - low) + low
 
         return [d, w, nb_nodes]
+    
+# Dynamic Programming Algorithms Samplers
+class MatrixChainOrderSampler(BaseSortingSampler):
+    def __init__(self, *args, **kwargs):
+        algorithm = matrix_chain_order
+        super().__init__(algorithm, *args, **kwargs)
+
+class LCSLengthSampler(BaseAlgorithmSampler):
+
+    def __init__(self, *args, **kwargs):
+        algorithm = lcs_length
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self, 
+                    nb_nodes: int,
+                    chars: int = 4):
+        length = nb_nodes // 2
+        length_2 = nb_nodes - length
+        
+        x = torch.randint(high=chars, size=(length,), generator=self._generator)
+        y = torch.randint(high=chars, size=(length_2,), generator=self._generator)
+
+        return [x, y, nb_nodes]
+    
+class OptimalBSTSampler(BaseAlgorithmSampler):
+    def __init__(self, *args, **kwargs):
+        algorithm = optimal_bst
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self, 
+                    nb_nodes: int):
+        
+        length = nb_nodes - 1 
+
+        tot_length = length + (length + 1)
+        arr = torch.rand((tot_length,), generator=self._generator)
+        arr /= torch.sum(arr)
+        
+        p = arr[:length]
+        q = arr[length:]
+
+        return [p, q, nb_nodes]
+    
+# Searching Algorithms Samplers
+class MinimumSampler(BaseSortingSampler):
+    def __init__(self, *args, **kwargs):
+        algorithm = minimum
+        super().__init__(algorithm, *args, **kwargs)
+
+class BinarySearchSampler(BaseAlgorithmSampler):
+    def __init__(self, *args, **kwargs):
+        algorithm = binary_search
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self, 
+                    nb_nodes: int,
+                    low: float = 0.,
+                    high: float = 1.,):
+
+        A = torch.rand((nb_nodes,), generator=self._generator) * (high - low) + low 
+        x = torch.rand((1,), generator=self._generator) * (high - low) + low
+
+        return [x.item(), A, nb_nodes]
+
+class QuickselectSampler(BaseSortingSampler):
+    def __init__(self, *args, **kwargs):
+        algorithm = quickselect
+        super().__init__(algorithm, *args, **kwargs)
+
