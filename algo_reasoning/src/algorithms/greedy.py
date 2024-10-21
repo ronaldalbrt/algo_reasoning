@@ -34,47 +34,47 @@ def activity_selector(s, f, nb_nodes, *args, **kwargs):
     """Activity selection (Gavril, 1972)."""
     data = CLRSData(algorithm="activity_selector", *args, **kwargs)
     
-    data = data.set_inputs({
+    data.set_inputs({
         's': s.clone(),
         'f': f.clone(),
-    }, nb_nodes)
+    }, nb_nodes, inplace=True)
 
     A_pos = torch.arange(s.size(0))
     A = torch.zeros(s.shape[0])
 
-    data = data.increase_hints({
+    data.increase_hints({
         'pred_h': probe_array(A_pos.clone()),
         'selected_h': A.clone(),
         'm': mask_one(0, A_pos.size(0)),
         'k': mask_one(0, A_pos.size(0))
-    })
+    }, inplace=True)
     
     ind = torch.argsort(f)
     A[ind[0]] = 1
     k = ind[0].item()
 
-    data = data.increase_hints({
+    data.increase_hints({
         'pred_h': probe_array(A_pos.clone()),
         'selected_h': A.clone(),
         'm': mask_one(ind[0], A_pos.size(0)),
         'k': mask_one(k, A_pos.size(0))
-    })
+    }, inplace=True)
 
     for m in range(1, s.shape[0]):
         if s[ind[m]].item() >= f[k].item():
             A[ind[m]] = 1
             k = ind[m].item()
         
-        data = data.increase_hints({
+        data.increase_hints({
             'pred_h': probe_array(A_pos.clone()),
             'selected_h': A.clone(),
             'm': mask_one(ind[m], A_pos.size(0)),
             'k': mask_one(k, A_pos.size(0))
-        })
+        }, inplace=True)
 
-    data = data.set_outputs({
+    data.set_outputs({
         'selected': A.clone(),
-    })
+    }, inplace=True)
 
     return data
 
@@ -82,46 +82,46 @@ def task_scheduling(d, w, nb_nodes, *args, **kwargs):
     """Task scheduling (Lawler, 1985)."""
     data = CLRSData(algorithm="task_scheduling", *args, **kwargs)
     
-    data = data.set_inputs({
+    data.set_inputs({
         's': d.clone(),
         'f': w.clone(),
-    }, nb_nodes)
+    }, nb_nodes, inplace=True)
 
     A_pos = torch.arange(d.shape[0])
     A = torch.zeros(d.shape[0])
     
-    data = data.increase_hints({
+    data.increase_hints({
         'pred_h': probe_array(A_pos.clone()),
         'selected_h': A.clone(),
         'i': mask_one(0, A_pos.size(0)),
         't': torch.tensor(0)
-    })
+    }, inplace=True)
 
     ind = torch.argsort(-w)
     A[ind[0]] = 1
     t = 1
 
-    data = data.increase_hints({
+    data.increase_hints({
         'pred_h': probe_array(A_pos.clone()),
         'selected_h': A.clone(),
         'i': mask_one(ind[0], A_pos.size(0)),
         't': torch.tensor(t)
-    })
+    }, inplace=True)
 
     for i in range(1, d.shape[0]):
         if t < d[ind[i]].item():
             A[ind[i]] = 1
             t += 1
 
-        data = data.increase_hints({
+        data.increase_hints({
             'pred_h': probe_array(A_pos.clone()),
             'selected_h': A.clone(),
             'i': mask_one(ind[i], A_pos.size(0)),
             't': torch.tensor(t)
-        })
+        }, inplace=True)
     
-    data = data.set_outputs({
+    data.set_outputs({
         'selected': A.clone(),
-    })
+    }, inplace=True)
 
     return data

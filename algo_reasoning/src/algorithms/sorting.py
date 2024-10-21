@@ -34,17 +34,17 @@ def insertion_sort(A, nb_nodes, *args, **kwargs):
     """Insertion sort."""
     data = CLRSData(algorithm="insertion_sort", *args, **kwargs)
     
-    data = data.set_inputs({
-        'key': A
-    }, nb_nodes)
+    data.set_inputs({
+        'key': A.clone()
+    }, nb_nodes, inplace=True)
 
     A_pos = torch.arange(A.size(0))
 
-    data = data.increase_hints({
+    data.increase_hints({
         'pred_h': probe_array(A_pos.clone()),
         'i': mask_one(0, A.size(0)),
         'j': mask_one(0, A.size(0))
-    })
+    }, inplace=True)
 
     for j in range(1, A.size(0)):
         key = A[j].item()
@@ -58,55 +58,50 @@ def insertion_sort(A, nb_nodes, *args, **kwargs):
         stor_pos = A_pos[i + 1].item()
         A_pos[i + 1] = j
 
-        data = data.increase_hints({
+        data.increase_hints({
             'pred_h': probe_array(A_pos.clone()),
             'i': mask_one(stor_pos, A.size(0)),
             'j': mask_one(j, A.size(0))
-        })
+        }, inplace=True)
     
-    data = data.set_outputs({
+    data.set_outputs({
         'pred': probe_array(A_pos.clone()),
-    })
+    }, inplace=True)
 
     return data
 
-
+# TODO: Fix Bubble Sort
 def bubble_sort(A, nb_nodes, *args, **kwargs):
     """Bubble sort."""
     data = CLRSData(algorithm="insertion_sort", *args, **kwargs)
     
-    data = data.set_inputs({
-        'key': A
-    }, nb_nodes)
+    data.set_inputs({
+        'key': A.clone()
+    }, nb_nodes, inplace=True)
 
     A_pos = torch.arange(A.size(0))
 
-    data = data.increase_hints({
+    data.increase_hints({
         'pred_h': probe_array(A_pos.clone()),
         'i': mask_one(0, A.size(0)),
         'j': mask_one(0, A.size(0))
-    })
+    }, inplace=True)
 
     for i in range(A.size(0) - 1):
         for j in reversed(range(i + 1, A.size(0))):
             if A[j] < A[j - 1]:
-                tmp = A[j].item()
-                A[j] = A[j - 1].item()
-                A[j - 1] = tmp
+                A[j], A[j - 1] = A[j - 1].item(), A[j].item()
+                A_pos[j], A_pos[j - 1] = A_pos[j - 1].item(), A_pos[j].item()
 
-                tmp = A_pos[j].item()
-                A_pos[j] = A_pos[j - 1].item()
-                A_pos[j - 1] = tmp
-
-                data = data.increase_hints({
+                data.increase_hints({
                     'pred_h': probe_array(A_pos.clone()),
                     'i': mask_one(A_pos[i], A.size(0)),
                     'j': mask_one(A_pos[j], A.size(0))
-                })
+                }, inplace=True)
 
-    data = data.set_outputs({
+    data.set_outputs({
        'pred': probe_array(A_pos.clone())
-    })
+    }, inplace=True)
 
     return data
 
@@ -116,7 +111,7 @@ def heapsort(A, nb_nodes, *args, **kwargs):
     data = CLRSData(algorithm="heapsort", *args, **kwargs)
     
     data.set_inputs({
-        'key': A
+        'key': A.clone()
     }, nb_nodes, inplace=True)
 
     A_pos = torch.arange(A.size(0))
@@ -196,7 +191,7 @@ def quicksort(A, nb_nodes, *args, **kwargs):
     data = CLRSData(algorithm="quicksort", *args, **kwargs)
 
     data.set_inputs({
-        'key': A
+        'key': A.clone()
     }, nb_nodes, inplace=True)
 
     A_pos = torch.arange(A.size(0))
