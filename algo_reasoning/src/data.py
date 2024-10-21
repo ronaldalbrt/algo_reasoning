@@ -135,7 +135,7 @@ class CLRSData(Data):
         data = self.clone() if not inplace else self
 
         for key, value in data.items():
-            if isinstance(value, str):
+            if isinstance(value, str) or isinstance(value, int) or isinstance(value, float):
                 data[key] = value
             else:
                 data[key] = value.unsqueeze(dim)
@@ -152,7 +152,7 @@ class CLRSData(Data):
         for key, value in data.items():
             if isinstance(value, CLRSData):
                 data[key] = data[key].squeeze(dim)
-            elif isinstance(value, str):
+            elif isinstance(value, str) or isinstance(value, int) or isinstance(value, float):
                 data[key] = value
             else:
                 data[key] = squeeze_fn(value)
