@@ -70,7 +70,6 @@ def insertion_sort(A, nb_nodes, *args, **kwargs):
 
     return data
 
-# TODO: Fix Bubble Sort
 def bubble_sort(A, nb_nodes, *args, **kwargs):
     """Bubble sort."""
     data = CLRSData(algorithm="insertion_sort", *args, **kwargs)
@@ -93,11 +92,11 @@ def bubble_sort(A, nb_nodes, *args, **kwargs):
                 A[j], A[j - 1] = A[j - 1].item(), A[j].item()
                 A_pos[j], A_pos[j - 1] = A_pos[j - 1].item(), A_pos[j].item()
 
-                data.increase_hints({
-                    'pred_h': probe_array(A_pos.clone()),
-                    'i': mask_one(A_pos[i], A.size(0)),
-                    'j': mask_one(A_pos[j], A.size(0))
-                }, inplace=True)
+            data.increase_hints({
+                'pred_h': probe_array(A_pos.clone()),
+                'i': mask_one(A_pos[i], A.size(0)),
+                'j': mask_one(A_pos[j], A.size(0))
+            }, inplace=True)
 
     data.set_outputs({
        'pred': probe_array(A_pos.clone())
