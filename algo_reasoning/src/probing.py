@@ -12,7 +12,7 @@ def probe_array(A_pos):
 def array_cat(A, n):
     """Constructs an `array_cat` probe."""
     assert n > 0
-    probe = torch.zeros((A.sizes(0), n))
+    probe = torch.zeros((A.size(0), n))
 
     for i in range(A.size(0)):
         probe[i, A[i].item()] = 1

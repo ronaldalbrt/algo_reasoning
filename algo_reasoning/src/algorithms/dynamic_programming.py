@@ -90,7 +90,7 @@ def lcs_length(x, y, nb_nodes, *args, **kwargs):
 
     data.set_inputs({
         'string': strings_id(x_pos, y_pos),
-        'key': array_cat(torch.concatenate(x.clone(), y.clone), 4)
+        'key': array_cat(torch.concatenate((x.clone(), y.clone())), 4)
     }, nb_nodes, inplace=True)
 
     for i in range(x.size(0)):
