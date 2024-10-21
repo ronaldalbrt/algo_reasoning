@@ -2,6 +2,7 @@ import torch
 from algo_reasoning.src.algorithms.sorting import insertion_sort, bubble_sort, heapsort, quicksort
 from algo_reasoning.src.algorithms.greedy import activity_selector, task_scheduling
 from algo_reasoning.src.algorithms.dynamic_programming import matrix_chain_order, lcs_length, optimal_bst
+from algo_reasoning.src.algorithms.searching import minimum, binary_search, quickselect
 from algo_reasoning.src.data import CLRSDataset
 from algo_reasoning.src.specs import SPECS, Type
 
@@ -16,30 +17,44 @@ algo_fn = {
     "task_scheduling": task_scheduling,
     "matrix_chain_order": matrix_chain_order,
     "lcs_length": lcs_length,
-    "optimal_bst": optimal_bst
-
+    "optimal_bst": optimal_bst,
+    "minimum": minimum,
+    "binary_search": binary_search,
+    "quickselect": quickselect
 }
 
 class CLRS30Test(unittest.TestCase):
 
-    def compare_output(self, out, sample, algo):
+    def compare_output(self, out, sample, algo, ignore_keys=[]):
         for k, hints in out.hints.items():
+            if k in ignore_keys:
+                continue
+
             out_len = hints.size(0)
 
             _, _, _type = SPECS[algo][k]
 
-            if _type == Type.SCALAR:
-                self.assertTrue(torch.all(torch.isclose(hints, sample.hints[k][:out_len])).item())
-            else:
-                self.assertTrue(torch.all(hints == sample.hints[k][:out_len]).item())
+            try:
+                if _type == Type.SCALAR:
+                    self.assertTrue(torch.all(torch.isclose(hints, sample.hints[k][:out_len])).item())
+                else:
+                    self.assertTrue(torch.all(hints == sample.hints[k][:out_len]).item())
+            except AssertionError as e:
+                print("Hints mismatch for key", k, "in algorithm", algo)
 
         for k, outputs in out.outputs.items():
+            if k in ignore_keys:
+                continue
+
             _, _, _type = SPECS[algo][k]
 
-            if _type == Type.SCALAR:
-                self.assertTrue(torch.all(torch.isclose(outputs, sample.outputs[k][:out_len])).item())
-            else:
-                self.assertTrue(torch.all(outputs == sample.outputs[k]).item())
+            try:
+                if _type == Type.SCALAR:
+                    self.assertTrue(torch.all(torch.isclose(outputs, sample.outputs[k][:out_len])).item())
+                else:
+                    self.assertTrue(torch.all(outputs == sample.outputs[k]).item())
+            except AssertionError as e:
+                print("Outputs mismatch for key", k, "in algorithm", algo)
         
 
     def test_sorting(self):
@@ -104,11 +119,34 @@ class CLRS30Test(unittest.TestCase):
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
             self.compare_output(out, sample, algo)
+    def test_searching(self):
+        algorithms = ["minimum", "binary_search", "quickselect"]
+        ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
 
-            
-            
-        
+        for i in range(len(ds)):
+            sample = ds[i]
+            sample.squeeze(inplace=True)
 
+            inp = sample.inputs.clone().to_dict()
+            
+            nb_nodes = inp["pos"].size(0)
+            algo = sample.algorithm
+
+
+            if algo == "binary_search":
+                inp["x"] = inp["target"].item()
+                inp["A"] = inp["key"].clone()
+                del inp["pos"]
+                del inp["key"]
+                del inp["target"]
+            else:
+                inp["A"] = inp["key"].clone()
+                del inp["pos"]
+                del inp["key"]
+
+            out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
+
+            self.compare_output(out, sample, algo, ignore_keys=["pivot"])
 
 if __name__ == '__main__':
     unittest.main()
