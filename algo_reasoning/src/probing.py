@@ -80,6 +80,15 @@ def strings_pair_cat(pair_probe, nb_classes):
             probe_ret[j_1 + n, x, nb_classes] = OutputClass.MASKED
     return probe_ret
 
+def strings_pi(T_pos, P_pos, pi):
+    """Constructs a `strings_pi` probe."""
+    probe = torch.arange(T_pos.size(0) + P_pos.size(0))
+    
+    for j in range(P_pos.size(0)):
+        probe[T_pos.size(0) + P_pos[j]] = T_pos.size(0) + pi[P_pos[j]]
+    
+    return probe
+
 def strings_pred(T_pos, P_pos):
     """Constructs a `strings_pred` probe."""
     probe = torch.arange(T_pos.size(0) + P_pos.size(0))

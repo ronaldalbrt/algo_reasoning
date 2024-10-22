@@ -1,11 +1,13 @@
 import torch
+from algo_reasoning.src.data import CLRSDataset
+from algo_reasoning.src.specs import SPECS, Type
+
 from algo_reasoning.src.algorithms.sorting import insertion_sort, bubble_sort, heapsort, quicksort
 from algo_reasoning.src.algorithms.greedy import activity_selector, task_scheduling
 from algo_reasoning.src.algorithms.dynamic_programming import matrix_chain_order, lcs_length, optimal_bst
 from algo_reasoning.src.algorithms.searching import minimum, binary_search, quickselect
 from algo_reasoning.src.algorithms.divide_and_conquer import find_maximum_subarray_kadane
-from algo_reasoning.src.data import CLRSDataset
-from algo_reasoning.src.specs import SPECS, Type
+from algo_reasoning.src.algorithms.strings import naive_string_matcher, kmp_matcher
 
 import unittest
 
@@ -22,7 +24,9 @@ algo_fn = {
     "minimum": minimum,
     "binary_search": binary_search,
     "quickselect": quickselect,
-    "find_maximum_subarray_kadane": find_maximum_subarray_kadane
+    "find_maximum_subarray_kadane": find_maximum_subarray_kadane,
+    "naive_string_matcher": naive_string_matcher, 
+    "kmp_matcher": kmp_matcher
 }
 
 class CLRS30Test(unittest.TestCase):
@@ -103,9 +107,8 @@ class CLRS30Test(unittest.TestCase):
 
             self.compare_output(out, sample, algo)
 
-    # TODO: Implement testing for LCS length
     def test_dynamic_programming(self):
-        algorithms = ["matrix_chain_order", "optimal_bst"]
+        algorithms = ["matrix_chain_order", "lcs_length", "optimal_bst"]
         ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
 
         for i in range(len(ds)):
@@ -118,12 +121,22 @@ class CLRS30Test(unittest.TestCase):
             algo = sample.algorithm
 
             del inp["pos"]
+
             if algo == "optimal_bst":
                 inp["p"] = inp["p"][:-1]
+            elif algo == "lcs_length":
+                strings = torch.argmax(inp["key"].clone(), dim=1)
+                strings_id = inp["string"].clone()
+                inp["x"] = strings[strings_id == 0]
+                inp["y"] = strings[strings_id == 1]
+
+                del inp["key"]
+                del inp["string"]
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
             self.compare_output(out, sample, algo)
+
     def test_searching(self):
         algorithms = ["minimum", "binary_search", "quickselect"]
         ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
@@ -138,22 +151,22 @@ class CLRS30Test(unittest.TestCase):
             algo = sample.algorithm
 
 
+            del inp["pos"]
             if algo == "binary_search":
                 inp["x"] = inp["target"].item()
                 inp["A"] = inp["key"].clone()
-                del inp["pos"]
+
                 del inp["key"]
                 del inp["target"]
             else:
                 inp["A"] = inp["key"].clone()
-                del inp["pos"]
+
                 del inp["key"]
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
             self.compare_output(out, sample, algo, ignore_keys=["pivot"])
 
-    # TODO: Download data for find_maximum_subarray for testing
     def test_divide_and_conquer(self):
         algorithms = ["find_maximum_subarray_kadane"]
         ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
@@ -170,6 +183,33 @@ class CLRS30Test(unittest.TestCase):
             inp["A"] = inp["key"].clone()
             del inp["pos"]
             del inp["key"]
+
+            out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
+
+            self.compare_output(out, sample, algo)
+
+    def test_strings(self):
+        algorithms = ["naive_string_matcher", "kmp_matcher"]
+
+        ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
+
+        for i in range(len(ds)):
+            sample = ds[i]
+            sample.squeeze(inplace=True)
+
+            inp = sample.inputs.clone().to_dict()
+            
+            nb_nodes = inp["pos"].size(0)
+            algo = sample.algorithm
+
+            strings = torch.argmax(inp["key"].clone(), dim=1)
+            strings_id = inp["string"].clone()
+            inp["T"] = strings[strings_id == 0]
+            inp["P"] = strings[strings_id == 1]
+
+            del inp["pos"]
+            del inp["key"]
+            del inp["string"]
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
