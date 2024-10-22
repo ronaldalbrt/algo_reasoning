@@ -153,7 +153,7 @@ carls_vacation_specs = {
 def carls_vacation(x, y, height1, height2, nb_nodes, *args, **kwargs):
     data = CLRSData(algorithm='carls_vacation', *args, **kwargs)
     
-    data = data.set_inputs({
+    data.set_inputs({
         'x': x,
         'y': y,
         'height1': torch.tensor(height1),
@@ -168,7 +168,7 @@ def carls_vacation(x, y, height1, height2, nb_nodes, *args, **kwargs):
     top1 = torch.cat((torch.mean(faces1, dim=0), torch.tensor([height1])), dim=0)
     top2 = torch.cat((torch.mean(faces2, dim=0), torch.tensor([height2])), dim=0)
 
-    data = data.increase_hints({
+    data.increase_hints({
         'faces1_x': faces1[:, 0],
         'faces1_y': faces1[:, 1],
         'faces2_x': faces2[:, 0],
@@ -244,7 +244,7 @@ def carls_vacation(x, y, height1, height2, nb_nodes, *args, **kwargs):
     aranged_selected_segment1 = torch.isin(aranged_nb_nodes, torch.tensor([(selected_segment1 % nb_nodes), ((selected_segment1 + 1) % nb_nodes)]))
     aranged_selected_segment2 = torch.isin(aranged_nb_nodes, torch.tensor([(selected_segment2 % nb_nodes), ((selected_segment2 + 1) % nb_nodes)]))
 
-    data = data.increase_hints({
+    data.increase_hints({
         'faces1_x': faces1[:, 0],
         'faces1_y': faces1[:, 1],
         'faces2_x': faces2[:, 0],
@@ -257,7 +257,7 @@ def carls_vacation(x, y, height1, height2, nb_nodes, *args, **kwargs):
         'selected_segment2': aranged_selected_segment2
     })
 
-    data = data.set_outputs({
+    data.set_outputs({
         'distance': torch.tensor(min_distance)
     })
 

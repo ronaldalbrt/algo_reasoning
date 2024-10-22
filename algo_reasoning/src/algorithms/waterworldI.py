@@ -14,11 +14,10 @@ waterworld_specs = {
     'area_sums': (Stage.HINT, Location.GRAPH, Type.SCALAR)
 }
 
-# TODO: REVIEW SAMPLING NUMBER OF NODES DO NOT MATCH
 def waterworld(n, m, area_percentages, nb_nodes, *args, **kwargs):
     data = CLRSData(algorithm='waterworld', *args, **kwargs)
     
-    data = data.set_inputs({
+    data.set_inputs({
         'n': torch.tensor(n),
         'm': torch.tensor(m),
         'area_percentages': area_percentages
@@ -27,21 +26,21 @@ def waterworld(n, m, area_percentages, nb_nodes, *args, **kwargs):
     area_sums = 0
     total_area = n*m
 
-    data = data.increase_hints({
+    data.increase_hints({
         'total_area': torch.tensor(total_area),
         'area_sums': torch.tensor(area_sums)
     })
     for i in range(n*m):
         area_sums += area_percentages[i].item()
 
-        data = data.increase_hints({
+        data.increase_hints({
             'total_area': torch.tensor(total_area),
             'area_sums': torch.tensor(area_sums)
         })
         
     surface_percentage = area_sums/total_area
 
-    data = data.set_outputs({
+    data.set_outputs({
         'surface_percentage': torch.tensor(surface_percentage)
     })
 

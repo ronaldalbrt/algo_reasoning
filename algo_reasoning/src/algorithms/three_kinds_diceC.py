@@ -52,7 +52,7 @@ def jarvis_march(xs, ys):
 def three_kinds_dice(values_D1, values_D2, nb_nodes, *args, **kwargs):
     data = CLRSData(algorithm="three_kinds_dice", *args, **kwargs)
     
-    data = data.set_inputs({
+    data.set_inputs({
         'values_D1': torch.bincount(values_D1, minlength=nb_nodes),
         'values_D2':  torch.bincount(values_D2, minlength=nb_nodes)
     }, nb_nodes)
@@ -63,7 +63,7 @@ def three_kinds_dice(values_D1, values_D2, nb_nodes, *args, **kwargs):
 
     score_D1 = torch.tensor([(torch.sum(v > values_D1) + torch.sum(v == values_D1)/2).item()/values_D1.size(0) for v in torch.arange(start=1, end=nb_nodes + 1)])
     score_D2 = torch.tensor([(torch.sum(v > values_D2) + torch.sum(v == values_D2)/2).item()/values_D2.size(0) for v in torch.arange(start=1, end=nb_nodes + 1)])
-    data = data.increase_hints({
+    data.increase_hints({
         'score_D1': score_D1,
         'score_D2': score_D2,
         'in_hull': torch.zeros(nb_nodes)
@@ -73,7 +73,7 @@ def three_kinds_dice(values_D1, values_D2, nb_nodes, *args, **kwargs):
     in_hull = torch.zeros(nb_nodes)
     in_hull[min_value:max_value] = in_hull_output
 
-    data = data.increase_hints({
+    data.increase_hints({
         'score_D1': score_D1,
         'score_D2': score_D2,
         'in_hull': in_hull
@@ -122,7 +122,7 @@ def three_kinds_dice(values_D1, values_D2, nb_nodes, *args, **kwargs):
         scores = torch.flip(scores, dims=[0, 1])
         scores = 1 - scores
 
-    data = data.set_outputs({
+    data.set_outputs({
         'output_score_D1': output_score_D1,
         'output_score_D2': output_score_D2
     })

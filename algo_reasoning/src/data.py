@@ -54,7 +54,7 @@ class CLRSData(Data):
         if pos_generator is not None:
             self.pos_generator = pos_generator
 
-    def set_inputs(self, inputs, nb_nodes, inplace: bool = False):
+    def set_inputs(self, inputs, nb_nodes, inplace: bool = True):
         """Set the inputs of the algorithm being executed."""
         data = self.clone() if not inplace else self
 
@@ -75,7 +75,7 @@ class CLRSData(Data):
         if not inplace:
             return data
 
-    def set_outputs(self, outputs, inplace: bool = False):
+    def set_outputs(self, outputs, inplace: bool = True):
         """Set the outputs of the algorithm being executed."""
         data = self.clone() if not inplace else self
 
@@ -88,7 +88,7 @@ class CLRSData(Data):
         if not inplace:
             return data
 
-    def increase_hints(self, hints, inplace: bool = False):
+    def increase_hints(self, hints, inplace: bool = True):
         """Set the hints of the algorithm being executed."""
         data = self.clone() if not inplace else self
         
