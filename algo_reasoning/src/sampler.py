@@ -30,7 +30,7 @@ from algo_reasoning.src.algorithms.sorting import insertion_sort, bubble_sort, h
 from algo_reasoning.src.algorithms.greedy import activity_selector, task_scheduling
 from algo_reasoning.src.algorithms.dynamic_programming import matrix_chain_order, lcs_length, optimal_bst
 from algo_reasoning.src.algorithms.searching import minimum, binary_search, quickselect
-
+from algo_reasoning.src.algorithms.divide_and_conquer import find_maximum_subarray_kadane
 
 Algorithm = Callable[..., Any]
 
@@ -365,3 +365,16 @@ class QuickselectSampler(BaseSortingSampler):
         algorithm = quickselect
         super().__init__(algorithm, *args, **kwargs)
 
+# Divide and Conquer Algorithms Samplers
+
+class MaximumSubarraySampler(BaseSortingSampler):
+    def __init__(self, *args, **kwargs):
+        algorithm = find_maximum_subarray_kadane
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self, 
+                    nb_nodes: int,
+                    low: float = -1.0,
+                    high: float = 1.0):
+        
+        return super()._sample_data(nb_nodes, low, high)
