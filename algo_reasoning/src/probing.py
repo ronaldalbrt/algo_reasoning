@@ -27,6 +27,12 @@ def mask_one(i, n):
     probe[i] = 1
     return probe
 
+def graph(A):
+    """Constructs a `graph` probe."""
+    probe = ((A + torch.eye(A.size(0))) != 0) * 1.0
+
+    return probe
+
 
 def heap(A_pos, heap_size):
     """Constructs a `heap` probe."""

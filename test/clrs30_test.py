@@ -9,6 +9,7 @@ from algo_reasoning.src.algorithms.searching import minimum, binary_search, quic
 from algo_reasoning.src.algorithms.divide_and_conquer import find_maximum_subarray_kadane
 from algo_reasoning.src.algorithms.strings import naive_string_matcher, kmp_matcher
 from algo_reasoning.src.algorithms.geometry import segments_intersect, graham_scan, jarvis_march
+from algo_reasoning.src.algorithms.graphs import dfs
 
 import unittest
 
@@ -30,12 +31,29 @@ algo_fn = {
     "kmp_matcher": kmp_matcher, 
     "segments_intersect": segments_intersect,
     "graham_scan": graham_scan,
-    "jarvis_march": jarvis_march
+    "jarvis_march": jarvis_march,
+    "dfs": dfs
 }
 
 class CLRS30Test(unittest.TestCase):
 
     def compare_output(self, out, sample, algo, ignore_keys=[]):
+        for k, inputs in out.inputs.items():
+            if k in ignore_keys:
+                continue
+            
+            _, _, _type = SPECS[algo][k]
+
+            if _type == Type.SCALAR:
+                assertion_tensor = torch.isclose(inputs, sample.inputs[k], rtol=1e-5, atol=1e-6)
+            else:
+                assertion_tensor = (inputs == sample.inputs[k])
+
+            self.assertTrue(
+                    torch.all(assertion_tensor).item(),
+                    msg=f"Key: {k}, Algo: {algo}, Inputs: {inputs}, Tensors do not agree at indexes: {(~assertion_tensor).nonzero()}"
+                )
+            
         for k, hints in out.hints.items():
             if k in ignore_keys:
                 continue
@@ -45,12 +63,13 @@ class CLRS30Test(unittest.TestCase):
             _, _, _type = SPECS[algo][k]
 
             if _type == Type.SCALAR:
-                self.assertTrue(
-                    torch.all(torch.isclose(hints, sample.hints[k][:out_len], rtol=1e-5, atol=1e-6)).item(),
-                    msg=f"Key: {k}, Algo: {algo}, Hints: {hints}, Sample: {sample.hints[k][:out_len]}")
+                assertion_tensor = torch.isclose(hints, sample.hints[k][:out_len], rtol=1e-5, atol=1e-6)
             else:
-                self.assertTrue(torch.all(hints == sample.hints[k][:out_len]).item(),
-                    msg=f"Key: {k}, Algo: {algo}, Hints: {hints}, Sample: {sample.hints[k][:out_len]}")
+                assertion_tensor = (hints == sample.hints[k][:out_len])
+            
+            self.assertTrue(
+                    torch.all(assertion_tensor).item(),
+                    msg=f"Key: {k}, Algo: {algo}, Tensors do not agree at indexes: {(~assertion_tensor).nonzero()}")
 
         for k, outputs in out.outputs.items():
             if k in ignore_keys:
@@ -59,14 +78,13 @@ class CLRS30Test(unittest.TestCase):
             _, _, _type = SPECS[algo][k]
 
             if _type == Type.SCALAR:
-                self.assertTrue(
-                    torch.all(torch.isclose(outputs, sample.outputs[k][:out_len], rtol=1e-5, atol=1e-6)).item(),
-                    msg=f"Key: {k}, Algo: {algo}, Outputs: {outputs}, Sample: {sample.outputs[k]}"
-                )
+                assertion_tensor = torch.isclose(outputs, sample.outputs[k], rtol=1e-5, atol=1e-6)
             else:
-                self.assertTrue(
-                    torch.all(outputs == sample.outputs[k]).item(),
-                    msg=f"Key: {k}, Algo: {algo}, Outputs: {outputs}, Sample: {sample.outputs[k]}"
+                assertion_tensor = (outputs == sample.outputs[k])
+            
+            self.assertTrue(
+                    torch.all(assertion_tensor).item(),
+                    msg=f"Key: {k}, Algo: {algo}, Tensors do not agree at indexes: {(~assertion_tensor).nonzero()}"
                 )
         
 
@@ -239,6 +257,27 @@ class CLRS30Test(unittest.TestCase):
             del inp["pos"]
             del inp["x"]
             del inp["y"]
+
+            out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
+
+            self.compare_output(out, sample, algo)
+
+    def test_graphs(self):
+        algorithms = ["dfs"]
+
+        ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
+
+        for i in range(len(ds)):
+            sample = ds[i]
+            sample.squeeze(inplace=True)
+
+            inp = sample.inputs.clone().to_dict()
+            
+            nb_nodes = inp["pos"].size(0)
+            algo = sample.algorithm
+
+            del inp["pos"]
+            del inp["adj"]
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
