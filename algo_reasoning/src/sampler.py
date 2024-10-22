@@ -43,9 +43,7 @@ class BaseAlgorithmSampler:
         self,
         algorithm: Algorithm,
         seed: Optional[int] = None,
-        randomize_pos : bool = True,
-        *args,
-        **kwargs,
+        randomize_pos : bool = True
     ):
         """Initializes a `Sampler`.
 
@@ -60,8 +58,6 @@ class BaseAlgorithmSampler:
         self._generator = torch.Generator()
         self._algorithm = algorithm
         self.randomize_pos = randomize_pos
-        self._args = args
-        self._kwargs = kwargs
 
         if seed is not None:
             self._generator.manual_seed(seed)
@@ -329,7 +325,6 @@ class OptimalBSTSampler(BaseAlgorithmSampler):
 
     def _sample_data(self, 
                     nb_nodes: int):
-        
         length = nb_nodes - 1 
 
         tot_length = length + (length + 1)
@@ -381,8 +376,44 @@ class MaximumSubarraySampler(BaseSortingSampler):
         
         return super()._sample_data(nb_nodes, low, high)
     
+class StringsSampler(BaseAlgorithmSampler):
+    """String Algorithms Sampler."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-# TODO: Implement strings sampler
+    def _sample_data(self,
+        nb_nodes: int,  
+        length_needle: Optional[int] = -8,
+        chars: int = 4):
+
+        if length_needle is None:
+            if nb_nodes < 5:
+                length_needle = 1
+            else:
+                length_needle = nb_nodes // 5
+        elif length_needle < 0:
+            length_needle = torch.randint(low=1, high=1 - length_needle, size=()).item()
+
+        length_haystack = nb_nodes - length_needle
+        needle = torch.randint(high=chars, size=(length_needle,), generator=self._generator)
+        haystack = torch.randint(high=chars, size=(length_haystack,), generator=self._generator)
+        embed_pos = torch.randint(high=(length_haystack - length_needle), size=(), generator=self._generator).item()
+
+        haystack[embed_pos:embed_pos + length_needle] = needle
+        return [haystack, needle, nb_nodes]
+    
+class NaiveStringMatcherSampler(StringsSampler):
+    """Naive String Matcher Sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = naive_string_matcher
+        super().__init__(algorithm, *args, **kwargs)
+
+class KMPMatcherSampler(StringsSampler):
+    """KMP MatcherSampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = kmp_matcher
+        super().__init__(algorithm, *args, **kwargs)
+
 
 # Geometry Algorithms Samplers
 class GeometrySampler(BaseAlgorithmSampler):
