@@ -8,6 +8,7 @@ from algo_reasoning.src.algorithms.dynamic_programming import matrix_chain_order
 from algo_reasoning.src.algorithms.searching import minimum, binary_search, quickselect
 from algo_reasoning.src.algorithms.divide_and_conquer import find_maximum_subarray_kadane
 from algo_reasoning.src.algorithms.strings import naive_string_matcher, kmp_matcher
+from algo_reasoning.src.algorithms.geometry import segments_intersect, graham_scan, jarvis_march
 
 import unittest
 
@@ -26,7 +27,10 @@ algo_fn = {
     "quickselect": quickselect,
     "find_maximum_subarray_kadane": find_maximum_subarray_kadane,
     "naive_string_matcher": naive_string_matcher, 
-    "kmp_matcher": kmp_matcher
+    "kmp_matcher": kmp_matcher, 
+    "segments_intersect": segments_intersect,
+    "graham_scan": graham_scan,
+    "jarvis_march": jarvis_march
 }
 
 class CLRS30Test(unittest.TestCase):
@@ -210,6 +214,31 @@ class CLRS30Test(unittest.TestCase):
             del inp["pos"]
             del inp["key"]
             del inp["string"]
+
+            out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
+
+            self.compare_output(out, sample, algo)
+
+    def test_geometry(self):
+        algorithms = ["segments_intersect", "graham_scan", "jarvis_march"]
+
+        ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
+
+        for i in range(len(ds)):
+            sample = ds[i]
+            sample.squeeze(inplace=True)
+
+            inp = sample.inputs.clone().to_dict()
+            
+            nb_nodes = inp["pos"].size(0)
+            algo = sample.algorithm
+
+            inp["xs"] = inp["x"].clone()
+            inp["ys"] = inp["y"].clone()
+
+            del inp["pos"]
+            del inp["x"]
+            del inp["y"]
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
