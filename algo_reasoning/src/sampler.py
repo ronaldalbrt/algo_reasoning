@@ -31,6 +31,8 @@ from algo_reasoning.src.algorithms.greedy import activity_selector, task_schedul
 from algo_reasoning.src.algorithms.dynamic_programming import matrix_chain_order, lcs_length, optimal_bst
 from algo_reasoning.src.algorithms.searching import minimum, binary_search, quickselect
 from algo_reasoning.src.algorithms.divide_and_conquer import find_maximum_subarray_kadane
+from algo_reasoning.src.algorithms.strings import naive_string_matcher, kmp_matcher
+from algo_reasoning.src.algorithms.geometry import segments_intersect, graham_scan, jarvis_march
 
 Algorithm = Callable[..., Any]
 
@@ -163,7 +165,7 @@ class CarlsVacationSampler(BaseAlgorithmSampler):
         max_height: int = 10**2
         ):
     
-        assert nb_nodes == 4, "nb_nodes must be 4 for Carl's Vacation - D algorithm"
+        assert nb_nodes == 4, "nb_nodes must be 4 for Carl's Vacation - D"
 
         x, y, height, height2 = self.generate_non_intersecting_squares(max_value, max_distance, max_height)
         
@@ -378,3 +380,92 @@ class MaximumSubarraySampler(BaseSortingSampler):
                     high: float = 1.0):
         
         return super()._sample_data(nb_nodes, low, high)
+    
+
+# TODO: Implement strings sampler
+
+# Geometry Algorithms Samplers
+class GeometrySampler(BaseAlgorithmSampler):
+    """Geometry Algorithms Sampler."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _sample_data_segments(self, 
+                            nb_nodes: int, 
+                            low: float = 0.,
+                            high: float = 1.,):
+        assert nb_nodes == 4, "nb_nodes must be 4 for Segments Intersect"
+
+        def ccw(x_a, y_a, x_b, y_b, x_c, y_c):
+            return ((y_c - y_a) * (x_b - x_a) > (y_b - y_a) * (x_c - x_a)).item() 
+                    
+        def intersect(xs, ys):
+            return ccw(xs[0], ys[0], xs[2], ys[2], xs[3], ys[3]) != ccw(xs[1], ys[1], xs[2], ys[2], xs[3], ys[3]) and (
+                ccw(xs[0], ys[0], xs[1], ys[1], xs[2], ys[2]) != ccw(xs[0], ys[0], xs[1], ys[1], xs[3], ys[3]))
+        
+        _intersect = torch.bernoulli(torch.tensor(0.5), generator=self._generator).item()
+        
+        xs = torch.rand((nb_nodes,), generator=self._generator) * (high - low) + low 
+        ys = torch.rand((nb_nodes,), generator=self._generator) * (high - low) + low 
+
+        while intersect(xs, ys) != _intersect:
+            xs = torch.rand((nb_nodes,), generator=self._generator) * (high - low) + low 
+            ys = torch.rand((nb_nodes,), generator=self._generator) * (high - low) + low 
+
+        return [xs, ys, nb_nodes]
+
+    def _sample_data_convex_hull(self, 
+                    nb_nodes: int,
+                    origin_x: float = 0.,
+                    origin_y: float = 0., 
+                    radius: float = 2.):
+        low = 0.0
+        high = 2 * torch.pi
+
+        thetas = torch.rand((nb_nodes,), generator=self._generator) * (high - low) + low 
+        rs = radius * torch.sqrt(torch.rand((nb_nodes,), generator=self._generator))
+
+        xs = rs * torch.cos(thetas) + origin_x
+        ys = rs * torch.sin(thetas) + origin_y
+
+        return [xs, ys, nb_nodes]
+    
+class SegmentsIntersectSampler(GeometrySampler):
+    def __init__(self, *args, **kwargs):
+        algorithm = segments_intersect
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self, 
+                    nb_nodes: int, 
+                    low: float = 0.,
+                    high: float = 1.,):
+        
+        return super()._sample_data_segments(nb_nodes, low, high)
+
+class GrahamScanSampler(GeometrySampler):
+    def __init__(self, *args, **kwargs):
+        algorithm = graham_scan
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self, 
+                    nb_nodes: int, 
+                    origin_x: float = 0.,
+                    origin_y: float = 0., 
+                    radius: float = 2.):
+        
+        return super()._sample_data_convex_hull(nb_nodes, origin_x, origin_y, radius)
+    
+class JarvisMarchSampler(GeometrySampler):
+    def __init__(self, *args, **kwargs):
+        algorithm = jarvis_march
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self, 
+                    nb_nodes: int, 
+                    origin_x: float = 0.,
+                    origin_y: float = 0., 
+                    radius: float = 2.):
+        
+        return super()._sample_data_convex_hull(nb_nodes, origin_x, origin_y, radius)
+    
+
