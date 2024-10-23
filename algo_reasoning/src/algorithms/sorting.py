@@ -72,7 +72,7 @@ def insertion_sort(A, nb_nodes, *args, **kwargs):
 
 def bubble_sort(A, nb_nodes, *args, **kwargs):
     """Bubble sort."""
-    data = CLRSData(algorithm="insertion_sort", *args, **kwargs)
+    data = CLRSData(algorithm="bubble_sort", *args, **kwargs)
     
     data.set_inputs({
         'key': A.clone()

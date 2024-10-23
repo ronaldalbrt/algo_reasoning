@@ -83,8 +83,8 @@ def task_scheduling(d, w, nb_nodes, *args, **kwargs):
     data = CLRSData(algorithm="task_scheduling", *args, **kwargs)
     
     data.set_inputs({
-        's': d.clone(),
-        'f': w.clone(),
+        'd': d.clone(),
+        'w': w.clone(),
     }, nb_nodes, inplace=True)
 
     A_pos = torch.arange(d.shape[0])

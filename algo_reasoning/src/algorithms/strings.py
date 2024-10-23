@@ -40,10 +40,12 @@ def naive_string_matcher(T, P, nb_nodes, *args, **kwargs):
     T_pos = torch.arange(T.size(0))
     P_pos = torch.arange(P.size(0))
 
+    _strings_id = strings_id(T_pos, P_pos)
+
     data.set_inputs({
-          'string': strings_id(T_pos, P_pos),
+          'string': _strings_id,
           'key': array_cat(torch.concatenate([T.clone(), P.clone()]), _ALPHABET_SIZE),
-      }, nb_nodes)
+      }, nb_nodes, _strings_id=_strings_id)
     
 
     s = 0
@@ -96,10 +98,12 @@ def kmp_matcher(T, P, nb_nodes, *args, **kwargs):
     T_pos = torch.arange(T.size(0))
     P_pos = torch.arange(P.size(0))
 
+    _strings_id = strings_id(T_pos, P_pos)
+
     data.set_inputs({
-            'string': strings_id(T_pos, P_pos),
-            'key': array_cat(torch.concatenate([T.clone(),  P.clone()]), _ALPHABET_SIZE),
-    }, nb_nodes)
+          'string': _strings_id,
+          'key': array_cat(torch.concatenate([T.clone(), P.clone()]), _ALPHABET_SIZE),
+      }, nb_nodes, _strings_id=_strings_id)
 
     pi = torch.arange(P.size(0))
     is_reset = torch.zeros(P.size(0))

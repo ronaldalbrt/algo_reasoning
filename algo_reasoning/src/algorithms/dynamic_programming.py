@@ -88,10 +88,13 @@ def lcs_length(x, y, nb_nodes, *args, **kwargs):
     b = torch.zeros((x.size(0), y.size(0)))
     c = torch.zeros((x.size(0), y.size(0)))
 
+    _strings_id = strings_id(x_pos, y_pos)
+
     data.set_inputs({
-        'string': strings_id(x_pos, y_pos),
+        'string': _strings_id,
         'key': array_cat(torch.concatenate((x.clone(), y.clone())), 4)
-    }, nb_nodes, inplace=True)
+    }, nb_nodes, _strings_id=_strings_id)
+    
 
     for i in range(x.size(0)):
         if x[i].item() == y[0].item():
