@@ -54,7 +54,7 @@ class CLRSData(Data):
         if pos_generator is not None:
             self.pos_generator = pos_generator
 
-    def set_inputs(self, inputs, nb_nodes, inplace: bool = True):
+    def set_inputs(self, inputs, nb_nodes, inplace: bool = True, _strings_id: Optional[torch.Tensor] = None):
         """Set the inputs of the algorithm being executed."""
         data = self.clone() if not inplace else self
 
@@ -64,7 +64,16 @@ class CLRSData(Data):
         for key, value in inputs.items():
             data["inputs"][key] = value.float()
 
-        data["inputs"]["pos"] = ((torch.arange(nb_nodes) * 1.0)/nb_nodes).float()
+        if _strings_id is None:
+            data["inputs"]["pos"] = (torch.arange(nb_nodes) * 1.0) / nb_nodes
+        else:
+            len_str1 = torch.sum(_strings_id)
+            len_str0 = nb_nodes - len_str1
+
+            pos_str0 = torch.arange(len_str0) * 1.0 / len_str0
+            pos_str1 = torch.arange(len_str1) * 1.0 / len_str1
+
+            data["inputs"]["pos"] = torch.concatenate([pos_str0, pos_str1])
 
         if hasattr(data, 'pos_generator'):
             random_perm = torch.randperm(nb_nodes, generator=data.pos_generator)
