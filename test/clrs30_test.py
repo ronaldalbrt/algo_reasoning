@@ -9,7 +9,7 @@ from algo_reasoning.src.algorithms.searching import minimum, binary_search, quic
 from algo_reasoning.src.algorithms.divide_and_conquer import find_maximum_subarray_kadane
 from algo_reasoning.src.algorithms.strings import naive_string_matcher, kmp_matcher
 from algo_reasoning.src.algorithms.geometry import segments_intersect, graham_scan, jarvis_march
-from algo_reasoning.src.algorithms.graphs import dfs
+from algo_reasoning.src.algorithms.graphs import dfs, bfs, topological_sort, articulation_points, bridges, strongly_connected_components, mst_kruskal, mst_prim, bellman_ford, dijkstra, dag_shortest_paths, floyd_warshall
 
 import unittest
 
@@ -32,65 +32,64 @@ algo_fn = {
     "segments_intersect": segments_intersect,
     "graham_scan": graham_scan,
     "jarvis_march": jarvis_march,
-    "dfs": dfs
+    "dfs": dfs,
+    "bfs": bfs,
+    "topological_sort": topological_sort,
+    "articulation_points": articulation_points,
+    "bridges": bridges, 
+    "strongly_connected_components": strongly_connected_components,
+    "mst_kruskal": mst_kruskal,
+    "mst_prim": mst_prim,
+    "bellman_ford": bellman_ford,
+    "dijkstra": dijkstra,
+    "dag_shortest_paths": dag_shortest_paths,
+    "floyd_warshall": floyd_warshall
 }
 
 class CLRS30Test(unittest.TestCase):
 
-    def compare_output(self, out, sample, algo, ignore_keys=[]):
-        for k, inputs in out.inputs.items():
-            if k in ignore_keys:
-                continue
+    def verify_data(self, out, sample, algo, ignore_keys=[]):
+        for k in ignore_keys:
+            if k in out.hints:
+                del out.hints[k]
+            if k in out.outputs:
+                del out.outputs[k]
+
+        self.assertCountEqual(out.inputs.keys(), sample.inputs.keys(), msg=f"Algo: {algo}, Inputs do not match")
+        self.assertCountEqual(out.hints.keys(), sample.hints.keys(), msg=f"Algo: {algo}, Hints do not match")
+        self.assertCountEqual(out.outputs.keys(), sample.outputs.keys(), msg=f"Algo: {algo}, Outputs do not match")
+
+        self.assertEqual(out.algorithm, sample.algorithm, msg=f"Algo: {algo}, Algorithms do not match")
+        
+        def _compare_data(out_data, sample_data, hints=False):
+            for k, value in out_data.items():
+
+                if hints:
+                    max_len = value.size(0)
+                    
+                    sample_value = sample_data[k][:max_len]
+                else:
+                    sample_value = sample_data[k]
+                
+                _, _, _type = SPECS[algo][k]
+
+                if _type == Type.SCALAR:
+                    assertion_tensor = torch.isclose(value, sample_value, rtol=1e-5, atol=1e-6)
+                else:
+                    assertion_tensor = (value == sample_value)
+
+                self.assertTrue(
+                        torch.all(assertion_tensor).item(),
+                        msg=f"Key: {k}, Algo: {algo}, Tensors do not agree at indexes: {(~assertion_tensor).nonzero()}"
+                    )
             
-            _, _, _type = SPECS[algo][k]
-
-            if _type == Type.SCALAR:
-                assertion_tensor = torch.isclose(inputs, sample.inputs[k], rtol=1e-5, atol=1e-6)
-            else:
-                assertion_tensor = (inputs == sample.inputs[k])
-
-            self.assertTrue(
-                    torch.all(assertion_tensor).item(),
-                    msg=f"Key: {k}, Algo: {algo}, Inputs: {inputs}, Tensors do not agree at indexes: {(~assertion_tensor).nonzero()}"
-                )
-            
-        for k, hints in out.hints.items():
-            if k in ignore_keys:
-                continue
-
-            out_len = hints.size(0)
-
-            _, _, _type = SPECS[algo][k]
-
-            if _type == Type.SCALAR:
-                assertion_tensor = torch.isclose(hints, sample.hints[k][:out_len], rtol=1e-5, atol=1e-6)
-            else:
-                assertion_tensor = (hints == sample.hints[k][:out_len])
-            
-            self.assertTrue(
-                    torch.all(assertion_tensor).item(),
-                    msg=f"Key: {k}, Algo: {algo}, Tensors do not agree at indexes: {(~assertion_tensor).nonzero()}")
-
-        for k, outputs in out.outputs.items():
-            if k in ignore_keys:
-                continue
-
-            _, _, _type = SPECS[algo][k]
-
-            if _type == Type.SCALAR:
-                assertion_tensor = torch.isclose(outputs, sample.outputs[k], rtol=1e-5, atol=1e-6)
-            else:
-                assertion_tensor = (outputs == sample.outputs[k])
-            
-            self.assertTrue(
-                    torch.all(assertion_tensor).item(),
-                    msg=f"Key: {k}, Algo: {algo}, Tensors do not agree at indexes: {(~assertion_tensor).nonzero()}"
-                )
+        _compare_data(out.inputs, sample.inputs)
+        _compare_data(out.hints, sample.hints, hints=True)
+        _compare_data(out.outputs, sample.outputs)
         
 
     def test_sorting(self):
-        #algorithms = ["insertion_sort", "bubble_sort", "heapsort", "quicksort"]
-        algorithms = ["insertion_sort", "heapsort", "quicksort"]
+        algorithms = ["insertion_sort",  "bubble_sort", "heapsort", "quicksort"]
         ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
 
         for i in range(len(ds)):
@@ -108,7 +107,7 @@ class CLRS30Test(unittest.TestCase):
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
-            self.compare_output(out, sample, algo)
+            self.verify_data(out, sample, algo)
 
     def test_greedy(self):
         algorithms = ["activity_selector", "task_scheduling"]
@@ -127,7 +126,7 @@ class CLRS30Test(unittest.TestCase):
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
-            self.compare_output(out, sample, algo)
+            self.verify_data(out, sample, algo)
 
     def test_dynamic_programming(self):
         algorithms = ["matrix_chain_order", "lcs_length", "optimal_bst"]
@@ -157,7 +156,7 @@ class CLRS30Test(unittest.TestCase):
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
-            self.compare_output(out, sample, algo)
+            self.verify_data(out, sample, algo)
 
     def test_searching(self):
         algorithms = ["minimum", "binary_search", "quickselect"]
@@ -187,7 +186,7 @@ class CLRS30Test(unittest.TestCase):
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
-            self.compare_output(out, sample, algo, ignore_keys=["pivot"])
+            self.verify_data(out, sample, algo, ignore_keys=["pivot"])
 
     def test_divide_and_conquer(self):
         algorithms = ["find_maximum_subarray_kadane"]
@@ -208,7 +207,7 @@ class CLRS30Test(unittest.TestCase):
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
-            self.compare_output(out, sample, algo)
+            self.verify_data(out, sample, algo)
 
     def test_strings(self):
         algorithms = ["naive_string_matcher", "kmp_matcher"]
@@ -235,7 +234,7 @@ class CLRS30Test(unittest.TestCase):
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
-            self.compare_output(out, sample, algo)
+            self.verify_data(out, sample, algo)
 
     def test_geometry(self):
         algorithms = ["segments_intersect", "graham_scan", "jarvis_march"]
@@ -260,11 +259,10 @@ class CLRS30Test(unittest.TestCase):
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
-            self.compare_output(out, sample, algo)
+            self.verify_data(out, sample, algo)
 
     def test_graphs(self):
-        algorithms = ["dfs"]
-
+        algorithms = ["dfs", "bfs", "topological_sort", "articulation_points", "bridges", "strongly_connected_components", "mst_kruskal", "mst_prim", "bellman_ford", "dijkstra", "dag_shortest_paths", "floyd_warshall"]
         ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
 
         for i in range(len(ds)):
@@ -276,12 +274,17 @@ class CLRS30Test(unittest.TestCase):
             nb_nodes = inp["pos"].size(0)
             algo = sample.algorithm
 
+            if algo in ["bfs", "mst_prim", "bellman_ford", "dijkstra", "dag_shortest_paths"]:
+                inp["s"] = torch.argmax(inp["s"]).item()
+
             del inp["pos"]
             del inp["adj"]
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
-            self.compare_output(out, sample, algo)
+            ignore_keys = ['s'] if algo == "dag_shortest_paths" else [] 
+
+            self.verify_data(out, sample, algo, ignore_keys=ignore_keys)
 
 if __name__ == '__main__':
     unittest.main()
