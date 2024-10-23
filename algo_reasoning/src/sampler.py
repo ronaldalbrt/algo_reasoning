@@ -15,7 +15,7 @@
 import torch
 import torch.linalg as LA
 import math
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
 from algo_reasoning.src.data import CLRSData, collate
 
@@ -33,9 +33,11 @@ from algo_reasoning.src.algorithms.searching import minimum, binary_search, quic
 from algo_reasoning.src.algorithms.divide_and_conquer import find_maximum_subarray_kadane
 from algo_reasoning.src.algorithms.strings import naive_string_matcher, kmp_matcher
 from algo_reasoning.src.algorithms.geometry import segments_intersect, graham_scan, jarvis_march
+from algo_reasoning.src.algorithms.graphs import dfs, bfs, topological_sort, articulation_points, bridges, strongly_connected_components, mst_kruskal, mst_prim, bellman_ford, dijkstra, dag_shortest_paths, floyd_warshall
 
 Algorithm = Callable[..., Any]
 
+# TODO: Implement test script for Sampler classes
 class BaseAlgorithmSampler:
     """Sampler abstract base class."""
 
@@ -498,5 +500,308 @@ class JarvisMarchSampler(GeometrySampler):
                     radius: float = 2.):
         
         return super()._sample_data_convex_hull(nb_nodes, origin_x, origin_y, radius)
+
+class GraphSampler(BaseAlgorithmSampler):
+    """Graph Algorithms Sampler."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _sample_erdos_renyi(self, nb_nodes, 
+                        p=0.5, 
+                        directed=False, 
+                        acyclic=False,
+                        weighted=False, 
+                        low=0.0, 
+                        high=1.0):
+        """Random Erdos-Renyi graph."""
+        mat = torch.bernoulli(p * torch.ones(nb_nodes, nb_nodes), generator=self._generator)
+
+        if not directed:
+            mat *= torch.transpose(mat.clone(), 0, 1)
+        elif acyclic:
+            mat = torch.triu(mat.clone(), diagonal=1)
+            p = torch.randperm(nb_nodes, generator=self._generator)
+            mat = mat[p, :][:, p]
+
+        if weighted:
+            weights = torch.rand((nb_nodes, nb_nodes), generator=self._generator) * (high - low) + low 
+            if not directed:
+                weights *= torch.transpose(weights.clone(), 0, 1)
+                weights = torch.sqrt(weights + 1e-3)  # Add epsilon to protect underflow
+            mat = mat.clone().float() * weights
+        return mat
+    
+    def _random_community_graph(self, 
+                            nb_nodes,
+                            k=4, 
+                            p=0.5, 
+                            eps=0.01,
+                            directed=False,
+                            acyclic=False, 
+                            weighted=False,
+                            low=0.0, high=1.0):
+        """Random perturbed k-community graph."""
+        mat = torch.zeros((nb_nodes, nb_nodes))
+        
+        
+        los, his = [], []
+        lo = 0
+        for i in range(k):
+            if i == k - 1:
+                hi = nb_nodes
+            else:
+                hi = lo + nb_nodes // k
+            mat[lo:hi, lo:hi] = self._sample_erdos_renyi(
+                hi - lo, p=p, directed=directed,
+                acyclic=acyclic, weighted=weighted,
+                low=low, high=high)
+            
+            los.append(lo)
+            his.append(hi)
+            lo = hi
+        toggle = self._sample_erdos_renyi(nb_nodes, p=eps, directed=directed,
+                                    acyclic=acyclic, weighted=weighted,
+                                    low=low, high=high)
+
+        # Prohibit closing new cycles
+        for i in range(k):
+            for j in range(i):
+                toggle[los[i]:his[i], los[j]:his[j]] *= 0
+
+        mat = torch.where(toggle > 0.0, (1.0 - (mat > 0.0).float()) * toggle, mat)
+        p = torch.randperm(nb_nodes, generator=self._generator)
+        mat = mat[p, :][:, p]
+        return mat
     
 
+class DFSSampler(GraphSampler):
+    """DFS sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = dfs
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self,
+        nb_nodes: int,
+        p:Tuple[float, ...] = (0.5,)):
+        
+        choice_p = torch.randperm(len(p), generator=self._generator)[0].item()
+
+        graph = self._sample_erdos_renyi(nb_nodes, p=p[choice_p],
+            directed=True, acyclic=False, weighted=False)
+        
+        return [graph, nb_nodes]
+    
+class BFSSampler(GraphSampler):
+    """BFS sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = bfs
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self,
+        nb_nodes: int,
+        p:Tuple[float, ...] = (0.5,)):
+        
+        choice_p = torch.randperm(len(p), generator=self._generator)[0].item()
+        
+        graph = self._sample_erdos_renyi(nb_nodes, p=p[choice_p],
+            directed=False, acyclic=False, weighted=False)
+        
+        source_node = torch.randperm(nb_nodes, generator=self._generator)[0].item()
+
+        return [graph, source_node, nb_nodes]
+    
+class TopologicalSortSampler(GraphSampler):
+    """Topological Sort sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = topological_sort
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self,
+        nb_nodes: int,
+        p:Tuple[float, ...] = (0.5,)):
+        
+        choice_p = torch.randperm(len(p), generator=self._generator)[0].item()
+
+        graph = self._sample_erdos_renyi(nb_nodes, p=p[choice_p],
+            directed=True, acyclic=True, weighted=False)
+        
+        return [graph, nb_nodes]
+    
+class ArticulationPointsSampler(GraphSampler):
+    """Articulation Points sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = articulation_points
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self,
+        nb_nodes: int,
+        p:Tuple[float, ...] = (0.5,)):
+        
+        choice_p = torch.randperm(len(p), generator=self._generator)[0].item()
+
+        graph = self._sample_erdos_renyi(nb_nodes, p=p[choice_p],
+            directed=False, acyclic=False, weighted=False)
+        
+        return [graph, nb_nodes]
+    
+class BridgesSampler(GraphSampler):
+    """Bridges sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = bridges
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self,
+        nb_nodes: int,
+        p:Tuple[float, ...] = (0.5,)):
+        
+        choice_p = torch.randperm(len(p), generator=self._generator)[0].item()
+
+        graph = self._sample_erdos_renyi(nb_nodes, p=p[choice_p],
+            directed=False, acyclic=False, weighted=False)
+        
+        return [graph, nb_nodes]
+    
+class MSTKruskalSampler(GraphSampler):
+    """MST Kruskal sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = mst_kruskal
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self,
+        nb_nodes: int,
+        p:Tuple[float, ...] = (0.5,)):
+        
+        choice_p = torch.randperm(len(p), generator=self._generator)[0].item()
+
+        graph = self._sample_erdos_renyi(nb_nodes, p=p[choice_p],
+            directed=False, acyclic=False, weighted=True)
+        
+        return [graph, nb_nodes]
+    
+class MSTPrimSampler(GraphSampler):
+    """MST Prim sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = mst_prim
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self,
+        nb_nodes: int,
+        p:Tuple[float, ...] = (0.5,),
+        low: float = 0.0,
+        high: float = 1.0):
+        
+        choice_p = torch.randperm(len(p), generator=self._generator)[0].item()
+
+        graph = self._sample_erdos_renyi(nb_nodes, p=p[choice_p],
+            directed=False, acyclic=False, weighted=True,
+            low=low, high=high)
+        
+        source_node = torch.randperm(nb_nodes, generator=self._generator)[0].item()
+
+        return [graph, source_node, nb_nodes]
+    
+class BellmanFordSampler(GraphSampler):
+    """Bellman-Ford sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = bellman_ford
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self,
+        nb_nodes: int,
+        p:Tuple[float, ...] = (0.5,),
+        low: float = 0.0,
+        high: float = 1.0):
+        
+        choice_p = torch.randperm(len(p), generator=self._generator)[0].item()
+
+        graph = self._sample_erdos_renyi(nb_nodes, p=p[choice_p],
+            directed=False, acyclic=False, weighted=True,
+            low=low, high=high)
+        
+        source_node = torch.randperm(nb_nodes, generator=self._generator)[0].item()
+
+        return [graph, source_node, nb_nodes]
+    
+class DijsktraSampler(GraphSampler):
+    """Dijkstra sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = dijkstra
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self,
+        nb_nodes: int,
+        p:Tuple[float, ...] = (0.5,),
+        low: float = 0.0,
+        high: float = 1.0):
+        
+        choice_p = torch.randperm(len(p), generator=self._generator)[0].item()
+
+        graph = self._sample_erdos_renyi(nb_nodes, p=p[choice_p],
+            directed=False, acyclic=False, weighted=True,
+            low=low, high=high)
+        
+        source_node = torch.randperm(nb_nodes, generator=self._generator)[0].item()
+
+        return [graph, source_node, nb_nodes]
+    
+class DAGShortestPathsSampler(GraphSampler):
+    """DAG Shortest Paths sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = dag_shortest_paths
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self,
+        nb_nodes: int,
+        p:Tuple[float, ...] = (0.5,),
+        low: float = 0.0,
+        high: float = 1.0):
+        
+        choice_p = torch.randperm(len(p), generator=self._generator)[0].item()
+
+        graph = self._sample_erdos_renyi(nb_nodes, p=p[choice_p],
+            directed=True, acyclic=True, weighted=True,
+            low=low, high=high)
+        
+        source_node = torch.randperm(nb_nodes, generator=self._generator)[0].item()
+
+        return [graph, source_node, nb_nodes]
+    
+class FloydWarshallSampler(GraphSampler):
+    """Floyd-Warshall sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = floyd_warshall
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self,
+        nb_nodes: int,
+        p:Tuple[float, ...] = (0.5,),
+        low: float = 0.0,
+        high: float = 1.0):
+        
+        choice_p = torch.randperm(len(p), generator=self._generator)[0].item()
+
+        graph = self._sample_erdos_renyi(nb_nodes, p=p[choice_p],
+            directed=False, acyclic=False, weighted=True,
+            low=low, high=high)
+        
+        return [graph, nb_nodes]
+    
+class StronglyConnectedComponentsSampler(GraphSampler):
+    """Strongly Connected Components sampler."""
+    def __init__(self, *args, **kwargs):
+        algorithm = strongly_connected_components
+        super().__init__(algorithm, *args, **kwargs)
+
+    def _sample_data(self,
+        nb_nodes: int,
+        k: int = 4,
+        p: Tuple[float, ...] = (0.5,),
+        eps: float = 0.01):
+        
+        choice_p = torch.randperm(len(p), generator=self._generator)[0].item()
+
+        graph = self._random_community_graph(
+            nb_nodes=nb_nodes, k=k, p=p[choice_p], eps=eps,
+            directed=True, acyclic=False, weighted=False)
+        
+        return [graph, nb_nodes]
