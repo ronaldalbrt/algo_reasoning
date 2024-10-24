@@ -6,44 +6,6 @@ from typing import List, Optional, Union
 import torch
 from collections import OrderedDict
 
-SPLITS = ["train", "val", "test"]
-
-SAMPLERS = [
-    'insertion_sort',
-    'bubble_sort',
-    'heapsort',
-    'quicksort',
-    'quickselect',
-    'minimum',
-    'binary_search',
-    'find_maximum_subarray',
-    'find_maximum_subarray_kadane',
-    'matrix_chain_order',
-    'lcs_length',
-    'optimal_bst',
-    'activity_selector',
-    'task_scheduling',
-    'dfs',
-    'topological_sort',
-    'strongly_connected_components',
-    'articulation_points',
-    'bridges',
-    'bfs',
-    'mst_kruskal',
-    'mst_prim',
-    'bellman_ford',
-    'dag_shortest_paths',
-    'dijkstra',
-    'floyd_warshall',
-    'bipartite_matching',
-    'naive_string_matcher',
-    'kmp_matcher',
-    'segments_intersect',
-    'graham_scan',
-    'jarvis_march',
-    'schedule'
-]
-
 class CLRSData(Data):
     """A data object for CLRS data."""
     def __init__(self,
@@ -166,7 +128,7 @@ class CLRSData(Data):
         if not inplace:
             return data
 
-class CLRSDataset(Dataset):
+class OriginalCLRSDataset(Dataset):
     def __init__(self, algorithms, split, data_folder="tmp/CLRS30"):
         self.algorithms = algorithms
         self.split = split
@@ -302,40 +264,6 @@ def idx_batched_data(idx: int, batched_data: CLRSData) -> CLRSData:
         length=length,
     )
 
-def to_torch(value):
-    if isinstance(value, np.ndarray):
-        return torch.from_numpy(value).to(torch.float32)
-    elif isinstance(value, torch.Tensor):
-        return value
-    else:
-        return torch.tensor(value, dtype=torch.float32)
-
-def _preprocess(data_point, algorithm=None):
-    """Convert sampled inputs into DataPoints."""
-    inputs = CLRSData()
-    outputs = CLRSData()
-    hints = CLRSData()
-    length = None
-    max_length = 0
-
-    for name, data in data_point.items():
-        if name == 'lengths':
-            length = to_torch(np.copy(data))
-            continue
-        data_point_name = name.split('_')
-        name = '_'.join(data_point_name[1:])
-        stage = data_point_name[0]
-
-        if stage == "input":
-            inputs[name] = to_torch(np.copy(data)).unsqueeze(0)
-        elif stage == "output":
-            outputs[name] = to_torch(np.copy(data)).unsqueeze(0)
-        else:
-            hints[name] = to_torch(np.copy(data)).unsqueeze(0)
-            max_length = hints[name].shape[1]
-    
-    return CLRSData(inputs=inputs, hints=hints, length=length, outputs=outputs, max_length=torch.tensor(max_length).long(), algorithm=algorithm)
-
 def _batch_hints(hints, hint_lengths):
     """Batches a trajectory of hints samples along the time axis per probe.
 
@@ -384,29 +312,3 @@ def collate(batch):
     batch.hints = batched_hints
     batch.max_length = max_length
     return batch
-
-def load_dataset(algorithm, split, local_dir):
-    """Load the CLRS dataset for the given algorithm or list of algorithms and split.
-    
-    Args:
-        algorithm (str): The algorithm to get the dataset for.
-        split (str): The split to get the dataset for.
-        local_dir (str): The directory to download the dataset to.
-    """
-    if algorithm not in SAMPLERS:
-        raise ValueError(f"Unknown algorithm '{algorithm}'. Available algorithms are {list(SAMPLERS)}.")
-
-    if split not in SPLITS:
-        raise ValueError(f"Unknown split '{split}'. Available splits are {list(SPLITS)}.")
-    
-    # check if the dataset is already downloaded
-    try:
-        dataset = tfds.load(f'clrs_dataset/{algorithm}_{split}', data_dir=local_dir, split=split, download=False)
-    except:
-        clrs.create_dataset(folder=local_dir, algorithm=algorithm, split=split, batch_size=32)
-        dataset = tfds.load(f'clrs_dataset/{algorithm}_{split}', data_dir=local_dir, split=split, download=False)
-
-    dataset_it = dataset.as_numpy_iterator()
-
-    return [_preprocess(i, algorithm=algorithm) for i in dataset_it]
-
