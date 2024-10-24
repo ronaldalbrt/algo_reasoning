@@ -28,11 +28,11 @@ if __name__ == '__main__':
     ap.add_argument('--n_workers', default=8, type=int, help="Number of Data Loading Workers")
     ap.add_argument('--lr', default=1e-3, type=float, help="Initial Learning Rate for ADAM Optimizer")
     ap.add_argument('--grad_clip', default=1, type=float, help="Gradient clipping value")
-    ap.add_argument('--model_name', default="JetLag_NotPretrained", type=str, help="Model's name")
+    ap.add_argument('--model_name', default="Generalist", type=str, help="Model's name")
     ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
     ap.add_argument('--checkpoint_model', default="", type=str, help="Path for pretrained checkpoint model")
     ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
-    ap.add_argument("--devices",  default=2, type=str, help="Number of devices used for training")
+    ap.add_argument("--devices",  default=1, type=str, help="Number of devices used for training")
     ap.add_argument("--processor_pretrained_path", default="", type=str, help="Path for processor's weights folder")
     ap.add_argument("--pretrained_path", default="", type=str, help="Path for model's weights folder")
     ap.add_argument("--freeze_processor", default=False, type=bool, help="Whether or not to freeze processor's weights.")
@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     train_dataset = CLRSDataset(args.algorithms, nb_nodes, args.batch_size, 1000, seed=7)
     val_dataset = CLRSDataset(args.algorithms, [max(nb_nodes)], args.batch_size, 32, seed=7)
-    test_dataset = CLRSDataset(args.algorithms, 64, args.batch_size, 32, seed=7)
+    test_dataset = CLRSDataset(args.algorithms, [64], args.batch_size, 32, seed=7)
 
     def worker_init_fn(w):
         worker_info = get_worker_info()
