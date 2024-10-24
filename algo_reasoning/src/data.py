@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from torch_geometric.data import Data, Batch
-from torch.utils.data import Dataset, Sampler
+from torch.utils.data import Dataset, Sampler, IterableDataset
 from typing import List, Optional, Union
 import torch
 from collections import OrderedDict
@@ -277,7 +277,7 @@ def _batch_hints(hints, hint_lengths):
     A |num probes| list of `DataPoint`s with the time axis stacked into `data`,
     and a |sample| list containing the length of each trajectory.
     """
-    max_length = torch.max(hint_lengths).long().item()
+    max_length = torch.max(hint_lengths).long()
 
     batched_hints = CLRSData()
     aux_hint = hints[0]
