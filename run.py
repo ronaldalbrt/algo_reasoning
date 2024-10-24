@@ -57,6 +57,7 @@ if __name__ == '__main__':
     p = tuple([0.1 + 0.1 * i for i in range(9)])
     graph_algos = ["dfs", "bfs", "topological_sort", "articulation_points", "bridges", "strongly_connected_components", "mst_kruskal", "mst_prim", "bellman_ford", "dijkstra", "dag_shortest_paths", "floyd_warshall"]
     for _algo in graph_algos:
+        algorithms_args[_algo] = {}
         if _algo in ['articulation_points', 'bridges', 'mst_kruskal']:
             p = tuple((torch.tensor(p) / 2).tolist())
         algorithms_args[_algo]["p"] = p 
