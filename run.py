@@ -52,9 +52,18 @@ if __name__ == '__main__':
 
     path = args.path
 
-    train_dataset = CLRSDataset(args.algorithms, nb_nodes, args.batch_size, 1000, seed=7)
-    val_dataset = CLRSDataset(args.algorithms, [max(nb_nodes)], args.batch_size, 32, seed=7)
-    test_dataset = CLRSDataset(args.algorithms, [64], args.batch_size, 32, seed=7)
+    algorithms_args = {}
+    # Default arguments for algorithms
+    p = tuple([0.1 + 0.1 * i for i in range(9)])
+    graph_algos = ["dfs", "bfs", "topological_sort", "articulation_points", "bridges", "strongly_connected_components", "mst_kruskal", "mst_prim", "bellman_ford", "dijkstra", "dag_shortest_paths", "floyd_warshall"]
+    for _algo in graph_algos:
+        if _algo in ['articulation_points', 'bridges', 'mst_kruskal']:
+            p = tuple((torch.tensor(p) / 2).tolist())
+        algorithms_args[_algo] = p 
+
+    train_dataset = CLRSDataset(args.algorithms, nb_nodes, args.batch_size, 1000, seed=7, algorithms_args=algorithms_args)
+    val_dataset = CLRSDataset(args.algorithms, [max(nb_nodes)], args.batch_size, 32, seed=7, algorithms_args=algorithms_args)
+    test_dataset = CLRSDataset(args.algorithms, [64], args.batch_size, 32, seed=7, algorithms_args=algorithms_args)
 
     def worker_init_fn(w):
         worker_info = get_worker_info()

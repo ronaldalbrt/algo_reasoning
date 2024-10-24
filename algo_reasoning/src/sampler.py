@@ -862,15 +862,6 @@ class CLRSDataset(IterableDataset):
         self.samplers = dict()
         for algo in algorithms:
             self.samplers[algo] = SAMPLERS[algo](generator=self._generator, randomize_pos=randomize_pos)
-        
-        # self.algorithms_args = {}
-        # # Default arguments for algorithms
-        # p = tuple([0.1 + 0.1 * i for i in range(9)])
-        # graph_algos = ["dfs", "bfs", "topological_sort", "articulation_points", "bridges", "strongly_connected_components", "mst_kruskal", "mst_prim", "bellman_ford", "dijkstra", "dag_shortest_paths", "floyd_warshall"]
-        # for _algo in graph_algos:
-        #     if _algo in ['articulation_points', 'bridges', 'mst_kruskal']:
-        #         p = tuple((torch.tensor(p) / 2).tolist())
-        #     self.algorithms_args[_algo] = p 
 
     def reset_generator(self, seed:int):
         self._generator.manual_seed(seed)
