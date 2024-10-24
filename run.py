@@ -59,7 +59,7 @@ if __name__ == '__main__':
     for _algo in graph_algos:
         if _algo in ['articulation_points', 'bridges', 'mst_kruskal']:
             p = tuple((torch.tensor(p) / 2).tolist())
-        algorithms_args[_algo] = p 
+        algorithms_args[_algo]["p"] = p 
 
     train_dataset = CLRSDataset(args.algorithms, nb_nodes, args.batch_size, 1000, seed=7, algorithms_args=algorithms_args)
     val_dataset = CLRSDataset(args.algorithms, [max(nb_nodes)], args.batch_size, 32, seed=7, algorithms_args=algorithms_args)
