@@ -14,10 +14,11 @@
 # ==============================================================================
 import torch
 import torch.linalg as LA
+from torch.utils.data import IterableDataset
 import math
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple, List
 
-from algo_reasoning.src.data import CLRSData, collate
+from algo_reasoning.src.data import collate
 
 # Import algorithms
 from algo_reasoning.src.algorithms.scheduleB import schedule
@@ -44,7 +45,7 @@ class BaseAlgorithmSampler:
     def __init__(
         self,
         algorithm: Algorithm,
-        seed: Optional[int] = None,
+        generator: Optional[torch.Generator] = None,
         randomize_pos : bool = True
     ):
         """Initializes a `Sampler`.
@@ -56,13 +57,12 @@ class BaseAlgorithmSampler:
         *args: Algorithm args.
         **kwargs: Algorithm kwargs.
         """
-
-        self._generator = torch.Generator()
+        if generator is None:
+            self._generator = torch.Generator()
+        else:
+            self._generator = generator
         self._algorithm = algorithm
         self.randomize_pos = randomize_pos
-
-        if seed is not None:
-            self._generator.manual_seed(seed)
 
     def sample(self, nb_nodes: int, batch_size: int, *args, **kwargs):
         """Samples trajectories from the pre-generated dataset.
@@ -266,8 +266,8 @@ class QuickSortSampler(BaseSortingSampler):
 
 
 # Greedy Algorithms Samplers
-class ActivitySelectionSampler(BaseAlgorithmSampler):
-    """Activity Selection Sampler."""
+class ActivitySelectorSampler(BaseAlgorithmSampler):
+    """Activity Selector Sampler."""
     def __init__(self, *args, **kwargs):
         algorithm = activity_selector
         super().__init__(algorithm, *args, **kwargs)
@@ -805,3 +805,94 @@ class StronglyConnectedComponentsSampler(GraphSampler):
             directed=True, acyclic=False, weighted=False)
         
         return [graph, nb_nodes]
+    
+SAMPLERS = {
+    'articulation_points': ArticulationPointsSampler,
+    'activity_selector': ActivitySelectorSampler,
+    'bellman_ford': BellmanFordSampler,
+    'bfs': BFSSampler,
+    'binary_search': BinarySearchSampler,
+    'bridges': BridgesSampler,
+    'bubble_sort': BubbleSortSampler,
+    'dag_shortest_paths': DAGShortestPathsSampler,
+    'dfs': DFSSampler,
+    'dijkstra': DijsktraSampler,
+    'find_maximum_subarray_kadane': MaximumSubarraySampler,
+    'floyd_warshall': FloydWarshallSampler,
+    'graham_scan': GrahamScanSampler,
+    'heapsort': HeapSortSampler,
+    'insertion_sort': InsertionSortSampler,
+    'jarvis_march': JarvisMarchSampler,
+    'kmp_matcher': KMPMatcherSampler,
+    'lcs_length': LCSLengthSampler,
+    'matrix_chain_order': MatrixChainOrderSampler,
+    'minimum': MinimumSampler,
+    'mst_kruskal': MSTKruskalSampler,
+    'mst_prim': MSTPrimSampler,
+    'naive_string_matcher': NaiveStringMatcherSampler,
+    'optimal_bst': OptimalBSTSampler,
+    'quickselect': QuickselectSampler,
+    'quicksort': QuickSortSampler,
+    'segments_intersect': SegmentsIntersectSampler,
+    'strongly_connected_components': StronglyConnectedComponentsSampler,
+    'task_scheduling': TaskSchedulingSampler,
+    'topological_sort': TopologicalSortSampler
+}
+
+class CLRSDataset(IterableDataset):
+    def __init__(self,
+                algorithms: List[str],
+                nb_nodes: List[int],
+                batch_size: int,
+                num_samples: str,
+                seed: Optional[int] = None,
+                randomize_pos: bool = False,
+                string_length: int = 20,
+                algorithms_args: Optional[dict] = None):
+        
+        self.algorithms = algorithms
+        self.seed = seed
+        self._generator = torch.Generator().manual_seed(self.seed) if self.seed is not None else torch.Generator()
+        self.nb_nodes = nb_nodes
+        self.batch_size = batch_size
+        self.string_length = string_length
+        self.algorithms_args = algorithms_args
+        self.num_samples = num_samples
+
+        self.samplers = dict()
+        for algo in algorithms:
+            self.samplers[algo] = SAMPLERS[algo](generator=self._generator, randomize_pos=randomize_pos)
+        
+        # self.algorithms_args = {}
+        # # Default arguments for algorithms
+        # p = tuple([0.1 + 0.1 * i for i in range(9)])
+        # graph_algos = ["dfs", "bfs", "topological_sort", "articulation_points", "bridges", "strongly_connected_components", "mst_kruskal", "mst_prim", "bellman_ford", "dijkstra", "dag_shortest_paths", "floyd_warshall"]
+        # for _algo in graph_algos:
+        #     if _algo in ['articulation_points', 'bridges', 'mst_kruskal']:
+        #         p = tuple((torch.tensor(p) / 2).tolist())
+        #     self.algorithms_args[_algo] = p 
+
+    def reset_generator(self, seed:int):
+        self._generator.manual_seed(seed)
+        
+
+    def sample_data(self):
+        for _ in range(len(self.algorithms) * self.num_samples):
+            # Sample random algorithm and number of nodes
+            algo = self.algorithms[torch.randint(len(self.algorithms), (), generator=self._generator).item()]
+
+            if algo in ["segments_intersect", "carls_vacation"]:
+                nb_nodes = 4
+            elif algo in ["naive_string_matcher", "kmp_matcher"]:
+                nb_nodes = self.string_length
+            else:
+                nb_nodes = self.nb_nodes[torch.randint(len(self.nb_nodes), (), generator=self._generator).item()]
+
+            kwargs = self.algorithms_args[algo] if self.algorithms_args is not None and algo in self.algorithms_args else dict()
+
+            sampled_data = self.samplers[algo].sample(nb_nodes, self.batch_size, **kwargs)
+
+            yield sampled_data 
+
+    def __iter__(self):
+        return self.sample_data()
