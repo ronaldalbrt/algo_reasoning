@@ -868,7 +868,7 @@ class CLRSDataset(IterableDataset):
         
 
     def sample_data(self):
-        while True:
+        for _ in range(len(self)):
             # Sample random algorithm and number of nodes
             algo = self.algorithms[torch.randint(len(self.algorithms), (), generator=self._generator).item()]
 
