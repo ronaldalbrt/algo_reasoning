@@ -10,6 +10,7 @@ from torch.optim import Adam
 import lightning as L
 from torch.utils.data import DataLoader, get_worker_info
 import argparse
+import yaml
 from lightning.pytorch.callbacks import ModelCheckpoint
 
 torch.set_float32_matmul_precision('highest')
@@ -19,9 +20,25 @@ os.environ['WANDB_CONSOLE'] = 'off'
 def list_of_strings(arg):
     return arg.split(',')
 
+def list_of_ints(arg):
+    return [int(i) for i in arg.split(',')]
+
+def load_algorithm_args(args_file):
+    with open(args_file, 'r') as f:
+        args = yaml.safe_load(f)
+
+    return args
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Training Parser Options')
-    ap.add_argument('--algorithms', default=CLRS_30_ALGS, type=list_of_strings, help="Algorithms for the model to be trained on.")
+    ap.add_argument('--algorithms', 
+                    default=CLRS_30_ALGS, 
+                    type=list_of_strings, 
+                    help="Algorithms for the model to be trained on.")
+    ap.add_argument('--nb_nodes',
+                    default='4, 7, 11, 13, 16',
+                    type=list_of_ints,
+                    help="Number of nodes in the graphs")
     ap.add_argument('--path', default="tmp/CLRS30", type=str, help="Path to the dataset folder")
     ap.add_argument('--batch_size', default=32, type=int, help="Number of samples in each training batch")
     ap.add_argument('--n_epochs', default=100, type=int, help="Number of training epochs")
@@ -30,17 +47,20 @@ if __name__ == '__main__':
     ap.add_argument('--grad_clip', default=1, type=float, help="Gradient clipping value")
     ap.add_argument('--model_name', default="Generalist", type=str, help="Model's name")
     ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
-    ap.add_argument('--checkpoint_model', default="", type=str, help="Path for pretrained checkpoint model")
     ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
     ap.add_argument("--devices",  default=1, type=str, help="Number of devices used for training")
     ap.add_argument("--processor_pretrained_path", default="", type=str, help="Path for processor's weights folder")
     ap.add_argument("--pretrained_path", default="", type=str, help="Path for model's weights folder")
     ap.add_argument("--freeze_processor", default=False, type=bool, help="Whether or not to freeze processor's weights.")
+    ap.add_argument("--seed", default=7, type=int, help="Seed for the random number generator")
+    ap.add_argument("--algorithms_args", default="algorithm_args/default.yaml", type=str, help="Path for the algorithms' arguments file")
     args = ap.parse_args()
 
-    nb_nodes = [4, 7, 11, 13, 16]
+    nb_nodes = args.nb_nodes
+    seed = args.seed
+
     processor = None
-    if args.processor_pretrained_path != "":
+    if args.procebfsssor_pretrained_path != "":
         processor = EncodeProcessDecode(CLRS_30_ALGS).processor
         state_dict = torch.load(args.processor_pretrained_path, map_location=torch.device("cpu"))["state_dict"]
         new_state_dict = {}
@@ -50,21 +70,11 @@ if __name__ == '__main__':
 
         processor.load_state_dict(new_state_dict)
 
-    path = args.path
+    algorithm_args = load_algorithm_args()
 
-    algorithms_args = {}
-    # Default arguments for algorithms
-    p = tuple([0.1 + 0.1 * i for i in range(9)])
-    graph_algos = ["dfs", "bfs", "topological_sort", "articulation_points", "bridges", "strongly_connected_components", "mst_kruskal", "mst_prim", "bellman_ford", "dijkstra", "dag_shortest_paths", "floyd_warshall"]
-    for _algo in graph_algos:
-        algorithms_args[_algo] = {}
-        if _algo in ['articulation_points', 'bridges', 'mst_kruskal']:
-            p = tuple((torch.tensor(p) / 2).tolist())
-        algorithms_args[_algo]["p"] = p 
-
-    train_dataset = CLRSDataset(args.algorithms, nb_nodes, args.batch_size, 1000, seed=7, algorithms_args=algorithms_args)
-    val_dataset = CLRSDataset(args.algorithms, [max(nb_nodes)], args.batch_size, 32, seed=7, algorithms_args=algorithms_args)
-    test_dataset = CLRSDataset(args.algorithms, [64], args.batch_size, 32, seed=7, algorithms_args=algorithms_args)
+    train_dataset = CLRSDataset(args.algorithms, nb_nodes, args.batch_size, 1000, seed=seed, algorithms_args=algorithm_args)
+    val_dataset = CLRSDataset(args.algorithms, [max(nb_nodes)], args.batch_size, 32, seed=seed, algorithms_args=algorithm_args)
+    test_dataset = CLRSDataset(args.algorithms, [64], args.batch_size, 32, seed=seed, algorithms_args=algorithm_args)
 
     def worker_init_fn(w):
         worker_info = get_worker_info()
