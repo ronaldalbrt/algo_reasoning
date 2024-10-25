@@ -23,54 +23,55 @@ def list_of_strings(arg):
 def list_of_ints(arg):
     return [int(i) for i in arg.split(',')]
 
+ap = argparse.ArgumentParser(description='Training Parser Options')
+ap.add_argument('--algorithms', 
+                default=CLRS_30_ALGS, 
+                type=list_of_strings, 
+                help="Algorithms for the model to be trained on.")
+ap.add_argument('--nb_nodes',
+                default='4, 7, 11, 13, 16',
+                type=list_of_ints,
+                help="Number of nodes in the graphs")
+ap.add_argument('--batch_size', default=4, type=int, help="Number of samples in each training batch")
+ap.add_argument('--n_epochs', default=100, type=int, help="Number of training epochs")
+ap.add_argument('--n_workers', default=8, type=int, help="Number of Data Loading Workers")
+ap.add_argument('--lr', default=1e-3, type=float, help="Initial Learning Rate for ADAM Optimizer")
+ap.add_argument('--grad_clip', default=1, type=float, help="Gradient clipping value")
+ap.add_argument('--model_name', default="Generalist", type=str, help="Model's name")
+ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
+ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
+ap.add_argument("--devices",  default=1, type=str, help="Number of devices used for training")
+ap.add_argument("--pretrained_processor", default="", type=str, help="Path for processor's weights folder")
+ap.add_argument("--freeze_processor", default=False, type=bool, help="Whether or not to freeze processor's weights.")
+ap.add_argument("--seed", default=7, type=int, help="Seed for the random number generator")
+ap.add_argument("--algorithms_args", default="algorithm_args/default.yaml", type=str, help="Path for the algorithms' arguments file")
+ap.add_argument('--static_dataset_path', default="tmp/CLRS30", type=str, help="Path to the dataset folder")
+ap.add_argument("--checkpoint_task_path", default="", type=str, help="Path for model's weights folder")
+
 def load_algorithm_args(args_file):
     with open(args_file, 'r') as f:
         args = yaml.safe_load(f)
 
     return args
 
-if __name__ == '__main__':
-    ap = argparse.ArgumentParser(description='Training Parser Options')
-    ap.add_argument('--algorithms', 
-                    default=CLRS_30_ALGS, 
-                    type=list_of_strings, 
-                    help="Algorithms for the model to be trained on.")
-    ap.add_argument('--nb_nodes',
-                    default='4, 7, 11, 13, 16',
-                    type=list_of_ints,
-                    help="Number of nodes in the graphs")
-    ap.add_argument('--path', default="tmp/CLRS30", type=str, help="Path to the dataset folder")
-    ap.add_argument('--batch_size', default=32, type=int, help="Number of samples in each training batch")
-    ap.add_argument('--n_epochs', default=100, type=int, help="Number of training epochs")
-    ap.add_argument('--n_workers', default=8, type=int, help="Number of Data Loading Workers")
-    ap.add_argument('--lr', default=1e-3, type=float, help="Initial Learning Rate for ADAM Optimizer")
-    ap.add_argument('--grad_clip', default=1, type=float, help="Gradient clipping value")
-    ap.add_argument('--model_name', default="Generalist", type=str, help="Model's name")
-    ap.add_argument('--checkpoint_path', default="checkpoints/", type=str, help="Path for checkpoints folder")
-    ap.add_argument("--accelerator", default="gpu", type=str, help="Device for the model to be trained on")
-    ap.add_argument("--devices",  default=1, type=str, help="Number of devices used for training")
-    ap.add_argument("--processor_pretrained_path", default="", type=str, help="Path for processor's weights folder")
-    ap.add_argument("--pretrained_path", default="", type=str, help="Path for model's weights folder")
-    ap.add_argument("--freeze_processor", default=False, type=bool, help="Whether or not to freeze processor's weights.")
-    ap.add_argument("--seed", default=7, type=int, help="Seed for the random number generator")
-    ap.add_argument("--algorithms_args", default="algorithm_args/default.yaml", type=str, help="Path for the algorithms' arguments file")
-    args = ap.parse_args()
+def load_pretrained_processor(processor_path):
+    if processor_path == "":
+        return None
+    
+    processor = EncodeProcessDecode(CLRS_30_ALGS).processor
+    state_dict = torch.load(processor_path, map_location=torch.device("cpu"))["state_dict"]
+    processor.load_state_dict(state_dict)
 
+    return processor
+
+if __name__ == '__main__':
+    args = ap.parse_args()
+    
     nb_nodes = args.nb_nodes
     seed = args.seed
 
-    processor = None
-    if args.procebfsssor_pretrained_path != "":
-        processor = EncodeProcessDecode(CLRS_30_ALGS).processor
-        state_dict = torch.load(args.processor_pretrained_path, map_location=torch.device("cpu"))["state_dict"]
-        new_state_dict = {}
-        for key in state_dict:
-            if "processor" in key:
-                new_state_dict[key.replace("model.processor.", "")] = state_dict[key]
-
-        processor.load_state_dict(new_state_dict)
-
-    algorithm_args = load_algorithm_args()
+    processor = load_pretrained_processor(args.pretrained_processor)
+    algorithm_args = load_algorithm_args(args.algorithms_args)
 
     train_dataset = CLRSDataset(args.algorithms, nb_nodes, args.batch_size, 1000, seed=seed, algorithms_args=algorithm_args)
     val_dataset = CLRSDataset(args.algorithms, [max(nb_nodes)], args.batch_size, 32, seed=seed, algorithms_args=algorithm_args)
@@ -90,15 +91,6 @@ if __name__ == '__main__':
     test_dataloader = DataLoader(test_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=True, worker_init_fn=worker_init_fn)
 
     model = EncodeProcessDecode(args.algorithms, freeze_processor=args.freeze_processor, pretrained_processor=processor)
-
-    if args.pretrained_path != "":
-        state_dict = torch.load(args.pretrained_path, map_location=torch.device("cpu"))["state_dict"]
-        new_state_dict = {}
-        for key in state_dict:
-            if "model" in key:
-                new_state_dict[key.replace("model.", "")] = state_dict[key]
-
-        model.load_state_dict(new_state_dict)
 
     loss_fn = CLRSLoss()
 
