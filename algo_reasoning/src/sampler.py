@@ -844,7 +844,7 @@ class CLRSDataset(IterableDataset):
                 algorithms: List[str],
                 nb_nodes: List[int],
                 batch_size: int,
-                num_samples: str,
+                n_steps: str,
                 seed: Optional[int] = None,
                 randomize_pos: bool = False,
                 string_length: int = 20,
@@ -857,7 +857,7 @@ class CLRSDataset(IterableDataset):
         self.batch_size = batch_size
         self.string_length = string_length
         self.algorithms_args = algorithms_args
-        self.num_samples = num_samples
+        self.n_steps = n_steps
 
         self.samplers = dict()
         for algo in algorithms:
@@ -886,7 +886,7 @@ class CLRSDataset(IterableDataset):
             yield sampled_data 
 
     def __len__(self):
-        return self.num_samples*len(self.algorithms)
+        return self.n_steps*len(self.algorithms)
     
     def __iter__(self):
         return self.sample_data()
