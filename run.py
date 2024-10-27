@@ -29,11 +29,11 @@ ap.add_argument('--algorithms', default=CLRS_30_ALGS, type=list_of_strings,
                 help="Algorithms for the model to be trained on.")
 ap.add_argument('--nb_nodes', default='4, 7, 11, 13, 16', type=list_of_ints,
                 help="Number of nodes in the graphs")
-ap.add_argument('--batch_size', default=4, type=int, 
+ap.add_argument('--batch_size', default=32, type=int, 
                 help="Number of samples in each training batch")
 ap.add_argument('--n_epochs', default=100, type=int,
                 help="Number of training epochs")
-ap.add_argument('train_steps', default=3000, type=int,
+ap.add_argument('train_steps', default=100, type=int,
                 help='Number of training steps per epoch and algorithm')
 ap.add_argument('val_steps', default=32, type=int,
                 help="Number of validation steps per algorithm")
