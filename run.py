@@ -33,11 +33,11 @@ ap.add_argument('--batch_size', default=32, type=int,
                 help="Number of samples in each training batch")
 ap.add_argument('--n_epochs', default=100, type=int,
                 help="Number of training epochs")
-ap.add_argument('train_steps', default=100, type=int,
+ap.add_argument('--train_steps', default=100, type=int,
                 help='Number of training steps per epoch and algorithm')
-ap.add_argument('val_steps', default=32, type=int,
+ap.add_argument('--val_steps', default=32, type=int,
                 help="Number of validation steps per algorithm")
-ap.add_argument('test_steps', default=32, type=int,
+ap.add_argument('--test_steps', default=32, type=int,
                 help="Number of test steps per algorithm")
 ap.add_argument('--n_workers', default=8, type=int,
                 help="Number of Data Loading Workers")
