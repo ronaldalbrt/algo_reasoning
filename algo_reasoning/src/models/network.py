@@ -11,17 +11,18 @@ from algo_reasoning.src.specs import SPECS, CATEGORIES_DIMENSIONS, Type
 
 class EncodeProcessDecode(torch.nn.Module):
     def __init__(self, 
-                 algorithms, 
-                 hidden_dim=128, 
-                 msg_passing_steps=3, 
-                 use_lstm=False, 
-                 dropout_prob=0.1,
-                 teacher_force_prob=0,
-                 encode_hints=True,
-                 decode_hints=True,
-                 soft_hints=True,
-                 freeze_processor=False,
-                 pretrained_processor=None):
+                algorithms, 
+                hidden_dim=128, 
+                msg_passing_steps=3, 
+                use_lstm=False, 
+                dropout_prob=0.0,
+                teacher_force_prob=0.0,
+                encode_hints=True,
+                decode_hints=True,
+                soft_hints=True,
+                freeze_processor=False,
+                pretrained_processor=None,
+                seed=None):
         super().__init__()
         self.msg_passing_steps = msg_passing_steps
         self.hidden_dim = hidden_dim
@@ -30,6 +31,10 @@ class EncodeProcessDecode(torch.nn.Module):
         self.teacher_force_prob = teacher_force_prob
         self.encoders = nn.ModuleDict()
         self.decoders = nn.ModuleDict()
+        self._generator = torch.Generator() 
+        if seed is not None: 
+            self._generator = self._generator.manual_seed(seed)
+
         for algorithm in algorithms:
             self.encoders[algorithm] = Encoder(algorithm, encode_hints=encode_hints, hidden_dim=hidden_dim, soft_hints=self.soft_hints)
             self.decoders[algorithm] = Decoder(algorithm, hidden_dim=hidden_dim, decode_hints=decode_hints)
@@ -76,7 +81,7 @@ class EncodeProcessDecode(torch.nn.Module):
         nb_nodes = batch.inputs.pos.shape[1]
         
         if hints is not None:
-            if self.training and self.teacher_force_prob > torch.rand(1).item():
+            if self.training and self.teacher_force_prob > torch.rand(1, generator=self._generator).item():
                 hints = batch.hints
             else:
                 hints = self.process_hints(hints.clone(), algorithm=algorithm, batch_nb_nodes=nb_nodes)
