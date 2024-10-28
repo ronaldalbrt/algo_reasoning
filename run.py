@@ -7,7 +7,7 @@ from algo_reasoning.src.specs import CLRS_30_ALGS
 
 import os
 import torch
-from torch.optim import Adam
+from torch.optim import Adam, AdamW
 import lightning as L
 from torch.utils.data import DataLoader, get_worker_info
 import argparse
@@ -49,6 +49,8 @@ ap.add_argument('--model_name', default="Generalist", type=str,
                 help="Model's name")
 ap.add_argument('--checkpoint_path', default="checkpoints/", type=str,
                 help="Path for checkpoints folder")
+ap.add_argument("--checkpoint_module", default="", type=str,
+                help="Path for checkpoint module stored by lightning")
 ap.add_argument("--accelerator", default="gpu", type=str,
                 help="Device for the model to be trained on")
 ap.add_argument("--devices", default=1, type=str,
@@ -63,8 +65,7 @@ ap.add_argument("--algorithms_args", default="algorithm_args/default.yaml", type
                 help="Path for the algorithms' arguments file")
 ap.add_argument('--static_dataset_path', default="tmp/CLRS30", type=str,
                 help="Path to the dataset folder")
-ap.add_argument("--checkpoint_task_path", default="", type=str,
-                help="Path for model's weights folder")
+
 
 def load_algorithm_args(args_file):
     with open(args_file, 'r') as f:
@@ -88,6 +89,8 @@ if __name__ == '__main__':
     nb_nodes = args.nb_nodes
     seed = args.seed
 
+    checkpoint_module = args.checkpoint_module if args.checkpoint_module != "" else None
+
     processor = load_pretrained_processor(args.pretrained_processor)
     algorithm_args = load_algorithm_args(args.algorithms_args)
 
@@ -110,19 +113,21 @@ if __name__ == '__main__':
 
     loss_fn = CLRSLoss()
 
-    optim_method=Adam
+    optim_method=AdamW
 
-    lightning_module = CLRSTask(
-        model=model,
-        loss_fn=loss_fn,
-        optim_method=optim_method,
-        lr=args.lr
-    )
+    if args.checkpoint_module != "":
+        model = model.load_from_checkpoint(checkpoint_module, model=model, loss_fn=loss_fn)
+    else:
+        lightning_module = CLRSTask(
+            model=model,
+            loss_fn=loss_fn,
+            optim_method=optim_method,
+            lr=args.lr
+        )
 
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         dirpath=args.checkpoint_path+f"/{args.model_name}/",
-        save_weights_only=True,
         filename=args.model_name+'-{epoch:02d}-{val_loss:.2f}',
         every_n_epochs=1
     )
@@ -134,6 +139,7 @@ if __name__ == '__main__':
                         callbacks=[checkpoint_callback],
                         use_distributed_sampler=False,
                         gradient_clip_val=args.grad_clip,
+                        resume_from_checkpoint=checkpoint_module,
                         )
     
     trainer.fit(lightning_module, train_dataloader, val_dataloader)
