@@ -116,7 +116,7 @@ if __name__ == '__main__':
     optim_method=AdamW
 
     if args.checkpoint_module != "":
-        model = model.load_from_checkpoint(checkpoint_module, model=model, loss_fn=loss_fn)
+        lightning_module = CLRSTask.load_from_checkpoint(checkpoint_module, model=model, loss_fn=loss_fn)
     else:
         lightning_module = CLRSTask(
             model=model,
