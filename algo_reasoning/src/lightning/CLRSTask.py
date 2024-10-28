@@ -1,5 +1,3 @@
-import os
-import torch
 import torch.nn.functional as F
 import lightning as L
 from algo_reasoning.src.eval import eval_function
