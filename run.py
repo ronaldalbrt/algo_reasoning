@@ -139,10 +139,9 @@ if __name__ == '__main__':
                         callbacks=[checkpoint_callback],
                         use_distributed_sampler=False,
                         gradient_clip_val=args.grad_clip,
-                        resume_from_checkpoint=checkpoint_module,
                         )
     
-    trainer.fit(lightning_module, train_dataloader, val_dataloader)
+    trainer.fit(lightning_module, train_dataloader, val_dataloader, ckpt_path=checkpoint_module)
 
     # Test with CLRS Original dataset
     test_dataset = OriginalCLRSDataset(args.algorithms, "test", args.path)
