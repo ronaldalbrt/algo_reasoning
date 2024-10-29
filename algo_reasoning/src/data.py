@@ -1,12 +1,12 @@
 import os
 import numpy as np
 from torch_geometric.data import Data, Batch
-from torch.utils.data import Dataset, Sampler, IterableDataset
+from torch.utils.data import Dataset, Sampler
 from typing import List, Optional, Union
 import torch
 from collections import OrderedDict
 
-class CLRSData(Data):
+class AlgorithmicData(Data):
     """A data object for CLRS data."""
     def __init__(self,
                 pos_generator=None, 
@@ -20,7 +20,7 @@ class CLRSData(Data):
         """Set the inputs of the algorithm being executed."""
         data = self.clone() if not inplace else self
 
-        data["inputs"] = CLRSData()
+        data["inputs"] = AlgorithmicData()
         data["length"] = torch.tensor(0).float()
 
         for key, value in inputs.items():
@@ -50,7 +50,7 @@ class CLRSData(Data):
         """Set the outputs of the algorithm being executed."""
         data = self.clone() if not inplace else self
 
-        data["outputs"] = CLRSData()
+        data["outputs"] = AlgorithmicData()
         data["max_length"] = data["length"].clone()
 
         for key, value in outputs.items():
@@ -65,7 +65,7 @@ class CLRSData(Data):
         
         data["length"] += 1
         if "hints" not in data.keys():
-            data["hints"] = CLRSData()
+            data["hints"] = AlgorithmicData()
 
             for key, value in hints.items():
                 data["hints"][key] = value.float().unsqueeze(0)
@@ -78,12 +78,12 @@ class CLRSData(Data):
             return data
 
     def concat(self, other, inplace: bool = False):
-        """Concatenate two CLRSData objects."""
+        """Concatenate two AlgorithmicData objects."""
         data = self.clone() if not inplace else self
 
         for key, value in other.items():
             if key in data:
-                if isinstance(value, CLRSData):
+                if isinstance(value, AlgorithmicData):
                     data[key].concat(value)
                 elif isinstance(value, str):
                     data[key] = value
@@ -99,7 +99,7 @@ class CLRSData(Data):
             return data
 
     def unsqueeze(self, dim, inplace: bool = False):
-        """Unsqueeze all data in CLRSData objects."""
+        """Unsqueeze all data in AlgorithmicData objects."""
         data = self.clone() if not inplace else self
 
         for key, value in data.items():
@@ -112,13 +112,13 @@ class CLRSData(Data):
             return data
     
     def squeeze(self, dim: Optional[Union[int, List[int]]] = None, inplace: bool = False):
-        """Squeeze all data in CLRSData objects."""
+        """Squeeze all data in AlgorithmicData objects."""
         squeeze_fn = lambda x: x.squeeze(dim) if dim is not None else x.squeeze()
 
         data = self.clone() if not inplace else self
 
         for key, value in data.items():
-            if isinstance(value, CLRSData):
+            if isinstance(value, AlgorithmicData):
                 data[key] = data[key].squeeze(dim)
             elif isinstance(value, str) or isinstance(value, int) or isinstance(value, float):
                 data[key] = value
@@ -233,29 +233,29 @@ class CLRSSampler(Sampler[List[int]]):
 
                 yield (self.algo_start_idx[batch] + idx_order[alg][idx_min:idx_max]).tolist()
 
-class CLRSOutput(OrderedDict):
+class AlgorithmicOutput(OrderedDict):
     def __init__(self, **kwargs):
-        super(CLRSOutput, self).__init__(**kwargs)
+        super(AlgorithmicOutput, self).__init__(**kwargs)
 
-        assert "output" in kwargs, "output key must be provided to CLRSOutput."
-        assert "hidden_embeddings" in kwargs, "hidden_embeddings key must be provided to CLRSOutput."
+        assert "output" in kwargs, "output key must be provided to AlgorithmicOutput."
+        assert "hidden_embeddings" in kwargs, "hidden_embeddings key must be provided to AlgorithmicOutput."
 
-def idx_batched_data(idx: int, batched_data: CLRSData) -> CLRSData:
+def idx_batched_data(idx: int, batched_data: AlgorithmicData) -> AlgorithmicData:
     """Get itens at idx for batched data."""
     inputs_dict = {k: v[idx] for k, v in batched_data.inputs.items()}
-    inputs = CLRSData(**inputs_dict)
+    inputs = AlgorithmicData(**inputs_dict)
 
     outputs_dict = {k: v[idx] for k, v in batched_data.outputs.items()}
-    outputs = CLRSData(**outputs_dict)
+    outputs = AlgorithmicData(**outputs_dict)
 
     hints_dict = {k: v[idx] for k, v in batched_data.hints.items()}
-    hints = CLRSData(**hints_dict)
+    hints = AlgorithmicData(**hints_dict)
 
     algorithm = batched_data.algorithm
     length = batched_data.length[idx]
     max_length = torch.max(length).long().item()
 
-    return CLRSData(
+    return AlgorithmicData(
         algorithm=algorithm,
         inputs=inputs,
         outputs=outputs,
@@ -279,7 +279,7 @@ def _batch_hints(hints, hint_lengths):
     """
     max_length = torch.max(hint_lengths).long()
 
-    batched_hints = CLRSData()
+    batched_hints = AlgorithmicData()
     aux_hint = hints[0]
     for k, v in aux_hint.items():
         new_shape = (len(hints), max_length) + v.shape[2:]
@@ -296,7 +296,7 @@ def _batch_hints(hints, hint_lengths):
 def collate(batch):
     """Collate a batch of data points."""
     for data in batch:
-        assert isinstance(data, CLRSData), f"Data must be of type CLRSData, got {type(data)}."
+        assert isinstance(data, AlgorithmicData), f"Data must be of type AlgorithmicData, got {type(data)}."
         
         data.unsqueeze(0, inplace=True)
 

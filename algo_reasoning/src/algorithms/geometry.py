@@ -28,13 +28,13 @@ See "Introduction to Algorithms" 3ed (CLRS3) for more information.
 import torch
 import math
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.probing import probe_array, mask_one
 
 def segments_intersect(xs, ys, nb_nodes, *args, **kwargs):
     """Segment intersection."""
 
-    data = CLRSData(algorithm="segments_intersect", *args, **kwargs)
+    data = AlgorithmicData(algorithm="segments_intersect", *args, **kwargs)
 
     dirs = torch.zeros(xs.size(0))
     on_seg = torch.zeros(xs.size(0))
@@ -132,7 +132,7 @@ def segments_intersect(xs, ys, nb_nodes, *args, **kwargs):
 def graham_scan(xs, ys, nb_nodes, *args, **kwargs):
     """Graham scan convex hull (Graham, 1972)."""
 
-    data = CLRSData(algorithm="graham_scan", *args, **kwargs)
+    data = AlgorithmicData(algorithm="graham_scan", *args, **kwargs)
     data.set_inputs({
         'x': xs.clone(),
         'y': ys.clone()
@@ -235,7 +235,7 @@ def graham_scan(xs, ys, nb_nodes, *args, **kwargs):
 def jarvis_march(xs, ys, nb_nodes, *args, **kwargs):
     """Jarvis' march convex hull (Jarvis, 1973)."""
     
-    data = CLRSData(algorithm="jarvis_march", *args, **kwargs)
+    data = AlgorithmicData(algorithm="jarvis_march", *args, **kwargs)
     data.set_inputs({
         'x': xs.clone(),
         'y': ys.clone()

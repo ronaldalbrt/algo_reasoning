@@ -26,14 +26,14 @@ See "Introduction to Algorithms" 3ed (CLRS3) for more information.
 # pylint: disable=invalid-name
 import torch
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.probing import probe_array, strings_id, array_cat, strings_pair, strings_pair_cat, strings_pred
 
 
 def matrix_chain_order(p, nb_nodes, *args, **kwargs):
     """Matrix-chain multiplication."""
 
-    data = CLRSData(algorithm="matrix_chain_order", *args, **kwargs)
+    data = AlgorithmicData(algorithm="matrix_chain_order", *args, **kwargs)
 
     A_pos = torch.arange(p.size(0))
 
@@ -81,7 +81,7 @@ def matrix_chain_order(p, nb_nodes, *args, **kwargs):
 
 def lcs_length(x, y, nb_nodes, *args, **kwargs):
     """Longest common subsequence."""
-    data = CLRSData(algorithm="lcs_length", *args, **kwargs)
+    data = AlgorithmicData(algorithm="lcs_length", *args, **kwargs)
 
     x_pos = torch.arange(x.size(0))
     y_pos = torch.arange(y.size(0))
@@ -150,7 +150,7 @@ def lcs_length(x, y, nb_nodes, *args, **kwargs):
 def optimal_bst(p, q, nb_nodes, *args, **kwargs):
     """Optimal binary search tree (Aho et al., 1974)."""
 
-    data = CLRSData(algorithm="optimal_bst", *args, **kwargs)
+    data = AlgorithmicData(algorithm="optimal_bst", *args, **kwargs)
 
     A_pos = torch.arange(q.shape[0])
     p_cpy = torch.zeros(q.shape[0])

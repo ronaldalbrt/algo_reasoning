@@ -1,8 +1,8 @@
 from algo_reasoning.src.models.network import EncodeProcessDecode
 from algo_reasoning.src.sampler import CLRSDataset
 from algo_reasoning.src.data import OriginalCLRSDataset, CLRSSampler, collate
-from algo_reasoning.src.losses.CLRSLoss import CLRSLoss
-from algo_reasoning.src.lightning.CLRSTask import CLRSTask
+from algo_reasoning.src.losses.AlgorithmicReasoningLoss import AlgorithmicReasoningLoss
+from algo_reasoning.src.lightning.AlgorithmicReasoningTask import AlgorithmicReasoningTask
 from algo_reasoning.src.specs import CLRS_30_ALGS
 
 import os
@@ -111,14 +111,14 @@ if __name__ == '__main__':
 
     model = EncodeProcessDecode(args.algorithms, freeze_processor=args.freeze_processor, pretrained_processor=processor)
 
-    loss_fn = CLRSLoss()
+    loss_fn = AlgorithmicReasoningLoss()
 
     optim_method=AdamW
 
     if args.checkpoint_module != "":
-        lightning_module = CLRSTask.load_from_checkpoint(checkpoint_module, model=model, loss_fn=loss_fn)
+        lightning_module = AlgorithmicReasoningTask.load_from_checkpoint(checkpoint_module, model=model, loss_fn=loss_fn)
     else:
-        lightning_module = CLRSTask(
+        lightning_module = AlgorithmicReasoningTask(
             model=model,
             loss_fn=loss_fn,
             optim_method=optim_method,

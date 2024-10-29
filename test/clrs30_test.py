@@ -1,5 +1,5 @@
 import torch
-from algo_reasoning.src.data import CLRSDataset
+from algo_reasoning.src.data import OriginalCLRSDataset
 from algo_reasoning.src.specs import SPECS, Type
 
 from algo_reasoning.src.algorithms.sorting import insertion_sort, bubble_sort, heapsort, quicksort
@@ -90,7 +90,7 @@ class CLRS30Test(unittest.TestCase):
 
     def test_sorting(self):
         algorithms = ["insertion_sort",  "bubble_sort", "heapsort", "quicksort"]
-        ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
+        ds = OriginalCLRSDataset(algorithms, "train", "tmp/CLRS30")
 
         for i in range(len(ds)):
             sample = ds[i]
@@ -111,7 +111,7 @@ class CLRS30Test(unittest.TestCase):
 
     def test_greedy(self):
         algorithms = ["activity_selector", "task_scheduling"]
-        ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
+        ds = OriginalCLRSDataset(algorithms, "train", "tmp/CLRS30")
 
         for i in range(len(ds)):
             sample = ds[i]
@@ -130,7 +130,7 @@ class CLRS30Test(unittest.TestCase):
 
     def test_dynamic_programming(self):
         algorithms = ["matrix_chain_order", "lcs_length", "optimal_bst"]
-        ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
+        ds = OriginalCLRSDataset(algorithms, "train", "tmp/CLRS30")
 
         for i in range(len(ds)):
             sample = ds[i]
@@ -160,7 +160,7 @@ class CLRS30Test(unittest.TestCase):
 
     def test_searching(self):
         algorithms = ["minimum", "binary_search", "quickselect"]
-        ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
+        ds = OriginalCLRSDataset(algorithms, "train", "tmp/CLRS30")
 
         for i in range(len(ds)):
             sample = ds[i]
@@ -186,11 +186,11 @@ class CLRS30Test(unittest.TestCase):
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
-            self.verify_data(out, sample, algo, ignore_keys=["pivot"])
+            self.verify_data(out, sample, algo)
 
     def test_divide_and_conquer(self):
         algorithms = ["find_maximum_subarray_kadane"]
-        ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
+        ds = OriginalCLRSDataset(algorithms, "train", "tmp/CLRS30")
 
         for i in range(len(ds)):
             sample = ds[i]
@@ -212,7 +212,7 @@ class CLRS30Test(unittest.TestCase):
     def test_strings(self):
         algorithms = ["naive_string_matcher", "kmp_matcher"]
 
-        ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
+        ds = OriginalCLRSDataset(algorithms, "train", "tmp/CLRS30")
 
         for i in range(len(ds)):
             sample = ds[i]
@@ -239,7 +239,7 @@ class CLRS30Test(unittest.TestCase):
     def test_geometry(self):
         algorithms = ["segments_intersect", "graham_scan", "jarvis_march"]
 
-        ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
+        ds = OriginalCLRSDataset(algorithms, "train", "tmp/CLRS30")
 
         for i in range(len(ds)):
             sample = ds[i]
@@ -263,7 +263,7 @@ class CLRS30Test(unittest.TestCase):
 
     def test_graphs(self):
         algorithms = ["dfs", "bfs", "topological_sort", "articulation_points", "bridges", "strongly_connected_components", "mst_kruskal", "mst_prim", "bellman_ford", "dijkstra", "dag_shortest_paths", "floyd_warshall"]
-        ds = CLRSDataset(algorithms, "train", "tmp/CLRS30")
+        ds = OriginalCLRSDataset(algorithms, "train", "tmp/CLRS30")
 
         for i in range(len(ds)):
             sample = ds[i]

@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 from algo_reasoning.src.specs import Stage, Location, Type, SPECS, CATEGORIES_DIMENSIONS
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 
 
 ## Node decoders
@@ -173,4 +173,4 @@ class Decoder(nn.Module):
             elif stage == Stage.HINT:
                 hints[k] = self.decoder[k](node_fts, edge_fts, graph_fts).unsqueeze(1)
 
-        return CLRSData(inputs=CLRSData(), hints=CLRSData().from_dict(hints), length=-1, outputs=CLRSData().from_dict(outputs), algorithm=self.algorithm)
+        return AlgorithmicData(inputs=AlgorithmicData(), hints=AlgorithmicData().from_dict(hints), length=-1, outputs=AlgorithmicData().from_dict(outputs), algorithm=self.algorithm)

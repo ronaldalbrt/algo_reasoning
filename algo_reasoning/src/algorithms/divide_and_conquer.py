@@ -26,13 +26,13 @@ See "Introduction to Algorithms" 3ed (CLRS3) for more information.
 
 import torch
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.probing import probe_array, mask_one
 
 
 def find_maximum_subarray(A, nb_nodes, *args, **kwargs):
     """Maximum subarray."""
-    data = CLRSData(algorithm="find_maximum_subarray", *args, **kwargs)
+    data = AlgorithmicData(algorithm="find_maximum_subarray", *args, **kwargs)
 
     data.set_inputs({
         'key': A.clone()
@@ -336,7 +336,7 @@ def find_maximum_subarray(A, nb_nodes, *args, **kwargs):
 def find_maximum_subarray_kadane(A, nb_nodes, *args, **kwargs):
     """Kadane's variant of Maximum subarray (Bentley, 1984)."""
 
-    data = CLRSData(algorithm="find_maximum_subarray_kadane", *args, **kwargs)
+    data = AlgorithmicData(algorithm="find_maximum_subarray_kadane", *args, **kwargs)
 
     data.set_inputs({
         'key': A.clone()

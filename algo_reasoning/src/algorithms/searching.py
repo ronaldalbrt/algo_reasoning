@@ -26,12 +26,12 @@ See "Introduction to Algorithms" 3ed (CLRS3) for more information.
 # pylint: disable=invalid-name
 import torch
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.probing import probe_array, mask_one
 
 def minimum(A, nb_nodes, *args, **kwargs):
     """Minimum."""
-    data = CLRSData(algorithm="minimum", *args, **kwargs)
+    data = AlgorithmicData(algorithm="minimum", *args, **kwargs)
 
     A_pos = torch.arange(A.size(0))
 
@@ -65,7 +65,7 @@ def minimum(A, nb_nodes, *args, **kwargs):
 
 def binary_search(x, A, nb_nodes, *args, **kwargs):
     """Binary search."""
-    data = CLRSData(algorithm="binary_search", *args, **kwargs)
+    data = AlgorithmicData(algorithm="binary_search", *args, **kwargs)
 
     T_pos = torch.arange(A.size(0))
 
@@ -106,7 +106,7 @@ def binary_search(x, A, nb_nodes, *args, **kwargs):
 def quickselect(A, nb_nodes, *args, **kwargs):
     """Quickselect (Hoare, 1961)."""
     
-    data = CLRSData(algorithm="quickselect", *args, **kwargs)
+    data = AlgorithmicData(algorithm="quickselect", *args, **kwargs)
 
     data.set_inputs({
         'key': A.clone()

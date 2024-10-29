@@ -27,12 +27,12 @@ See "Introduction to Algorithms" 3ed (CLRS3) for more information.
 # pylint: disable=invalid-name
 import torch
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.probing import probe_array, mask_one, heap
 
 def insertion_sort(A, nb_nodes, *args, **kwargs):
     """Insertion sort."""
-    data = CLRSData(algorithm="insertion_sort", *args, **kwargs)
+    data = AlgorithmicData(algorithm="insertion_sort", *args, **kwargs)
     
     data.set_inputs({
         'key': A.clone()
@@ -72,7 +72,7 @@ def insertion_sort(A, nb_nodes, *args, **kwargs):
 
 def bubble_sort(A, nb_nodes, *args, **kwargs):
     """Bubble sort."""
-    data = CLRSData(algorithm="bubble_sort", *args, **kwargs)
+    data = AlgorithmicData(algorithm="bubble_sort", *args, **kwargs)
     
     data.set_inputs({
         'key': A.clone()
@@ -107,7 +107,7 @@ def bubble_sort(A, nb_nodes, *args, **kwargs):
 
 def heapsort(A, nb_nodes, *args, **kwargs):
     """Heapsort (Williams, 1964)."""
-    data = CLRSData(algorithm="heapsort", *args, **kwargs)
+    data = AlgorithmicData(algorithm="heapsort", *args, **kwargs)
     
     data.set_inputs({
         'key': A.clone()
@@ -187,7 +187,7 @@ def heapsort(A, nb_nodes, *args, **kwargs):
 def quicksort(A, nb_nodes, *args, **kwargs):
     """Quicksort (Hoare, 1962)."""
     
-    data = CLRSData(algorithm="quicksort", *args, **kwargs)
+    data = AlgorithmicData(algorithm="quicksort", *args, **kwargs)
 
     data.set_inputs({
         'key': A.clone()

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from .encoder import Encoder
 from .decoder import Decoder
 from .processor import PGN, MPNN
-from algo_reasoning.src.data import CLRSData, CLRSOutput
+from algo_reasoning.src.data import AlgorithmicData, AlgorithmicOutput
 from algo_reasoning.src.specs import SPECS, CATEGORIES_DIMENSIONS, Type
 
 
@@ -138,7 +138,7 @@ class EncodeProcessDecode(torch.nn.Module):
             output_step, hidden, lstm_state = self._one_step_prediction(batch, hidden, hints=hints, hint_step=0, lstm_state=lstm_state)
             hidden_embeddings.append(hidden)
 
-        output = CLRSData(inputs=batch.inputs, hints=hints, length=torch.tensor([max_len]*batch_size), outputs=output_step.outputs, algorithm=algorithm).to(device)
+        output = AlgorithmicData(inputs=batch.inputs, hints=hints, length=torch.tensor([max_len]*batch_size), outputs=output_step.outputs, algorithm=algorithm).to(device)
         hidden_embeddings = torch.concat(hidden_embeddings, dim=0)
 
-        return CLRSOutput(output=output, hidden_embeddings=hidden_embeddings)
+        return AlgorithmicOutput(output=output, hidden_embeddings=hidden_embeddings)

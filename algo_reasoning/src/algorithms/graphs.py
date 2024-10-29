@@ -37,14 +37,14 @@ See "Introduction to Algorithms" 3ed (CLRS3) for more information.
 
 import torch
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.specs import OutputClass
 from algo_reasoning.src.probing import graph, array_cat, mask_one
 
 def dfs(A, nb_nodes, *args, **kwargs):
     """Depth-first search (Moore, 1959)."""
 
-    data = CLRSData(algorithm="dfs", *args, **kwargs)
+    data = AlgorithmicData(algorithm="dfs", *args, **kwargs)
 
     data.set_inputs({
         'A': A.clone(),
@@ -153,7 +153,7 @@ def dfs(A, nb_nodes, *args, **kwargs):
 def bfs(A, s, nb_nodes, *args, **kwargs):
     """Breadth-first search (Moore, 1959)."""
     
-    data = CLRSData(algorithm="bfs", *args, **kwargs)
+    data = AlgorithmicData(algorithm="bfs", *args, **kwargs)
 
     data.set_inputs({
         's': mask_one(s, A.size(0)),
@@ -190,7 +190,7 @@ def bfs(A, s, nb_nodes, *args, **kwargs):
 def topological_sort(A, nb_nodes, *args, **kwargs):
     """Topological sorting (Knuth, 1973)."""
 
-    data = CLRSData(algorithm="topological_sort", *args, **kwargs)
+    data = AlgorithmicData(algorithm="topological_sort", *args, **kwargs)
 
     data.set_inputs({
         'A': A.clone(),
@@ -289,7 +289,7 @@ def topological_sort(A, nb_nodes, *args, **kwargs):
 def articulation_points(A, nb_nodes, *args, **kwargs):
     """Articulation points."""
 
-    data = CLRSData(algorithm="articulation_points", *args, **kwargs)
+    data = AlgorithmicData(algorithm="articulation_points", *args, **kwargs)
 
     data.set_inputs({
         'A': A.clone(),
@@ -444,7 +444,7 @@ def articulation_points(A, nb_nodes, *args, **kwargs):
 
 def bridges(A, nb_nodes, *args, **kwargs):
     """Bridges."""
-    data = CLRSData(algorithm="bridges", *args, **kwargs)
+    data = AlgorithmicData(algorithm="bridges", *args, **kwargs)
 
     adj = graph(A.clone())
 
@@ -590,7 +590,7 @@ def bridges(A, nb_nodes, *args, **kwargs):
 def strongly_connected_components(A, nb_nodes, *args, **kwargs):
     """Kosaraju's strongly-connected components (Aho et al., 1974)."""
 
-    data = CLRSData(algorithm="strongly_connected_components", *args, **kwargs)
+    data = AlgorithmicData(algorithm="strongly_connected_components", *args, **kwargs)
 
     data.set_inputs({
         'A': A.clone(),
@@ -808,7 +808,7 @@ def strongly_connected_components(A, nb_nodes, *args, **kwargs):
 def mst_kruskal(A, nb_nodes, *args, **kwargs):
     """Kruskal's minimum spanning tree (Kruskal, 1956)."""
 
-    data = CLRSData(algorithm="mst_kruskal", *args, **kwargs)
+    data = AlgorithmicData(algorithm="mst_kruskal", *args, **kwargs)
 
     data.set_inputs({
         'A': A.clone(),
@@ -938,7 +938,7 @@ def mst_kruskal(A, nb_nodes, *args, **kwargs):
 def mst_prim(A, s, nb_nodes, *args, **kwargs):
     """Prim's minimum spanning tree (Prim, 1957)."""
 
-    data = CLRSData(algorithm="mst_prim", *args, **kwargs)
+    data = AlgorithmicData(algorithm="mst_prim", *args, **kwargs)
 
     data.set_inputs({
         's': mask_one(s, A.size(0)),
@@ -991,7 +991,7 @@ def mst_prim(A, s, nb_nodes, *args, **kwargs):
 def bellman_ford(A, s, nb_nodes, *args, **kwargs):
     """Bellman-Ford's single-source shortest path (Bellman, 1958)."""
 
-    data = CLRSData(algorithm="bellman_ford", *args, **kwargs)
+    data = AlgorithmicData(algorithm="bellman_ford", *args, **kwargs)
 
     data.set_inputs({
         's': mask_one(s, A.size(0)),
@@ -1035,7 +1035,7 @@ def bellman_ford(A, s, nb_nodes, *args, **kwargs):
 def dijkstra(A, s, nb_nodes, *args, **kwargs):
     """Dijkstra's single-source shortest path (Dijkstra, 1959)."""
 
-    data = CLRSData(algorithm="dijkstra", *args, **kwargs)
+    data = AlgorithmicData(algorithm="dijkstra", *args, **kwargs)
 
     data.set_inputs({
         's': mask_one(s, A.size(0)),
@@ -1088,7 +1088,7 @@ def dijkstra(A, s, nb_nodes, *args, **kwargs):
 def dag_shortest_paths(A, s, nb_nodes, *args, **kwargs):
     """DAG shortest path."""
 
-    data = CLRSData(algorithm="dag_shortest_paths", *args, **kwargs)
+    data = AlgorithmicData(algorithm="dag_shortest_paths", *args, **kwargs)
 
     data.set_inputs({
         's': mask_one(s, A.size(0)),
@@ -1250,7 +1250,7 @@ def dag_shortest_paths(A, s, nb_nodes, *args, **kwargs):
 def floyd_warshall(A, nb_nodes, *args, **kwargs):
     """Floyd-Warshall's all-pairs shortest paths (Floyd, 1962)."""
 
-    data = CLRSData(algorithm="floyd_warshall", *args, **kwargs)
+    data = AlgorithmicData(algorithm="floyd_warshall", *args, **kwargs)
 
     data.set_inputs({
         'A': A.clone(),

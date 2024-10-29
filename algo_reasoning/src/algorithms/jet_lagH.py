@@ -1,6 +1,6 @@
 import torch
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.specs import Stage, Location, Type
 
 jet_lag_specs = {
@@ -12,7 +12,7 @@ jet_lag_specs = {
     }
 
 def jet_lag(b, e, nb_nodes, *args, **kwargs):
-    data = CLRSData(algorithm="jet_lag", *args, **kwargs)
+    data = AlgorithmicData(algorithm="jet_lag", *args, **kwargs)
 
     data.set_inputs({
         'b':  b,

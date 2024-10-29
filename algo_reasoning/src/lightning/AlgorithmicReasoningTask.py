@@ -4,7 +4,7 @@ from algo_reasoning.src.eval import eval_function
 from lightning.pytorch.utilities import grad_norm
 
 
-class CLRSTask(L.LightningModule):
+class AlgorithmicReasoningTask(L.LightningModule):
     def __init__(self, model, loss_fn, optim_method, lr):
         super().__init__()
         self.save_hyperparameters(ignore=['model','loss_fn'])

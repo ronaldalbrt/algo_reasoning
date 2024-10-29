@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from algo_reasoning.src.data import CLRSData
 from algo_reasoning.src.specs import Stage, Location, Type, SPECS, CATEGORIES_DIMENSIONS
 
 _Tensor = torch.Tensor
@@ -51,7 +50,7 @@ class Encoder(nn.Module):
                 m = self.encoder[k]
                 nn.init.xavier_normal_(m.weight) 
 
-    def _encode_CLRSData(self, data, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes, hint_step=None):    
+    def _encode_AlgorithmicData(self, data, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes, hint_step=None):    
         for k, value in data:
             if k not in SPECS[self.algorithm]:
                 continue
@@ -105,10 +104,10 @@ class Encoder(nn.Module):
         edge_hidden = torch.zeros((batch_size, nb_nodes, nb_nodes, self.hidden_dim), device=device)
         graph_hidden = torch.zeros((batch_size, self.hidden_dim), device=device)
 
-        node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_CLRSData(batch.inputs, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes)
+        node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_AlgorithmicData(batch.inputs, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes)
 
         if self.encode_hints and hints is not None:
-            node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_CLRSData(hints, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes, 
+            node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_AlgorithmicData(hints, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes, 
                                                                                     hint_step=hint_step)
 
         return node_hidden, edge_hidden, graph_hidden, adj_mat
