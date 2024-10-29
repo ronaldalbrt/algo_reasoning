@@ -6,7 +6,6 @@ from typing import List, Optional, Union
 import torch
 from collections import OrderedDict
 
-class CLRSData(Data):
 class AlgorithmicData(Data):
     """A data object for CLRS data."""
     def __init__(self,

@@ -4,7 +4,7 @@ import torch.linalg as LA
 import math
 
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.specs import Stage, Location, Type
 
 # GEOMETRY / SEGMENTS INTERSECT
@@ -134,7 +134,7 @@ carls_vacation_specs = {
     }
 
 def carls_vacation(x, y, height1, height2, nb_nodes, *args, **kwargs):
-    data = CLRSData(algorithm='carls_vacation', *args, **kwargs)
+    data = AlgorithmicData(algorithm='carls_vacation', *args, **kwargs)
     
     data.set_inputs({
         'x': x,

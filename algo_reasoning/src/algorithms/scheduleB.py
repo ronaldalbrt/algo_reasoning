@@ -1,7 +1,7 @@
 import torch
 from sympy.utilities.iterables import multiset_permutations
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.specs import Stage, Location, Type
 
 schedule_specs = {
@@ -14,7 +14,7 @@ schedule_specs = {
 }
 
 def schedule(N, W, nb_nodes, *args, **kwargs):
-    data = CLRSData(algorithm="schedule", *args, **kwargs)
+    data = AlgorithmicData(algorithm="schedule", *args, **kwargs)
     
     data.set_inputs({
         'n': torch.tensor(N),

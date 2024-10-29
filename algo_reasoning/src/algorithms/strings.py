@@ -26,7 +26,7 @@ See "Introduction to Algorithms" 3ed (CLRS3) for more information.
 
 import torch
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.probing import mask_one, array_cat, strings_id, strings_pred, strings_pi
 
 _ALPHABET_SIZE = 4
@@ -35,7 +35,7 @@ _ALPHABET_SIZE = 4
 def naive_string_matcher(T, P, nb_nodes, *args, **kwargs):
     """Naive string matching."""
 
-    data = CLRSData(algorithm='naive_string_matcher',  *args, **kwargs)
+    data = AlgorithmicData(algorithm='naive_string_matcher',  *args, **kwargs)
 
     T_pos = torch.arange(T.size(0))
     P_pos = torch.arange(P.size(0))
@@ -93,7 +93,7 @@ def naive_string_matcher(T, P, nb_nodes, *args, **kwargs):
 def kmp_matcher(T, P, nb_nodes, *args, **kwargs):
     """Knuth-Morris-Pratt string matching (Knuth et al., 1977)."""
 
-    data = CLRSData(algorithm='kmp_matcher',  *args, **kwargs)
+    data = AlgorithmicData(algorithm='kmp_matcher',  *args, **kwargs)
 
     T_pos = torch.arange(T.size(0))
     P_pos = torch.arange(P.size(0))

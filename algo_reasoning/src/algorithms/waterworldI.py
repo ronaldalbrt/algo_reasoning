@@ -1,7 +1,7 @@
 import torch
 import torch.linalg as LA
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.specs import Stage, Location, Type
 
 waterworld_specs = {
@@ -15,7 +15,7 @@ waterworld_specs = {
 }
 
 def waterworld(n, m, area_percentages, nb_nodes, *args, **kwargs):
-    data = CLRSData(algorithm='waterworld', *args, **kwargs)
+    data = AlgorithmicData(algorithm='waterworld', *args, **kwargs)
     
     data.set_inputs({
         'n': torch.tensor(n),

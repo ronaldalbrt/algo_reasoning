@@ -186,7 +186,7 @@ class CLRS30Test(unittest.TestCase):
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
-            self.verify_data(out, sample, algo, ignore_keys=["pivot"])
+            self.verify_data(out, sample, algo)
 
     def test_divide_and_conquer(self):
         algorithms = ["find_maximum_subarray_kadane"]

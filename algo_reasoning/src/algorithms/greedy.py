@@ -26,13 +26,13 @@ See "Introduction to Algorithms" 3ed (CLRS3) for more information.
 
 import torch
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.probing import probe_array, mask_one
 
 
 def activity_selector(s, f, nb_nodes, *args, **kwargs):
     """Activity selection (Gavril, 1972)."""
-    data = CLRSData(algorithm="activity_selector", *args, **kwargs)
+    data = AlgorithmicData(algorithm="activity_selector", *args, **kwargs)
     
     data.set_inputs({
         's': s.clone(),
@@ -80,7 +80,7 @@ def activity_selector(s, f, nb_nodes, *args, **kwargs):
 
 def task_scheduling(d, w, nb_nodes, *args, **kwargs):
     """Task scheduling (Lawler, 1985)."""
-    data = CLRSData(algorithm="task_scheduling", *args, **kwargs)
+    data = AlgorithmicData(algorithm="task_scheduling", *args, **kwargs)
     
     data.set_inputs({
         'd': d.clone(),

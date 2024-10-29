@@ -1,6 +1,6 @@
 import torch
 
-from algo_reasoning.src.data import CLRSData
+from algo_reasoning.src.data import AlgorithmicData
 from algo_reasoning.src.specs import Stage, Location, Type
 
 # GEOMETRY / CONVEX HULL
@@ -50,7 +50,7 @@ def jarvis_march(xs, ys):
     return in_hull
 
 def three_kinds_dice(values_D1, values_D2, nb_nodes, *args, **kwargs):
-    data = CLRSData(algorithm="three_kinds_dice", *args, **kwargs)
+    data = AlgorithmicData(algorithm="three_kinds_dice", *args, **kwargs)
     
     data.set_inputs({
         'values_D1': torch.bincount(values_D1, minlength=nb_nodes),
