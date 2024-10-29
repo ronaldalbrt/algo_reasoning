@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from algo_reasoning.src.specs import SPECS, Type, OutputClass
     
-class CLRSLoss(nn.Module):
+class AlgorithmicReasoningLoss(nn.Module):
     def __init__(self, hint_loss_weight=0.1):
         super().__init__()
         self.hint_loss = (hint_loss_weight > 0.0)
