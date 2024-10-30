@@ -288,9 +288,9 @@ def _batch_hints(hints, hint_lengths):
     
     for sample_idx, cur_sample in enumerate(hints):
         for k, v in cur_sample.items():
-            cur_length = v.size(1)
-            batched_hints[k][sample_idx:sample_idx+1, :cur_length] = v
-
+            cur_length = min(v.size(1), max_length)
+            batched_hints[k][sample_idx:sample_idx+1, :cur_length] = v[:, :cur_length]
+        
     return batched_hints, max_length
 
 def collate(batch):
