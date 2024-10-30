@@ -144,7 +144,7 @@ if __name__ == '__main__':
     trainer.fit(lightning_module, train_dataloader, val_dataloader, ckpt_path=checkpoint_module)
 
     # Test with CLRS Original dataset
-    test_dataset = OriginalCLRSDataset(args.algorithms, "test", args.path)
+    test_dataset = OriginalCLRSDataset(args.algorithms, "test", args.static_dataset_path)
     test_sampler = CLRSSampler(test_dataset, algorithms=args.algorithms, batch_size=args.batch_size)
     test_dataloader = DataLoader(test_dataset, batch_sampler=test_sampler, num_workers=args.n_workers, persistent_workers=True, collate_fn=collate)
 
