@@ -139,6 +139,6 @@ class EncodeProcessDecode(torch.nn.Module):
             hidden_embeddings.append(hidden)
 
         output = AlgorithmicData(inputs=batch.inputs, hints=hints, length=torch.tensor([max_len]*batch_size), outputs=output_step.outputs, algorithm=algorithm).to(device)
-        hidden_embeddings = torch.concat(hidden_embeddings, dim=0)
+        hidden_embeddings = torch.stack(hidden_embeddings, dim=1)
 
         return AlgorithmicOutput(output=output, hidden_embeddings=hidden_embeddings)
