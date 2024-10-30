@@ -233,7 +233,7 @@ class CLRSSampler(Sampler[List[int]]):
 
                 yield (self.algo_start_idx[batch] + idx_order[alg][idx_min:idx_max]).tolist()
 
-class AlgorithmicOutput(OrderedDict):
+class AlgorithmicOutput(Data):
     def __init__(self, **kwargs):
         super(AlgorithmicOutput, self).__init__(**kwargs)
 

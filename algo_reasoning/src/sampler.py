@@ -16,7 +16,7 @@ import torch
 import torch.linalg as LA
 from torch.utils.data import IterableDataset
 import math
-from typing import Any, Callable, Optional, Tuple, List
+from typing import Any, Callable, Optional, Tuple, List, Union
 
 from algo_reasoning.src.data import collate
 
@@ -842,7 +842,7 @@ SAMPLERS = {
 class CLRSDataset(IterableDataset):
     def __init__(self,
                 algorithms: List[str],
-                nb_nodes: List[int],
+                nb_nodes: Union[int, List[int]],
                 batch_size: int,
                 n_steps: int,
                 seed: Optional[int] = None,
@@ -853,7 +853,7 @@ class CLRSDataset(IterableDataset):
         self.algorithms = algorithms
         self.seed = seed
         self._generator = torch.Generator().manual_seed(self.seed) if self.seed is not None else torch.Generator()
-        self.nb_nodes = nb_nodes
+        self.nb_nodes = nb_nodes if isinstance(nb_nodes, list) else [nb_nodes]
         self.batch_size = batch_size
         self.string_length = string_length
         self.algorithms_args = algorithms_args
