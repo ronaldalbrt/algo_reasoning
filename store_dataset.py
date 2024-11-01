@@ -2,6 +2,7 @@ import torch
 from algo_reasoning.src.specs import CLRS_30_ALGS
 from algo_reasoning.src.data import AlgorithmicData
 from os import listdir
+import os
 
 import json
 
@@ -20,7 +21,10 @@ if __name__ == '__main__':
                 json_data = clrs_data_list.to_dict()
                 curr_json.append(json_data)
 
-            with open(f"./tmp/CLRS30/{alg}/{split}.json", "w") as f:
+            if not os.path.exists(f"./tmp/CLRS30/_CLRS30/{alg}/"):
+                os.makedirs(f"./tmp/CLRS30/_CLRS30/{alg}/")
+                
+            with open(f"./tmp/CLRS30/_CLRS30/{alg}/{split}.json", "w+") as f:
                 json.dump(curr_json, f)
             
             
