@@ -4,3 +4,4 @@ torcheval
 lightning
 tensorboard
 torchmetrics
+datasets

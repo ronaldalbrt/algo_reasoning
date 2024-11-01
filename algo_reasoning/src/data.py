@@ -1,10 +1,15 @@
 import os
 import numpy as np
+import torch
 from torch_geometric.data import Data, Batch
 from torch.utils.data import Dataset, Sampler
 from typing import List, Optional, Union
-import torch
-from collections import OrderedDict
+
+from algo_reasoning.src.specs import SPECS
+from datasets import load_dataset
+
+SPLITS = ["train", "val", "test"]
+SAMPLERS = list(SPECS.keys())
 
 class AlgorithmicData(Data):
     """A data object for CLRS data."""
@@ -177,7 +182,8 @@ class OriginalCLRSDataset(Dataset):
                 
                 os.mkdir(f"{self.data_folder}/{algorithm}/{self.split}")
 
-                ds = load_dataset(algorithm, self.split, self.data_folder)
+                ds = get_dataset(algorithm, self.split, self.data_folder)
+                print(ds)
 
                 self.n_datapoints[algorithm] = 1000 if split == "train" else 32
                 
@@ -340,3 +346,48 @@ def collate(batch):
     batch.hints = batched_hints
     batch.max_length = max_length
     return batch
+
+def _preprocess(data_point, algorithm=None):
+    """Convert sampled inputs into DataPoints."""
+    inputs = AlgorithmicData()
+    outputs = AlgorithmicData()
+    hints = AlgorithmicData()
+    
+
+    length = torch.tensor(data_point['length'])
+    max_length = length.clone()
+
+    dict_inputs = data_point['inputs']
+    dict_outputs = data_point['outputs']
+    dict_hints = data_point['hints']
+
+    for key, data in dict_inputs.items():
+        inputs[key] = torch.tensor(data)
+
+    for key, data in dict_outputs.items():
+        outputs[key] = torch.tensor(data)
+
+    for key, data in dict_hints.items():
+        hints[key] = torch.tensor(data)
+    
+    return AlgorithmicData(inputs=inputs, hints=hints, length=length, outputs=outputs, max_length=max_length, algorithm=algorithm)
+
+
+def get_dataset(algorithm, split, local_dir):
+    """Load the CLRS dataset from hugging face for the given algorithm or list of algorithms and split.
+    
+    Args:
+        algorithm (str): The algorithm to get the dataset for.
+        split (str): The split to get the dataset for.
+        local_dir (str): The directory to download the dataset to.
+    """
+    if algorithm not in SAMPLERS:
+        raise ValueError(f"Unknown algorithm '{algorithm}'. Available algorithms are {list(SAMPLERS)}.")
+
+    if split not in SPLITS:
+        raise ValueError(f"Unknown split '{split}'. Available splits are {list(SPLITS)}.")
+    
+    # check if the dataset is already downloaded
+    huggingface_dataset = load_dataset("ronaldalbrt/CLRS30", data_dir=f"{algorithm}/", split=split)
+
+    return [_preprocess(i, algorithm=algorithm) for i in huggingface_dataset]
