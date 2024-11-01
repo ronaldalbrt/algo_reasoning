@@ -127,6 +127,34 @@ class AlgorithmicData(Data):
 
         if not inplace:
             return data
+    
+    def to_dict(self):
+        """Convert AlgorithmicData to a dictionary."""
+        data_dict = dict()
+
+        for key, value in self.items():
+            if isinstance(value, AlgorithmicData):
+                data_dict[key] = value.to_dict()
+            else:
+                data_dict[key] = value
+        
+        return data_dict
+    
+    def tolist(self):
+        """Convert AlgorithmicData tensors to list."""
+        data = self.clone()
+        for key, value in self.items():
+            if isinstance(value, AlgorithmicData):
+                data[key] = value.tolist()
+            elif isinstance(value, torch.Tensor):
+                if value.dim() == 0:
+                    data[key] = value.item()
+                else:
+                    data[key] = value.tolist()
+            else:
+                data[key] = value
+        
+        return data
 
 class OriginalCLRSDataset(Dataset):
     def __init__(self, algorithms, split, data_folder="tmp/CLRS30"):
