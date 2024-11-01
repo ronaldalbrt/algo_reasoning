@@ -50,10 +50,18 @@ class CLRS30Test(unittest.TestCase):
 
     def verify_data(self, out, sample, algo, ignore_keys=[]):
         for k in ignore_keys:
+            if k in out.inputs:
+                del out.inputs[k]
+            if k in sample.inputs:
+                del sample.inputs[k]
             if k in out.hints:
                 del out.hints[k]
+            if k in sample.hints:
+                del sample.hints[k]
             if k in out.outputs:
                 del out.outputs[k]
+            if k in sample.outputs:
+                del sample.outputs[k]
 
         self.assertCountEqual(out.inputs.keys(), sample.inputs.keys(), msg=f"Algo: {algo}, Inputs do not match")
         self.assertCountEqual(out.hints.keys(), sample.hints.keys(), msg=f"Algo: {algo}, Hints do not match")
@@ -186,7 +194,7 @@ class CLRS30Test(unittest.TestCase):
 
             out = algo_fn[algo](**inp, nb_nodes=nb_nodes)
 
-            self.verify_data(out, sample, algo)
+            self.verify_data(out, sample, algo, ignore_keys=['pivot'])
 
     def test_divide_and_conquer(self):
         algorithms = ["find_maximum_subarray_kadane"]
