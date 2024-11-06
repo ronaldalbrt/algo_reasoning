@@ -16,9 +16,12 @@ class AlgorithmicReasoningTask(L.LightningModule):
 
     def _batch_loss(self, batch, calculate_metrics=False, prefix="val"):
         input_batch = batch.clone()
-        preds = self.model(input_batch)["output"]
+        output = self.model(input_batch)
 
-        loss = self.loss_fn(preds, batch)
+        preds = output["output"]
+        hidden = output["hidden_embeddings"]
+
+        loss = self.loss_fn(preds, batch, hidden)
 
         if calculate_metrics:
             metrics_r = eval_function(preds.detach().cpu(), batch.detach().cpu())

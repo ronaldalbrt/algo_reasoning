@@ -1,14 +1,20 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import math
 
 from algo_reasoning.src.specs import SPECS, Type, OutputClass
     
 class AlgorithmicReasoningLoss(nn.Module):
-    def __init__(self, hint_loss_weight=0.1):
+    def __init__(self, hint_loss_weight=0.1, reg_weight=0.5):
         super().__init__()
         self.hint_loss = (hint_loss_weight > 0.0)
         self.hint_loss_weight = hint_loss_weight
+        self.reg_weight = reg_weight
+        self.reg_term = self.reg_weight > 0.0
+        
+        if self.reg_term:
+            self.regularizer = lambda hidden: torch.mean(torch.abs(torch.sum(hidden, dim=2)/(torch.norm(hidden, dim=2)*(math.sqrt(hidden.size(2))))))
     
     def _calculate_loss(self, mask, truth, pred, type_, nb_nodes):
         if type_ == Type.SCALAR:
@@ -37,12 +43,18 @@ class AlgorithmicReasoningLoss(nn.Module):
         else:
             raise NotImplementedError
     
-    def forward(self, pred, batch):
+    def forward(self, pred, batch, hidden=None):
         algorithm = batch.algorithm
         specs = SPECS[algorithm]
         nb_nodes = batch.inputs.pos.shape[1]
         max_length = batch.max_length.long().item()
         device = batch.length.device
+
+        if self.reg_term:
+            assert hidden is not None, "Hidden Embeddings must be provided when reg_weight > 0.0"
+            reg_loss = self.regularizer(hidden)
+        else:
+            reg_loss = 0        
 
         output_loss = torch.zeros(1, device=device)
         for key, value in pred.outputs:
@@ -70,5 +82,6 @@ class AlgorithmicReasoningLoss(nn.Module):
                 hint_loss += self._calculate_loss(mask, ground_truth, value, type_, nb_nodes)
 
             output_loss += self.hint_loss_weight*hint_loss
+            output_loss += self.reg_weight*reg_loss
         
         return output_loss
