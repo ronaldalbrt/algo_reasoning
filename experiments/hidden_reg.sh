@@ -1,0 +1,9 @@
+python run.py --algorithms insertion_sort --model_name insertion_sort --version_name hidden_reg=0.0 --hidden_regularization 0.0 
+python run.py --algorithms insertion_sort --model_name insertion_sort --version_name hidden_reg=0.1 --hidden_regularization 0.1 
+python run.py --algorithms insertion_sort --model_name insertion_sort --version_name hidden_reg=0.5 --hidden_regularization 0.5
+python run.py --algorithms bfs --model_name bfs --version_name hidden_reg=0.0 --hidden_regularization 0.0 
+python run.py --algorithms bfs --model_name bfs --version_name hidden_reg=0.1 --hidden_regularization 0.1 
+python run.py --algorithms bfs --model_name bfs --version_name hidden_reg=0.5 --hidden_regularization 0.5
+python run.py --algorithms kmp_matcher --model_name kmp_matcher --version_name hidden_reg=0.0 --hidden_regularization 0.0 
+python run.py --algorithms kmp_matcher --model_name kmp_matcher --version_name hidden_reg=0.1 --hidden_regularization 0.1 
+python run.py --algorithms kmp_matcher --model_name kmp_matcher --version_name hidden_reg=0.5 --hidden_regularization 0.5
