@@ -6,7 +6,7 @@ import math
 from algo_reasoning.src.specs import SPECS, Type, OutputClass
     
 class AlgorithmicReasoningLoss(nn.Module):
-    def __init__(self, hint_loss_weight=0.1, reg_weight=0.5):
+    def __init__(self, hint_loss_weight=0.1, reg_weight=0.1):
         super().__init__()
         self.hint_loss = (hint_loss_weight > 0.0)
         self.hint_loss_weight = hint_loss_weight
