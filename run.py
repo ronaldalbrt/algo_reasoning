@@ -7,8 +7,9 @@ from algo_reasoning.src.specs import CLRS_30_ALGS
 
 import os
 import torch
-from torch.optim import Adam, AdamW
+from torch.optim import AdamW
 import lightning as L
+from lightning.pytorch.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader, get_worker_info
 import argparse
 import yaml
@@ -49,6 +50,8 @@ ap.add_argument('--hidden_regularization', default=0.1, type=float,
                 help="Gradient clipping value")
 ap.add_argument('--model_name', default="Generalist", type=str,
                 help="Model's name")
+ap.add_argument('--version_name', default='', type=str,
+                help="Experiment's version name")
 ap.add_argument('--checkpoint_path', default="checkpoints/", type=str,
                 help="Path for checkpoints folder")
 ap.add_argument("--checkpoint_module", default="", type=str,
@@ -134,6 +137,8 @@ if __name__ == '__main__':
         every_n_epochs=1
     )
 
+    logger = TensorBoardLogger(args.checkpoint_path+"lightning_logs/", name=args.model_name, version=args.version_name)
+
     trainer = L.Trainer(default_root_dir=args.checkpoint_path, 
                         max_epochs=args.n_epochs, 
                         devices=args.devices, 
@@ -141,6 +146,7 @@ if __name__ == '__main__':
                         callbacks=[checkpoint_callback],
                         use_distributed_sampler=False,
                         gradient_clip_val=args.grad_clip,
+                        logger=logger
                         )
     
     trainer.fit(lightning_module, train_dataloader, val_dataloader, ckpt_path=checkpoint_module)
