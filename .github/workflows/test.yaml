@@ -4,9 +4,9 @@ name: Python package
 
 on:
   push:
-    branches: [ "test_workflow" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "test_workflow" ]
+    branches: [ "main" ]
 
 jobs:
   test:
