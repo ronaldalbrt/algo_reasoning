@@ -352,6 +352,7 @@ def _preprocess(data_point, algorithm=None):
     outputs = AlgorithmicData()
     hints = AlgorithmicData()
     
+    print("DATAPOINT: ", data_point)
 
     length = torch.tensor(data_point['length'])
     max_length = length.clone()
