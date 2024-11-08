@@ -8,7 +8,7 @@ from typing import List, Optional, Union
 from algo_reasoning.src.specs import SPECS
 from datasets import load_dataset
 
-SPLITS = ["train", "val", "test"]
+SPLITS = ["train", "validation", "test"]
 SAMPLERS = list(SPECS.keys())
 
 class AlgorithmicData(Data):
@@ -183,7 +183,6 @@ class OriginalCLRSDataset(Dataset):
                 os.mkdir(f"{self.data_folder}/{algorithm}/{self.split}")
 
                 ds = get_dataset(algorithm, self.split, self.data_folder)
-                print(ds)
 
                 self.n_datapoints[algorithm] = 1000 if split == "train" else 32
                 
@@ -373,13 +372,12 @@ def _preprocess(data_point, algorithm=None):
     return AlgorithmicData(inputs=inputs, hints=hints, length=length, outputs=outputs, max_length=max_length, algorithm=algorithm)
 
 
-def get_dataset(algorithm, split, local_dir):
+def get_dataset(algorithm, split):
     """Load the CLRS dataset from hugging face for the given algorithm or list of algorithms and split.
     
     Args:
         algorithm (str): The algorithm to get the dataset for.
         split (str): The split to get the dataset for.
-        local_dir (str): The directory to download the dataset to.
     """
     if algorithm not in SAMPLERS:
         raise ValueError(f"Unknown algorithm '{algorithm}'. Available algorithms are {list(SAMPLERS)}.")
