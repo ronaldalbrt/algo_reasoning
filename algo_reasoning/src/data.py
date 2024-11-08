@@ -182,8 +182,7 @@ class OriginalCLRSDataset(Dataset):
                 
                 os.mkdir(f"{self.data_folder}/{algorithm}/{self.split}")
 
-                ds = get_dataset(algorithm, self.split, self.data_folder)
-                print(ds)
+                ds = get_dataset(algorithm, self.split)
 
                 self.n_datapoints[algorithm] = 1000 if split == "train" else 32
                 
@@ -352,7 +351,6 @@ def _preprocess(data_point, algorithm=None):
     inputs = AlgorithmicData()
     outputs = AlgorithmicData()
     hints = AlgorithmicData()
-    
 
     length = torch.tensor(data_point['length'])
     max_length = length.clone()
@@ -373,13 +371,12 @@ def _preprocess(data_point, algorithm=None):
     return AlgorithmicData(inputs=inputs, hints=hints, length=length, outputs=outputs, max_length=max_length, algorithm=algorithm)
 
 
-def get_dataset(algorithm, split, local_dir):
+def get_dataset(algorithm, split):
     """Load the CLRS dataset from hugging face for the given algorithm or list of algorithms and split.
     
     Args:
         algorithm (str): The algorithm to get the dataset for.
         split (str): The split to get the dataset for.
-        local_dir (str): The directory to download the dataset to.
     """
     if algorithm not in SAMPLERS:
         raise ValueError(f"Unknown algorithm '{algorithm}'. Available algorithms are {list(SAMPLERS)}.")
@@ -388,6 +385,6 @@ def get_dataset(algorithm, split, local_dir):
         raise ValueError(f"Unknown split '{split}'. Available splits are {list(SPLITS)}.")
     
     # check if the dataset is already downloaded
-    huggingface_dataset = load_dataset("ronaldalbrt/CLRS30", data_dir=f"{algorithm}/", split=split)
+    huggingface_dataset = load_dataset("ronaldalbrt/CLRS30", data_files=f"{algorithm}/{split}.json", split="train")
 
-    return [_preprocess(i, algorithm=algorithm) for i in huggingface_dataset]
+    return [_preprocess(dp, algorithm=algorithm) for dp in huggingface_dataset]
