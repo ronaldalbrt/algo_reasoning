@@ -351,8 +351,6 @@ def _preprocess(data_point, algorithm=None):
     inputs = AlgorithmicData()
     outputs = AlgorithmicData()
     hints = AlgorithmicData()
-    
-    print("DATAPOINT: ", data_point)
 
     length = torch.tensor(data_point['length'])
     max_length = length.clone()
@@ -387,6 +385,6 @@ def get_dataset(algorithm, split):
         raise ValueError(f"Unknown split '{split}'. Available splits are {list(SPLITS)}.")
     
     # check if the dataset is already downloaded
-    huggingface_dataset = load_dataset("ronaldalbrt/CLRS30", data_files=f"{algorithm}/{split}.json")
+    huggingface_dataset = load_dataset("ronaldalbrt/CLRS30", data_files=f"{algorithm}/{split}.json", split="train")
 
-    return [_preprocess(i, algorithm=algorithm) for i in huggingface_dataset]
+    return [_preprocess(dp, algorithm=algorithm) for dp in huggingface_dataset]
