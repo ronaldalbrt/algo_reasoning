@@ -182,7 +182,7 @@ class OriginalCLRSDataset(Dataset):
                 
                 os.mkdir(f"{self.data_folder}/{algorithm}/{self.split}")
 
-                ds = get_dataset(algorithm, self.split, self.data_folder)
+                ds = get_dataset(algorithm, self.split)
 
                 self.n_datapoints[algorithm] = 1000 if split == "train" else 32
                 
