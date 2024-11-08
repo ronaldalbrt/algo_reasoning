@@ -8,7 +8,7 @@ from typing import List, Optional, Union
 from algo_reasoning.src.specs import SPECS
 from datasets import load_dataset
 
-SPLITS = ["train", "validation", "test"]
+SPLITS = ["train", "val", "test"]
 SAMPLERS = list(SPECS.keys())
 
 class AlgorithmicData(Data):
@@ -386,6 +386,6 @@ def get_dataset(algorithm, split):
         raise ValueError(f"Unknown split '{split}'. Available splits are {list(SPLITS)}.")
     
     # check if the dataset is already downloaded
-    huggingface_dataset = load_dataset("ronaldalbrt/CLRS30", data_dir=f"{algorithm}/", split=split)
+    huggingface_dataset = load_dataset("ronaldalbrt/CLRS30", data_files=f"{algorithm}/{split}.json")
 
     return [_preprocess(i, algorithm=algorithm) for i in huggingface_dataset]
