@@ -210,53 +210,50 @@ class OriginalCLRSDataset(Dataset):
         return torch.load(f"{self.data_folder}/{algorithm}/{self.split}/{data_idx}", weights_only=False)
 
 class CLRSSampler(Sampler[List[int]]):
-    def __init__(self, dataset, algorithms, batch_size, replacement=False, generator=None):
+    def __init__(self, dataset, algorithms, batch_size, replacement=False, seed=None):
         super().__init__()
         self.dataset = dataset
         self.algorithms = algorithms
         self.n_algorithms = len(self.algorithms)
         self.algo_start_idx = self.dataset.algo_start_idx
-        self.generator = generator
+        self.seed = seed
+        self._generator = torch.Generator().manual_seed(self.seed) if self.seed is not None else torch.Generator()
         
         self.replacement = replacement
 
         self.batch_size = batch_size
 
-        if generator is None:
-            seed = int(torch.empty((), dtype=torch.int64).random_().item())
-            self.generator = torch.Generator()
-            self.generator.manual_seed(seed)
-        else:
-            self.generator = generator
-
+    def reset_generator(self, seed:int):
+        self._generator.manual_seed(seed)
+    
     def __len__(self):
         return (len(self.dataset) + self.batch_size - 1) // self.batch_size
 
     def __iter__(self):
         if self.replacement:
             for _ in range(len(self.dataset) // self.batch_size):
-                algo_idx = torch.randint(0, self.n_algorithms, (1,), generator=self.generator).item()
+                algo_idx = torch.randint(0, self.n_algorithms, (1,), generator=self._generator).item()
 
                 algorithm = self.algorithms[algo_idx]
 
                 min_idx = self.dataset.algo_start_idx[algorithm]
                 max_idx = min_idx + self.dataset.n_datapoints[algorithm]
 
-                yield torch.randint(min_idx, max_idx, size=(self.batch_size,), dtype=torch.int64, generator=self.generator).tolist()
+                yield torch.randint(min_idx, max_idx, size=(self.batch_size,), dtype=torch.int64, generator=self._generator).tolist()
 
             if (len(self.dataset) % self.batch_size) != 0:
-                yield torch.randint(min_idx, max_idx, size=(len(self.dataset) % self.batch_size,), dtype=torch.int64, generator=self.generator).tolist()
+                yield torch.randint(min_idx, max_idx, size=(len(self.dataset) % self.batch_size,), dtype=torch.int64, generator=self._generator).tolist()
         else:
             n_samples = 1000 if self.dataset.split == "train" else 32
             n_batches_per_algo = (1000 + self.batch_size - 1) // self.batch_size if self.dataset.split == "train" else  (32 + self.batch_size - 1) // self.batch_size
 
             wo_replacement_algos = np.array([])
-            idx_order = {alg: torch.randperm(n_samples, generator=self.generator) for alg in self.algorithms}
+            idx_order = {alg: torch.randperm(n_samples, generator=self._generator) for alg in self.algorithms}
 
             for alg in self.algorithms:
                 wo_replacement_algos = np.append(wo_replacement_algos, [alg]*n_batches_per_algo)
 
-            wo_replacement_algos = wo_replacement_algos[torch.randperm(len(wo_replacement_algos), generator=self.generator).tolist()]
+            wo_replacement_algos = wo_replacement_algos[torch.randperm(len(wo_replacement_algos), generator=self._generator).tolist()]
 
             curr_idx = {alg: 0 for alg in self.algorithms}
             for batch in wo_replacement_algos:

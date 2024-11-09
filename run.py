@@ -153,7 +153,7 @@ if __name__ == '__main__':
 
     # Test with CLRS Original dataset
     test_dataset = OriginalCLRSDataset(args.algorithms, "test", args.static_dataset_path)
-    test_sampler = CLRSSampler(test_dataset, algorithms=args.algorithms, batch_size=args.batch_size)
+    test_sampler = CLRSSampler(test_dataset, algorithms=args.algorithms, batch_size=args.batch_size, seed=seed)
     test_dataloader = DataLoader(test_dataset, batch_sampler=test_sampler, num_workers=args.n_workers, persistent_workers=True, collate_fn=collate)
 
     trainer.test(lightning_module, test_dataloader)
