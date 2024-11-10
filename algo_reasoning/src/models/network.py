@@ -88,7 +88,7 @@ class EncodeProcessDecode(torch.nn.Module):
 
         node_fts, edge_fts, graph_fts, adj_mat = self.encoders[algorithm](batch, hints=hints, hint_step=hint_step)
 
-        nxt_hidden = hidden
+        nxt_hidden = torch.clone(hidden)
 
         for _ in range(self.msg_passing_steps):
             nxt_hidden, nxt_edge = self.processor(
@@ -106,8 +106,15 @@ class EncodeProcessDecode(torch.nn.Module):
             nxt_hidden, nxt_lstm_state = self.lstm(hidden, lstm_state)
         else:
             nxt_lstm_state = None
+
+        h_t = torch.cat([node_fts, hidden, nxt_hidden], dim=-1)
+
+        if nxt_edge is not None:
+            e_t = torch.cat(edge_fts, nxt_edge)
+        else:
+            e_t = torch.clone(edge_fts)
         
-        output_pred = self.decoders[algorithm](nxt_hidden, nxt_edge, graph_fts)
+        output_pred = self.decoders[algorithm](h_t, e_t, graph_fts)
 
         return output_pred, nxt_hidden, nxt_lstm_state
     
