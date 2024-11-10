@@ -5,6 +5,7 @@ from algo_reasoning.src.data import AlgorithmicData
 
 
 ## Node decoders
+# TODO: Adapt Decoder inputs
 class NodeBaseDecoder(nn.Module):
     def __init__(self, spec_dim, hidden_dim=128):
         super().__init__()
