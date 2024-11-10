@@ -5,9 +5,8 @@ from algo_reasoning.src.data import AlgorithmicData
 
 
 ## Node decoders
-# TODO: Adapt Decoder inputs
 class NodeBaseDecoder(nn.Module):
-    def __init__(self, spec_dim, hidden_dim=128):
+    def __init__(self, spec_dim, hidden_dim, edge_dim, graph_dim):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.spec_dim = spec_dim
@@ -19,13 +18,13 @@ class NodeBaseDecoder(nn.Module):
         return x
     
 class NodePointerDecoder(NodeBaseDecoder):
-    def __init__(self, spec_dim, hidden_dim=128):
-        super().__init__(hidden_dim, hidden_dim)
+    def __init__(self, spec_dim, hidden_dim, edge_dim, graph_dim):
+        super().__init__(hidden_dim, hidden_dim, edge_dim, graph_dim)
         self.hidden_dim = hidden_dim
         self.spec_dim = spec_dim
 
         self.lin2 = nn.Linear(hidden_dim, hidden_dim)
-        self.edge_lin = nn.Linear(hidden_dim, hidden_dim)
+        self.edge_lin = nn.Linear(edge_dim, hidden_dim)
 
         self.lin3 = nn.Linear(hidden_dim, spec_dim)
 
@@ -44,13 +43,13 @@ class NodePointerDecoder(NodeBaseDecoder):
 
 #### Edge decoders
 class EdgeBaseDecoder(nn.Module):
-    def __init__(self, spec_dim, hidden_dim=128):
+    def __init__(self, spec_dim, hidden_dim, edge_dim, graph_dim):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.spec_dim = spec_dim
         self.lin1 = nn.Linear(hidden_dim, spec_dim)
         self.lin2 = nn.Linear(hidden_dim, spec_dim)
-        self.edge_lin = nn.Linear(hidden_dim, spec_dim)
+        self.edge_lin = nn.Linear(edge_dim, spec_dim)
 
     def forward(self, x, edge_emb, graph_fts):
         x_1 = self.lin1(x) # (B, N, H)
@@ -63,8 +62,8 @@ class EdgeBaseDecoder(nn.Module):
         return out.squeeze(-1) # (B, N, N)
     
 class EdgePointerDecoder(EdgeBaseDecoder):
-    def __init__(self, spec_dim, hidden_dim=128):
-        super().__init__(hidden_dim, hidden_dim)
+    def __init__(self, spec_dim, hidden_dim, edge_dim, graph_dim):
+        super().__init__(hidden_dim, hidden_dim, edge_dim, graph_dim)
         self.lin3 = nn.Linear(hidden_dim, hidden_dim)
         self.lin4 = nn.Linear(hidden_dim, spec_dim)
 
@@ -81,12 +80,12 @@ class EdgePointerDecoder(EdgeBaseDecoder):
 
 #### Graph decoders
 class GraphBaseDecoder(nn.Module):
-    def __init__(self, spec_dim, hidden_dim=128):
+    def __init__(self, spec_dim, hidden_dim, edge_dim, graph_dim):
         super().__init__()
         self.hidden_dim = hidden_dim
         self.spec_dim = spec_dim
         self.lin1 = nn.Linear(hidden_dim, spec_dim)
-        self.lin2 = nn.Linear(hidden_dim, spec_dim)
+        self.lin2 = nn.Linear(graph_dim, spec_dim)
 
     def forward(self, x, edge_emb, graph_fts):
         graph_embedding = torch.max(x, dim=-2).values # (B, H)
@@ -99,8 +98,8 @@ class GraphBaseDecoder(nn.Module):
         return out.squeeze(-1)
     
 class GraphPointerDecoder(GraphBaseDecoder):
-    def __init__(self, spec_dim, hidden_dim=128):
-        super().__init__(spec_dim, hidden_dim)
+    def __init__(self, spec_dim, hidden_dim, edge_dim, graph_dim):
+        super().__init__(spec_dim, hidden_dim, edge_dim, graph_dim)
 
         self.lin3 = nn.Linear(hidden_dim, spec_dim)
 
@@ -134,7 +133,7 @@ _DECODER_MAP = {
 }
     
 class Decoder(nn.Module):
-    def __init__(self, algorithm, hidden_dim=128, decode_hints=True):
+    def __init__(self, algorithm, hidden_dim, edge_dim, graph_dim, decode_hints=True):
         super().__init__()
         self.algorithm = algorithm
         self.hidden_dim = hidden_dim
@@ -155,7 +154,7 @@ class Decoder(nn.Module):
                 spec_dim = CATEGORIES_DIMENSIONS[algorithm][k]
 
             if k not in self.decoder:
-                self.decoder[k] = _DECODER_MAP[(loc, type_)](spec_dim, hidden_dim)
+                self.decoder[k] = _DECODER_MAP[(loc, type_)](spec_dim, hidden_dim, edge_dim, graph_dim)
 
     def forward(self, node_fts, edge_fts, graph_fts):
         outputs = dict()

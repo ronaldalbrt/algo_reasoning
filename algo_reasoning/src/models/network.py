@@ -22,6 +22,7 @@ class EncodeProcessDecode(torch.nn.Module):
                 soft_hints=True,
                 freeze_processor=False,
                 pretrained_processor=None,
+                nb_triplet_fts=8,
                 seed=None):
         super().__init__()
         self.msg_passing_steps = msg_passing_steps
@@ -35,12 +36,13 @@ class EncodeProcessDecode(torch.nn.Module):
         if seed is not None: 
             self._generator = self._generator.manual_seed(seed)
 
+        decoder_edge_dim = 2*hidden_dim if nb_triplet_fts is not None else hidden_dim
         for algorithm in algorithms:
             self.encoders[algorithm] = Encoder(algorithm, encode_hints=encode_hints, hidden_dim=hidden_dim, soft_hints=self.soft_hints)
-            self.decoders[algorithm] = Decoder(algorithm, hidden_dim=hidden_dim, decode_hints=decode_hints)
+            self.decoders[algorithm] = Decoder(algorithm, hidden_dim=3*hidden_dim, edge_dim=decoder_edge_dim, graph_dim=hidden_dim, decode_hints=decode_hints)
 
         if pretrained_processor is None:
-            self.processor = MPNN(hidden_dim, hidden_dim)
+            self.processor = MPNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts)
         else:
             self.processor = pretrained_processor
 
@@ -110,7 +112,7 @@ class EncodeProcessDecode(torch.nn.Module):
         h_t = torch.cat([node_fts, hidden, nxt_hidden], dim=-1)
 
         if nxt_edge is not None:
-            e_t = torch.cat(edge_fts, nxt_edge)
+            e_t = torch.cat([edge_fts, nxt_edge], dim=-1)
         else:
             e_t = torch.clone(edge_fts)
         
