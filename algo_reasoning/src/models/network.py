@@ -13,7 +13,7 @@ class EncodeProcessDecode(torch.nn.Module):
     def __init__(self, 
                 algorithms, 
                 hidden_dim=128, 
-                msg_passing_steps=3, 
+                msg_passing_steps=1, 
                 use_lstm=False, 
                 dropout_prob=0.0,
                 teacher_force_prob=0.0,
