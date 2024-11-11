@@ -22,6 +22,7 @@ class EncodeProcessDecode(torch.nn.Module):
                 soft_hints=True,
                 freeze_processor=False,
                 pretrained_processor=None,
+                nb_triplet_fts=8,
                 seed=None):
         super().__init__()
         self.msg_passing_steps = msg_passing_steps
@@ -35,12 +36,13 @@ class EncodeProcessDecode(torch.nn.Module):
         if seed is not None: 
             self._generator = self._generator.manual_seed(seed)
 
+        decoder_edge_dim = 2*hidden_dim if nb_triplet_fts is not None else hidden_dim
         for algorithm in algorithms:
             self.encoders[algorithm] = Encoder(algorithm, encode_hints=encode_hints, hidden_dim=hidden_dim, soft_hints=self.soft_hints)
-            self.decoders[algorithm] = Decoder(algorithm, hidden_dim=hidden_dim, decode_hints=decode_hints)
+            self.decoders[algorithm] = Decoder(algorithm, hidden_dim=3*hidden_dim, edge_dim=decoder_edge_dim, graph_dim=hidden_dim, decode_hints=decode_hints)
 
         if pretrained_processor is None:
-            self.processor = MPNN(hidden_dim, hidden_dim)
+            self.processor = MPNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts)
         else:
             self.processor = pretrained_processor
 
@@ -88,7 +90,7 @@ class EncodeProcessDecode(torch.nn.Module):
 
         node_fts, edge_fts, graph_fts, adj_mat = self.encoders[algorithm](batch, hints=hints, hint_step=hint_step)
 
-        nxt_hidden = hidden
+        nxt_hidden = torch.clone(hidden)
 
         for _ in range(self.msg_passing_steps):
             nxt_hidden, nxt_edge = self.processor(
@@ -106,8 +108,15 @@ class EncodeProcessDecode(torch.nn.Module):
             nxt_hidden, nxt_lstm_state = self.lstm(hidden, lstm_state)
         else:
             nxt_lstm_state = None
+
+        h_t = torch.cat([node_fts, hidden, nxt_hidden], dim=-1)
+
+        if nxt_edge is not None:
+            e_t = torch.cat([edge_fts, nxt_edge], dim=-1)
+        else:
+            e_t = torch.clone(edge_fts)
         
-        output_pred = self.decoders[algorithm](nxt_hidden, nxt_edge, graph_fts)
+        output_pred = self.decoders[algorithm](h_t, e_t, graph_fts)
 
         return output_pred, nxt_hidden, nxt_lstm_state
     
