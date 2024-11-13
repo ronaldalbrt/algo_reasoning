@@ -133,7 +133,7 @@ if __name__ == '__main__':
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         dirpath=args.checkpoint_path+f"/{args.model_name}/",
-        filename=args.model_name+f"-{args.version_nam}"+'-{epoch:02d}-{val_loss:.2f}',
+        filename=args.model_name+f"-{args.version_name}"+'-{epoch:02d}-{val_loss:.2f}',
         every_n_epochs=1
     )
 

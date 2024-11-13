@@ -191,3 +191,5 @@ checkpoints/
 .DS_Store
 
 .vscode/
+
+./results
