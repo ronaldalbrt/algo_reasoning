@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import math
+
 ######################
 
 #TODO: Implement other Processor Architectures
@@ -9,12 +11,12 @@ import torch.nn.functional as F
 class PGN(nn.Module):
     """Pointer Graph Networks (Veličković et al., NeurIPS 2020)."""
     """Adapted from https://github.com/google-deepmind/clrs/blob/master/clrs/_src/processors.py"""
-    def __init__(self, in_channels, out_channels, aggr="max", activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8, gated=False):
+    def __init__(self, in_size, out_size, aggr="max", activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8, gated=False):
         super().__init__()
         
-        self.in_channels = in_channels
-        self.mid_channels = out_channels
-        self.out_channels = out_channels
+        self.in_size = in_size
+        self.mid_channels = out_size
+        self.out_size = out_size
         self.gated = gated
         self.activation = activation
         self.nb_triplet_fts = nb_triplet_fts
@@ -22,13 +24,13 @@ class PGN(nn.Module):
         self.layer_norm = layer_norm
 
         # Message MLPs
-        self.m_1 = nn.Linear(in_channels*2, self.mid_channels)
-        self.m_2 = nn.Linear(in_channels*2, self.mid_channels)
-        self.m_e = nn.Linear(in_channels, self.mid_channels)
-        self.m_g = nn.Linear(in_channels, self.mid_channels)
+        self.m_1 = nn.Linear(in_size*2, self.mid_channels)
+        self.m_2 = nn.Linear(in_size*2, self.mid_channels)
+        self.m_e = nn.Linear(in_size, self.mid_channels)
+        self.m_g = nn.Linear(in_size, self.mid_channels)
 
         if self.layer_norm:
-            self.norm = nn.LayerNorm(out_channels)
+            self.norm = nn.LayerNorm(out_size)
         
         self.msg_mlp = nn.Sequential(
             nn.ReLU(),
@@ -38,23 +40,23 @@ class PGN(nn.Module):
         )
 
         # Output MLP
-        self.o1 = nn.Linear(in_channels*2, out_channels) # skip connection
-        self.o2 = nn.Linear(self.mid_channels, out_channels)
+        self.o1 = nn.Linear(in_size*2, out_size) # skip connection
+        self.o2 = nn.Linear(self.mid_channels, out_size)
 
         if self.nb_triplet_fts is not None:
-            self.t_1 = nn.Linear(in_channels*2, nb_triplet_fts)
-            self.t_2 = nn.Linear(in_channels*2, nb_triplet_fts)
-            self.t_3 = nn.Linear(in_channels*2, nb_triplet_fts)
-            self.t_e_1 = nn.Linear(in_channels, nb_triplet_fts)
-            self.t_e_2 = nn.Linear(in_channels, nb_triplet_fts)
-            self.t_e_3 = nn.Linear(in_channels, nb_triplet_fts)
-            self.t_g = nn.Linear(in_channels, nb_triplet_fts)
-            self.o3 = nn.Linear(nb_triplet_fts, out_channels)
+            self.t_1 = nn.Linear(in_size*2, nb_triplet_fts)
+            self.t_2 = nn.Linear(in_size*2, nb_triplet_fts)
+            self.t_3 = nn.Linear(in_size*2, nb_triplet_fts)
+            self.t_e_1 = nn.Linear(in_size, nb_triplet_fts)
+            self.t_e_2 = nn.Linear(in_size, nb_triplet_fts)
+            self.t_e_3 = nn.Linear(in_size, nb_triplet_fts)
+            self.t_g = nn.Linear(in_size, nb_triplet_fts)
+            self.o3 = nn.Linear(nb_triplet_fts, out_size)
 
         if self.gated:
-            self.gate1 = nn.Linear(in_channels*2, out_channels)
-            self.gate2 = nn.Linear(self.mid_channels, out_channels)
-            self.gate3 = nn.Linear(out_channels, out_channels)
+            self.gate1 = nn.Linear(in_size*2, out_size)
+            self.gate2 = nn.Linear(self.mid_channels, out_size)
+            self.gate3 = nn.Linear(out_size, out_size)
 
         self.reset_parameters()
 
@@ -97,7 +99,6 @@ class PGN(nn.Module):
         if self.nb_triplet_fts is not None:
             # Triplet messages, as done by Dudzik and Velickovic (2022)
             triplets = self.get_triplet_msgs(z, edge_fts, graph_fts)
-
             
             tri_msgs = self.o3(torch.amax(triplets, dim=1))  # (B, N, N, H)
             if self.activation is not None:
@@ -125,6 +126,54 @@ class PGN(nn.Module):
             out = out * gate + hidden * (1-gate)
 
         return out, tri_msgs
+
+class TransformerConvolution(nn.Module):
+    def __init__(self, in_size, out_size, nb_heads=8, activation=nn.ReLU()) -> None:
+        super().__init__()
+        self.nb_heads = nb_heads
+        self.head_dim = out_size//nb_heads
+        
+        self.W_q = nn.Linear(in_size*2, out_size, bias=False)
+        self.W_k = nn.Linear(in_size*2, out_size, bias=False)
+        self.W_v = nn.Linear(in_size*2, out_size, bias=False)
+        self.W_o = nn.Linear(out_size, out_size, bias=False)
+
+        self.We_k = nn.Linear(in_size, out_size, bias=False)
+        self.We_v = nn.Linear(in_size, out_size, bias=False)
+        self.We_o = nn.Linear(out_size, out_size, bias=False)
+
+        self.node_ffn = nn.Sequential(nn.Linear(out_size, out_size), nn.ReLU(), nn.Linear(out_size, out_size), nn.ReLU())
+        self.edge_ffn = nn.Sequential(nn.Linear(out_size, out_size), nn.ReLU(), nn.Linear(out_size, out_size), nn.ReLU())
+
+    def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
+        z = torch.concat([node_fts, hidden], dim=-1)
+
+        batch_size, nb_nodes, _ = hidden.size()
+
+        q = self.W_q(z)
+        k = self.W_k(z)
+        v = self.W_v(z)
+        q = q.view(batch_size, nb_nodes, self.nb_heads, self.head_dim)
+        k = k.view(batch_size, nb_nodes, self.nb_heads, self.head_dim)
+        v = v.view(batch_size, nb_nodes, self.nb_heads, self.head_dim)
+
+        edge_k = self.We_k(edge_fts)
+        edge_k = edge_k.view(batch_size, nb_nodes, nb_nodes, self.nb_heads, self.head_dim).permute(0, 3, 1, 2, 4)
+
+        attn_weights_nodes = (q @ k.tranpose(-1,-2))
+        attn_weights_edges = torch.einsum('bhjd, bhijd -> bhij', q, edge_k)
+        attn_weights = (attn_weights_nodes + attn_weights_edges) / math.sqrt(self.head_dim)
+        
+        # Applying softmax
+        exp_attn_weights = adj_matrix.unsqueeze(1) * torch.exp(attn_weights)
+        attn_weights = exp_attn_weights / torch.sum(exp_attn_weights, dim=-1).unsqueeze(-1)
+
+        attn_output = (attn_weights @ v).transpose(1, 2).contiguous()
+        attn_output = attn_output.reshape(batch_size, nb_nodes, -1)
+        attn_output = self.W_o(attn_output)
+
+        out = self.node_ffn(attn_output)
+
 
 
 class MPNN(PGN):
