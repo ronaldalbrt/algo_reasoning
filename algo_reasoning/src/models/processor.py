@@ -128,10 +128,16 @@ class PGN(nn.Module):
         return out, tri_msgs
 
 class TransformerConvolution(nn.Module):
-    def __init__(self, in_size, out_size, nb_heads=8, activation=nn.ReLU()) -> None:
+    def __init__(self, in_size, out_size, nb_heads=8, activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8) -> None:
         super().__init__()
         self.nb_heads = nb_heads
         self.head_dim = out_size//nb_heads
+        self.nb_triplet_fts = nb_triplet_fts
+        self.activation = activation
+        self.layer_norm = layer_norm
+
+        if self.layer_norm:
+            self.norm = nn.LayerNorm(out_size)
         
         self.W_q = nn.Linear(in_size*2, out_size, bias=False)
         self.W_k = nn.Linear(in_size*2, out_size, bias=False)
@@ -145,6 +151,37 @@ class TransformerConvolution(nn.Module):
         self.node_ffn = nn.Sequential(nn.Linear(out_size, out_size), nn.ReLU(), nn.Linear(out_size, out_size), nn.ReLU())
         self.edge_ffn = nn.Sequential(nn.Linear(out_size, out_size), nn.ReLU(), nn.Linear(out_size, out_size), nn.ReLU())
 
+        if self.nb_triplet_fts is not None:
+            self.t_1 = nn.Linear(in_size*2, nb_triplet_fts)
+            self.t_2 = nn.Linear(in_size*2, nb_triplet_fts)
+            self.t_3 = nn.Linear(in_size*2, nb_triplet_fts)
+            self.t_e_1 = nn.Linear(in_size, nb_triplet_fts)
+            self.t_e_2 = nn.Linear(in_size, nb_triplet_fts)
+            self.t_e_3 = nn.Linear(in_size, nb_triplet_fts)
+            self.t_g = nn.Linear(in_size, nb_triplet_fts)
+            self.o3 = nn.Linear(nb_triplet_fts, out_size)
+
+
+    def get_triplet_msgs(self, node_fts, edge_fts, graph_fts):
+        """Triplet messages, as done by Dudzik and Velickovic (2022)."""
+        tri_1 = self.t_1(node_fts)
+        tri_2 = self.t_2(node_fts)
+        tri_3 = self.t_1(node_fts)
+        tri_e_1 = self.t_e_1(edge_fts)
+        tri_e_2 = self.t_e_2(edge_fts)
+        tri_e_3 = self.t_e_3(edge_fts)
+        tri_g = self.t_g(graph_fts)
+
+        return (
+            tri_1[:, :, None, None, :]  +  #   (B, N, 1, 1, H)
+            tri_2[:, None, :, None, :]  +  # + (B, 1, N, 1, H)
+            tri_3[:, None, None, :, :]  +  # + (B, 1, 1, N, H)
+            tri_e_1[:, :, :, None, :]   +  # + (B, N, N, 1, H)
+            tri_e_2[:, :, None, :, :]   +  # + (B, N, 1, N, H)
+            tri_e_3[:, None, :, :, :]   +  # + (B, 1, N, N, H)
+            tri_g[:, None, None, None, :]  # + (B, 1, 1, 1, H)
+        )                                  # = (B, N, N, N, H)
+    
     def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
         z = torch.concat([node_fts, hidden], dim=-1)
 
@@ -173,6 +210,20 @@ class TransformerConvolution(nn.Module):
         attn_output = self.W_o(attn_output)
 
         out = self.node_ffn(attn_output)
+
+        tri_msgs = None
+        if self.nb_triplet_fts is not None:
+            # Triplet messages, as done by Dudzik and Velickovic (2022)
+            triplets = self.get_triplet_msgs(z, edge_fts, graph_fts)
+            
+            tri_msgs = self.o3(torch.amax(triplets, dim=1))  # (B, N, N, H)
+            if self.activation is not None:
+                tri_msgs = self.activation(tri_msgs)
+
+            if self.layer_norm:
+                tri_msgs = self.norm(tri_msgs)
+
+        return out, tri_msgs
 
 
 
