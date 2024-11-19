@@ -27,7 +27,7 @@ class AlgorithmicReasoningLoss(nn.Module):
 
                     eigenvectors = result.eigenvectors
 
-                    return torch.mean(torch.linalg.norm(eigenvectors.T@embeddings, dim=1))
+                    return torch.mean(torch.linalg.norm(eigenvectors.T@embeddings, dim=-2))
 
                 self.regularizer = tikhonov_fourier_operator
 
