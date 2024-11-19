@@ -127,7 +127,7 @@ class PGN(nn.Module):
 
         return out, tri_msgs
 
-class TransformerConvolution(nn.Module):
+class GAT(nn.Module):
     def __init__(self, in_size, out_size, nb_heads=8, activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8) -> None:
         super().__init__()
         self.nb_heads = nb_heads
@@ -149,7 +149,6 @@ class TransformerConvolution(nn.Module):
         self.We_o = nn.Linear(out_size, out_size, bias=False)
 
         self.node_ffn = nn.Sequential(nn.Linear(out_size, out_size), nn.ReLU(), nn.Linear(out_size, out_size), nn.ReLU())
-        self.edge_ffn = nn.Sequential(nn.Linear(out_size, out_size), nn.ReLU(), nn.Linear(out_size, out_size), nn.ReLU())
 
         if self.nb_triplet_fts is not None:
             self.t_1 = nn.Linear(in_size*2, nb_triplet_fts)
@@ -190,16 +189,16 @@ class TransformerConvolution(nn.Module):
         q = self.W_q(z)
         k = self.W_k(z)
         v = self.W_v(z)
-        q = q.view(batch_size, nb_nodes, self.nb_heads, self.head_dim)
-        k = k.view(batch_size, nb_nodes, self.nb_heads, self.head_dim)
-        v = v.view(batch_size, nb_nodes, self.nb_heads, self.head_dim)
+        q = q.view(batch_size, nb_nodes, self.nb_heads, self.head_dim).transpose(1, 2)
+        k = k.view(batch_size, nb_nodes, self.nb_heads, self.head_dim).transpose(1, 2)
+        v = v.view(batch_size, nb_nodes, self.nb_heads, self.head_dim).transpose(1, 2)
 
         edge_k = self.We_k(edge_fts)
         edge_k = edge_k.view(batch_size, nb_nodes, nb_nodes, self.nb_heads, self.head_dim).permute(0, 3, 1, 2, 4)
 
-        attn_weights_nodes = (q @ k.tranpose(-1,-2))
-        attn_weights_edges = torch.einsum('bhjd, bhijd -> bhij', q, edge_k)
-        attn_weights = (attn_weights_nodes + attn_weights_edges) / math.sqrt(self.head_dim)
+        attn_weights_nodes = (q @ k.transpose(-1,-2))
+        #attn_weights_edges = torch.einsum('bhjd, bhijd -> bhij', q, edge_k)
+        attn_weights = attn_weights_nodes / math.sqrt(self.head_dim)
         
         # Applying softmax
         exp_attn_weights = adj_matrix.unsqueeze(1) * torch.exp(attn_weights)
@@ -225,6 +224,10 @@ class TransformerConvolution(nn.Module):
 
         return out, tri_msgs
 
+class FullGAT(GAT):
+    def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_mat):
+        adj_mat = torch.ones_like(adj_mat)
+        return super().forward(node_fts, edge_fts, graph_fts, hidden, adj_mat)
 
 
 class MPNN(PGN):
