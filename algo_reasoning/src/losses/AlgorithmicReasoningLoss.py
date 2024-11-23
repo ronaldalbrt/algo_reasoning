@@ -26,8 +26,12 @@ class AlgorithmicReasoningLoss(nn.Module):
                     result = torch.linalg.eigh(laplacian)
 
                     eigenvectors = result.eigenvectors
+                    fourier_embeddings = eigenvectors.T@embeddings
 
-                    return torch.mean(torch.linalg.norm(eigenvectors.T@embeddings, dim=-2))
+                    fourier_dist = torch.mean(torch.abs(fourier_embeddings), dim=-1)
+                    fourier_dist_norm = torch.norm(fourier_dist, dim=2)
+
+                    return -torch.mean(torch.sum(fourier_dist, dim=2)/(fourier_dist_norm*(math.sqrt(nb_nodes))))
 
                 self.regularizer = tikhonov_fourier_operator
 
