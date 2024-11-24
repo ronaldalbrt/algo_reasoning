@@ -128,25 +128,26 @@ class PGN(nn.Module):
         return out, tri_msgs
 
 class GAT(nn.Module):
-    def __init__(self, in_size, out_size, nb_heads=8, activation=nn.ReLU(), layer_norm=True, nb_triplet_fts=8) -> None:
+    def __init__(self, in_size, out_size, nb_heads=8, activation=nn.ReLU(), layer_norm=True, residual=True, nb_triplet_fts=8) -> None:
         super().__init__()
         self.nb_heads = nb_heads
         self.head_dim = out_size//nb_heads
         self.nb_triplet_fts = nb_triplet_fts
         self.activation = activation
         self.layer_norm = layer_norm
+        self.residual = residual
 
+        if self.residual:
+            self.skip = nn.Linear(in_size*2, out_size)
         if self.layer_norm:
             self.norm = nn.LayerNorm(out_size)
         
-        self.W_q = nn.Linear(in_size*2, out_size, bias=False)
-        self.W_k = nn.Linear(in_size*2, out_size, bias=False)
-        self.W_v = nn.Linear(in_size*2, out_size, bias=False)
-        self.W_o = nn.Linear(out_size, out_size, bias=False)
+        self.m = nn.Linear(in_size*2, out_size, bias=False)
 
-        self.We_k = nn.Linear(in_size, out_size, bias=False)
-        self.We_v = nn.Linear(in_size, out_size, bias=False)
-        self.We_o = nn.Linear(out_size, out_size, bias=False)
+        self.a_1 = nn.Linear(in_size*2, out_size, bias=False)
+        self.a_2 = nn.Linear(in_size*2, out_size, bias=False)
+        self.a_e = nn.Linear(in_size, out_size, bias=False)
+        self.a_g = nn.Linear(in_size, out_size, bias=False) 
 
         self.node_ffn = nn.Sequential(nn.Linear(out_size, out_size), nn.ReLU(), nn.Linear(out_size, out_size), nn.ReLU())
 
@@ -186,29 +187,28 @@ class GAT(nn.Module):
 
         batch_size, nb_nodes, _ = hidden.size()
 
-        q = self.W_q(z)
-        k = self.W_k(z)
-        v = self.W_v(z)
-        q = q.view(batch_size, nb_nodes, self.nb_heads, self.head_dim).transpose(1, 2)
-        k = k.view(batch_size, nb_nodes, self.nb_heads, self.head_dim).transpose(1, 2)
-        v = v.view(batch_size, nb_nodes, self.nb_heads, self.head_dim).transpose(1, 2)
-
-        edge_k = self.We_k(edge_fts)
-        edge_k = edge_k.view(batch_size, nb_nodes, nb_nodes, self.nb_heads, self.head_dim).permute(0, 3, 1, 2, 4)
-
-        attn_weights_nodes = (q @ k.transpose(-1,-2))
-        #attn_weights_edges = torch.einsum('bhjd, bhijd -> bhij', q, edge_k)
-        attn_weights = attn_weights_nodes / math.sqrt(self.head_dim)
+        values = self.m(z)
+        values = values.view(batch_size, nb_nodes, self.nb_heads, self.head_dim).transpose(1, 2)
         
-        # Applying softmax
-        exp_attn_weights = adj_matrix.unsqueeze(1) * torch.exp(attn_weights)
-        attn_weights = exp_attn_weights / torch.sum(exp_attn_weights, dim=-1).unsqueeze(-1)
+        att_1 = self.a_1(z).unsqueeze(-1)
+        att_2 = self.a_2(z).unsqueeze(-1)
+        att_e = self.a_e(edge_fts)
+        att_g = self.a_g(graph_fts).unsqueeze(-1)
 
-        attn_output = (attn_weights @ v).transpose(1, 2).contiguous()
-        attn_output = attn_output.reshape(batch_size, nb_nodes, -1)
-        attn_output = self.W_o(attn_output)
+        logits = att_1.permute(0, 2, 1, 3) + att_2.permute(0, 2, 3, 1) + att_e.permute(0, 3, 1, 2) + att_g.unsqueeze(-1)
+        coefs = adj_matrix.unsqueeze(1) * torch.softmax(F.leaky_relu(logits), dim=-1)
 
-        out = self.node_ffn(attn_output)
+        out = coefs @ values
+        out = out.permute(0, 2, 1, 3).reshape(batch_size, nb_nodes, -1)  
+
+        if self.residual:
+            out += self.skip(z)
+
+        if self.activation is not None:
+            out = self.activation(out)
+
+        if self.layer_norm:
+            out = self.norm(out)
 
         tri_msgs = None
         if self.nb_triplet_fts is not None:
