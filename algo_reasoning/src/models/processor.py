@@ -144,10 +144,10 @@ class GAT(nn.Module):
         
         self.m = nn.Linear(in_size*2, out_size, bias=False)
 
-        self.a_1 = nn.Linear(in_size*2, out_size, bias=False)
-        self.a_2 = nn.Linear(in_size*2, out_size, bias=False)
-        self.a_e = nn.Linear(in_size, out_size, bias=False)
-        self.a_g = nn.Linear(in_size, out_size, bias=False) 
+        self.a_1 = nn.Linear(in_size*2, nb_heads, bias=False)
+        self.a_2 = nn.Linear(in_size*2, nb_heads, bias=False)
+        self.a_e = nn.Linear(in_size, nb_heads, bias=False)
+        self.a_g = nn.Linear(in_size, nb_heads, bias=False) 
 
         self.node_ffn = nn.Sequential(nn.Linear(out_size, out_size), nn.ReLU(), nn.Linear(out_size, out_size), nn.ReLU())
 
@@ -198,7 +198,7 @@ class GAT(nn.Module):
         logits = att_1.permute(0, 2, 1, 3) + att_2.permute(0, 2, 3, 1) + att_e.permute(0, 3, 1, 2) + att_g.unsqueeze(-1)
         coefs = adj_matrix.unsqueeze(1) * torch.softmax(F.leaky_relu(logits), dim=-1)
 
-        out = coefs @ values
+        out = torch.matmul(coefs, values)
         out = out.permute(0, 2, 1, 3).reshape(batch_size, nb_nodes, -1)  
 
         if self.residual:

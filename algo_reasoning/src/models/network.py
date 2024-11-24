@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from .encoder import Encoder
 from .decoder import Decoder
-from .processor import PGN, MPNN
+from .processor import PGN, MPNN, GAT, FullGAT
 from algo_reasoning.src.data import AlgorithmicData, AlgorithmicOutput
 from algo_reasoning.src.specs import SPECS, CATEGORIES_DIMENSIONS, Type
 
