@@ -4,11 +4,12 @@ import torch.nn.functional as F
 import math
 
 from algo_reasoning.src.specs import SPECS, Type, OutputClass
+from algo_reasoning.src.utils import logsumexp
 
-REGULARIZATION_TYPES = ["constant_eigen", "tikhonov"]
+REGULARIZATION_TYPES = ["constant_eigen",  "independece_term"]
     
 class AlgorithmicReasoningLoss(nn.Module):
-    def __init__(self, hint_loss_weight=0.1, reg_weight=0.0, reg_type="constant_eigen"):
+    def __init__(self, hint_loss_weight=0.1, reg_weight=0.0, reg_type="independece_term"):
         super().__init__()
         self.hint_loss = (hint_loss_weight > 0.0)
         self.hint_loss_weight = hint_loss_weight
@@ -19,21 +20,8 @@ class AlgorithmicReasoningLoss(nn.Module):
         if self.reg_term:
             if reg_type == "constant_eigen":
                 self.regularizer = lambda hidden: torch.mean(torch.abs(torch.sum(hidden, dim=2)/(torch.norm(hidden, dim=2)*(math.sqrt(hidden.size(2))))))
-            elif reg_type == "tikhonov":
-                # Only considering complete graphs for nos
-                def tikhonov_fourier_operator(embeddings, nb_nodes, device):
-                    laplacian = torch.diag(torch.ones(nb_nodes, device=device)*nb_nodes) - torch.ones((nb_nodes, nb_nodes), device=device)
-                    result = torch.linalg.eigh(laplacian)
-
-                    eigenvectors = result.eigenvectors
-                    fourier_embeddings = eigenvectors.T@embeddings
-
-                    fourier_dist = torch.mean(torch.abs(fourier_embeddings), dim=-1)
-                    fourier_dist_norm = torch.norm(fourier_dist, dim=2)
-
-                    return -torch.mean(torch.sum(fourier_dist, dim=2)/(fourier_dist_norm*(math.sqrt(nb_nodes))))
-
-                self.regularizer = tikhonov_fourier_operator
+            #elif reg_type == "independence_term":
+                
 
     def _calculate_loss(self, mask, truth, pred, type_, nb_nodes):
         if type_ == Type.SCALAR:
