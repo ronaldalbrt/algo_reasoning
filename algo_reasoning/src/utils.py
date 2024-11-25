@@ -20,8 +20,8 @@ def normal_log_pdf(sample, mu, sigma2):
     return -0.5*(((sample - mu)**2)/(sigma2) + normalization_term)
 
 def multivariatenormal_log_pdf(sample, mu, cov):
-    n_dim = sample.size(0)
+    n_dim = sample.size(1)
     normalization_term = n_dim*math.log(2*torch.pi)
     inv_cov = torch.linalg.inv(cov)
 
-    return -0.5*((sample - mu).T@inv_cov@(sample-mu) + torch.log(torch.det(cov)) + normalization_term)
+    return -0.5*((((sample - mu)@inv_cov) * (sample - mu)).sum(dim=1) + torch.log(torch.det(cov)) + normalization_term)
