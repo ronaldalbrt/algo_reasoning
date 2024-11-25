@@ -8,7 +8,7 @@ from algo_reasoning.src.specs import SPECS, Type, OutputClass
 REGULARIZATION_TYPES = ["constant_eigen", "tikhonov"]
     
 class AlgorithmicReasoningLoss(nn.Module):
-    def __init__(self, hint_loss_weight=0.1, reg_weight=0.1, reg_type="tikhonov"):
+    def __init__(self, hint_loss_weight=0.1, reg_weight=0.0, reg_type="constant_eigen"):
         super().__init__()
         self.hint_loss = (hint_loss_weight > 0.0)
         self.hint_loss_weight = hint_loss_weight
