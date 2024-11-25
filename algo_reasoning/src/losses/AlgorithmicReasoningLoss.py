@@ -6,10 +6,10 @@ import math
 from algo_reasoning.src.specs import SPECS, Type, OutputClass
 from algo_reasoning.src.utils import multivariatenormal_log_pdf, normal_log_pdf
 
-REGULARIZATION_TYPES = ["constant_eigen",  "independece_term"]
+REGULARIZATION_TYPES = ["constant_eigen",  "independence_term"]
     
 class AlgorithmicReasoningLoss(nn.Module):
-    def __init__(self, hint_loss_weight=0.1, reg_weight=0.0, reg_type="constant_eigen"):
+    def __init__(self, hint_loss_weight=0.1, reg_weight=0.1, reg_type="independence_term"):
         super().__init__()
         self.hint_loss = (hint_loss_weight > 0.0)
         self.hint_loss_weight = hint_loss_weight
@@ -30,7 +30,7 @@ class AlgorithmicReasoningLoss(nn.Module):
                     log_q = multivariatenormal_log_pdf(emb, mu, sigma)
                     log_qi = normal_log_pdf(emb, mu,  torch.diagonal(sigma, 0))
 
-                    return (log_q -  log_qi.sum(dim=1)).mean()
+                    return torch.exp((-log_q + log_qi.sum(dim=1)).mean())
                 
                 self.regularizer = lambda emb: kl_div(emb)
 
@@ -70,7 +70,7 @@ class AlgorithmicReasoningLoss(nn.Module):
 
         if self.reg_term:
             assert hidden is not None, "Hidden Embeddings must be provided when reg_weight > 0.0"
-            reg_loss = self.regularizer(hidden) if self.reg_type == "constant_eigen" else self.regularizer(hidden, nb_nodes, device)
+            reg_loss = self.regularizer(hidden)
         else:
             reg_loss = 0        
 
@@ -101,5 +101,8 @@ class AlgorithmicReasoningLoss(nn.Module):
 
             output_loss += self.hint_loss_weight*hint_loss
             output_loss += self.reg_weight*reg_loss
+
+            print("Regularizer Contribution: ",  (self.reg_weight*reg_loss))
+            print("Current Loss: ", output_loss)
         
         return output_loss
