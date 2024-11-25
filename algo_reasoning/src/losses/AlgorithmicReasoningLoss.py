@@ -4,12 +4,12 @@ import torch.nn.functional as F
 import math
 
 from algo_reasoning.src.specs import SPECS, Type, OutputClass
-from algo_reasoning.src.utils import logsumexp
+from algo_reasoning.src.utils import multivariatenormal_log_pdf, normal_log_pdf
 
 REGULARIZATION_TYPES = ["constant_eigen",  "independece_term"]
     
 class AlgorithmicReasoningLoss(nn.Module):
-    def __init__(self, hint_loss_weight=0.1, reg_weight=0.0, reg_type="independece_term"):
+    def __init__(self, hint_loss_weight=0.1, reg_weight=0.0, reg_type="constant_eigen"):
         super().__init__()
         self.hint_loss = (hint_loss_weight > 0.0)
         self.hint_loss_weight = hint_loss_weight
@@ -19,9 +19,20 @@ class AlgorithmicReasoningLoss(nn.Module):
         
         if self.reg_term:
             if reg_type == "constant_eigen":
-                self.regularizer = lambda hidden: torch.mean(torch.abs(torch.sum(hidden, dim=2)/(torch.norm(hidden, dim=2)*(math.sqrt(hidden.size(2))))))
-            #elif reg_type == "independence_term":
+                self.regularizer = lambda emb: torch.mean(torch.abs(torch.sum(emb, dim=2)/(torch.norm(emb, dim=2)*(math.sqrt(emb.size(2))))))
+            elif reg_type == "independence_term":
+                def kl_div(emb):
+                    emb = emb.flatten(0, 2)
+
+                    mu = emb.mean(dim=0)
+                    sigma = torch.cov(emb.T)
+
+                    log_q = multivariatenormal_log_pdf(emb, mu, sigma)
+                    log_qi = normal_log_pdf(emb, mu,  torch.diagonal(sigma, 0))
+
+                    return (log_q -  log_qi.sum(dim=1)).mean()
                 
+                self.regularizer = lambda emb: kl_div(emb)
 
     def _calculate_loss(self, mask, truth, pred, type_, nb_nodes):
         if type_ == Type.SCALAR:
