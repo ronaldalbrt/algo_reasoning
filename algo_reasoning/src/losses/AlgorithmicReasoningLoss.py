@@ -9,7 +9,7 @@ from algo_reasoning.src.utils import multivariatenormal_log_pdf, normal_log_pdf
 REGULARIZATION_TYPES = ["constant_eigen",  "independence_term"]
     
 class AlgorithmicReasoningLoss(nn.Module):
-    def __init__(self, hint_loss_weight=0.1, reg_weight=0.1, reg_type="independence_term"):
+    def __init__(self, hint_loss_weight=0.1, reg_weight=0.1, reg_type="constant_eigen"):
         super().__init__()
         self.hint_loss = (hint_loss_weight > 0.0)
         self.hint_loss_weight = hint_loss_weight
@@ -101,8 +101,5 @@ class AlgorithmicReasoningLoss(nn.Module):
 
             output_loss += self.hint_loss_weight*hint_loss
             output_loss += self.reg_weight*reg_loss
-
-            print("Regularizer Contribution: ",  (self.reg_weight*reg_loss))
-            print("Current Loss: ", output_loss)
         
         return output_loss
