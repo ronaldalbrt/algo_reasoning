@@ -46,8 +46,8 @@ ap.add_argument('--lr', default=1e-3, type=float,
                 help="Initial Learning Rate for ADAM Optimizer")
 ap.add_argument('--grad_clip', default=1, type=float,
                 help="Gradient clipping value")
-ap.add_argument('--hidden_regularization', default=0.1, type=float,
-                help="Gradient clipping value")
+ap.add_argument('--regularization_weight', default=0.1, type=float,
+                help="Weight attributed to the regularization term.")
 ap.add_argument('--model_name', default="Generalist", type=str,
                 help="Model's name")
 ap.add_argument('--version_name', default='', type=str,
@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
     model = EncodeProcessDecode(args.algorithms, freeze_processor=args.freeze_processor, pretrained_processor=processor)
 
-    loss_fn = AlgorithmicReasoningLoss(reg_weight=args.hidden_regularization)
+    loss_fn = AlgorithmicReasoningLoss(reg_weight=args.regularization_weight)
 
     optim_method=AdamW
 
