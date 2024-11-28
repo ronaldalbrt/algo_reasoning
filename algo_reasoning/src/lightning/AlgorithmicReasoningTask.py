@@ -21,7 +21,7 @@ class AlgorithmicReasoningTask(L.LightningModule):
         preds = output["output"]
         hidden = output["hidden_embeddings"]
 
-        loss = self.loss_fn(preds, batch, hidden)
+        loss = self.loss_fn(preds, batch, hidden, self.current_epoch)
 
         if calculate_metrics:
             metrics_r = eval_function(preds.detach().cpu(), batch.detach().cpu())
