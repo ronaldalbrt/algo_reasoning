@@ -118,12 +118,23 @@ class AlgorithmicReasoningLoss(nn.Module):
 
             output_loss += self.hint_loss_weight*hint_loss if hint_loss is not None else 0
 
-        if self.reg_term and self.training and cur_epoch > 20:
-            assert hidden is not None, "Hidden Embeddings must be provided when reg_weight > 0.0"
-            reg_loss = self.regularizer(output_loss) if self.reg_type == "irm_penalty" else self.regularizer(hidden)
+        reg_weight = self.reg_weight
+        if self.reg_term and self.training:
+            if self.reg_type == "irm_penalty":
+                reg_loss = self.regularizer(output_loss)
 
+                if cur_epoch < 25:
+                    reg_weight = 1.0
+    
+                loss = (output_loss.mean() + reg_weight*reg_loss)/reg_weight
+            else:
+                assert hidden is not None, "Hidden Embeddings must be provided when reg_weight > 0.0"
+                reg_loss = self.regularizer(hidden)
+                loss = output_loss.mean() + reg_weight*reg_loss
+            
             loss = output_loss.mean() + self.reg_weight*reg_loss
         else:
             loss = output_loss.mean()
+            
         
         return loss
