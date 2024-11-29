@@ -46,7 +46,7 @@ ap.add_argument('--lr', default=1e-3, type=float,
                 help="Initial Learning Rate for ADAM Optimizer")
 ap.add_argument('--grad_clip', default=1, type=float,
                 help="Gradient clipping value")
-ap.add_argument('--regularization_weight', default=0.1, type=float,
+ap.add_argument('--regularization_weight', default=1, type=float,
                 help="Weight attributed to the regularization term.")
 ap.add_argument('--model_name', default="Generalist", type=str,
                 help="Model's name")
