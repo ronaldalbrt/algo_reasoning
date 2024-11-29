@@ -60,5 +60,5 @@ class AlgorithmicReasoningTask(L.LightningModule):
         self.log_dict(norms)
 
     def configure_optimizers(self):
-        optimizer = self.optim_method(self.parameters(), lr=self.lr)
+        optimizer = self.optim_method(self.model.parameters(), lr=self.lr)
         return optimizer

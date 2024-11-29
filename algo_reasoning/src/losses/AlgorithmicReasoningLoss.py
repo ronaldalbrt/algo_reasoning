@@ -18,7 +18,7 @@ class AlgorithmicReasoningLoss(nn.Module):
         self.reg_type = reg_type
         self.reg_term = self.reg_weight > 0.0 and reg_type in REGULARIZATION_TYPES
 
-        self.dummy_w = nn.Parameter(torch.zeros(1))
+        self.dummy_w =  torch.tensor(1.)
         
         if self.reg_term:
             if reg_type == "constant_eigen":
@@ -121,9 +121,9 @@ class AlgorithmicReasoningLoss(nn.Module):
         if self.reg_term and self.training and cur_epoch > 20:
             assert hidden is not None, "Hidden Embeddings must be provided when reg_weight > 0.0"
             reg_loss = self.regularizer(output_loss) if self.reg_type == "irm_penalty" else self.regularizer(hidden)
-        else:
-            reg_loss = 0 
 
-        loss = output_loss.mean() + self.reg_weight*reg_loss
+            loss = output_loss.mean() + self.reg_weight*reg_loss
+        else:
+            loss = output_loss.mean()
         
         return loss
