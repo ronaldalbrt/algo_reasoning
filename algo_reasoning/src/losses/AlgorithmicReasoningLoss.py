@@ -18,7 +18,7 @@ class AlgorithmicReasoningLoss(nn.Module):
         self.reg_type = reg_type
         self.reg_term = self.reg_weight > 0.0 and reg_type in REGULARIZATION_TYPES
 
-        self.dummy_w =  torch.tensor(1.)
+        self.dummy_w =  nn.Parameter(torch.tensor(1.))
         
         if self.reg_term:
             if reg_type == "constant_eigen":
