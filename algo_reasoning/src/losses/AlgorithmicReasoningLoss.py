@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
-from torch.autograd import grad
+from torch import autograd
 
 from algo_reasoning.src.specs import SPECS, Type, OutputClass
 from algo_reasoning.src.utils import multivariatenormal_log_pdf, normal_log_pdf
@@ -38,11 +38,9 @@ class AlgorithmicReasoningLoss(nn.Module):
                 self.regularizer = kl_div
             elif reg_type == "irm_penalty":
                 def irm_penalty(losses):
-                    g1 = grad(losses[0::2].mean(), self.dummy_w, create_graph=True)[0]
-                    g2 = grad(losses[1::2].mean(), self.dummy_w, create_graph=True)[0]
+                    grad = autograd.grad(losses.mean(), [self.dummy_w,], create_graph=True)[0]
 
-                    
-                    return (g1 * g2).sum()
+                    return torch.sum(grad**2)
                 
                 self.regularizer = irm_penalty
 
@@ -120,21 +118,11 @@ class AlgorithmicReasoningLoss(nn.Module):
 
         reg_weight = self.reg_weight
         if self.reg_term and self.training:
-            if self.reg_type == "irm_penalty":
-                reg_loss = self.regularizer(output_loss)
-
-                if cur_epoch < 25:
-                    reg_weight = 1.0
-    
-                loss = (output_loss.mean() + reg_weight*reg_loss)/reg_weight
-            else:
-                assert hidden is not None, "Hidden Embeddings must be provided when reg_weight > 0.0"
-                reg_loss = self.regularizer(hidden)
-                loss = output_loss.mean() + reg_weight*reg_loss
+            reg_loss = self.regularizer(output_loss) if self.reg_type == "irm_penalty" else self.regularizer(hidden)
             
-            loss = output_loss.mean() + self.reg_weight*reg_loss
         else:
-            loss = output_loss.mean()
-            
+            reg_loss = 0.0
         
+        loss = output_loss.mean() + reg_weight*reg_loss
+            
         return loss
