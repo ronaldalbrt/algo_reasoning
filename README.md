@@ -1,2 +1,1 @@
 # Neural Algorithmic Reasoning 
-nar
