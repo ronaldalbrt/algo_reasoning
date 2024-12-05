@@ -229,8 +229,132 @@ class FullGAT(GAT):
         adj_mat = torch.ones_like(adj_mat)
         return super().forward(node_fts, edge_fts, graph_fts, hidden, adj_mat)
 
-
 class MPNN(PGN):
     def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_mat):
         adj_mat = torch.ones_like(adj_mat)
         return super().forward(node_fts, edge_fts, graph_fts, hidden, adj_mat)
+
+class Conv(nn.Module):
+    def __init__(self, hidden_size):
+        super(Conv, self).__init__()
+
+        self.pre_ffn = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.GELU()
+        )
+
+        self.ffn = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.LayerNorm(hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.LayerNorm(hidden_size),
+            nn.ReLU()
+        )
+
+    def forward(self, node_fts, edge_fts, bases):
+        edge_fts = self.pre_ffn(edge_fts) * bases
+
+        edge_fts_sum = torch.sum(edge_fts, dim=1)
+
+        node_fts = node_fts + edge_fts_sum
+        y = self.ffn(node_fts)
+        node_fts = node_fts + y
+
+        return node_fts, edge_fts
+
+class SpecFormer(nn.Module):
+    def __init__(self, in_size, out_size, nb_heads=8, n_layers=1, activation=nn.ReLU(), layer_norm=True, eig_constant=100):   
+        super().__init__()
+
+        self.in_size = in_size
+        self.out_size = out_size
+        self.nb_heads = nb_heads
+        self.activation = activation
+        self.layer_norm = layer_norm
+        self.constant = eig_constant
+        self.n_layers = n_layers
+
+
+        if self.layer_norm:
+            self.norm = nn.LayerNorm(out_size)
+            self.mha_norm = nn.LayerNorm(out_size)
+            self.ffn_norm = nn.LayerNorm(out_size)
+
+        self.eig_w = nn.Linear(out_size + 1, out_size)
+        self.mha = nn.MultiheadAttention(out_size, nb_heads)
+        self.ffn = nn.Sequential(nn.Linear(out_size, out_size), nn.ReLU(), nn.Linear(out_size, out_size))
+
+        self.decoder = nn.Linear(out_size, nb_heads)
+
+        self.layers = nn.ModuleList([Conv(out_size) for i in range(n_layers)])
+
+        self.feat_encoder = nn.Sequential(
+            nn.Linear(in_size*2, out_size),
+            nn.ReLU(),
+            nn.Linear(out_size, out_size),
+        )
+
+        self.filter_encoder = nn.Sequential(
+            nn.Linear(nb_heads + 1, out_size),
+            nn.LayerNorm(out_size),
+            nn.GELU(),
+            nn.Linear(out_size, out_size),
+            nn.LayerNorm(out_size),
+            nn.GELU(),
+        )
+
+    def spectral_decomposition(self, adj_matrix):
+        degrees = torch.sum(adj_matrix, dim=1)
+        degree_matrix = torch.stack([torch.diag(degrees[d]) for d in range(degrees.size(0))], dim=0)
+        laplacian = degree_matrix - adj_matrix
+        
+        result = torch.linalg.eigh(laplacian)
+        eigenvalues = result.eigenvalues
+        eigenvectors = result.eigenvectors
+
+        return eigenvectors, eigenvalues
+    
+    def eig_encoder(self, e):
+        ee = e * self.constant
+        div = torch.exp(torch.arange(0, self.out_size, 2)/self.out_size * -math.log(10000)).to(e.device)
+        
+        pe = ee.unsqueeze(-1) * div
+        eeig = torch.cat((e.unsqueeze(-1), torch.sin(pe), torch.cos(pe)), dim=-1)
+
+        return self.eig_w(eeig)
+    
+    def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_mat):
+        z = torch.concat([node_fts, hidden], dim=-1)
+        eig_vectors, eig_values = self.spectral_decomposition(adj_mat)
+
+        h = self.feat_encoder(z)
+
+        eig = self.eig_encoder(eig_values)
+
+        mha_eig = self.mha_norm(eig)
+        mha_eig, _ = self.mha(mha_eig, mha_eig, mha_eig)
+        eig = eig + mha_eig
+
+        ffn_eig = self.ffn_norm(eig)
+        ffn_eig = self.ffn(ffn_eig)
+        eig = eig + ffn_eig
+
+        new_e = self.decoder(eig).transpose(2, 1)
+
+        diag_e = torch.diag_embed(new_e)
+
+        identity = torch.diag_embed(torch.ones_like(eig_values))
+        bases = [identity]
+        for i in range(self.nb_heads):
+            filters = eig_vectors @ diag_e[:, i, :, :] @ eig_vectors.transpose(-2, -1)
+            bases.append(filters)
+
+        bases = torch.stack(bases, axis=-1) 
+        bases = self.filter_encoder(bases)
+        bases = adj_mat.unsqueeze(-1) * torch.softmax(bases, dim=-1)
+
+        for conv in self.layers:
+            h, edge_fts = conv(h, edge_fts, bases)
+
+        return h, edge_fts
