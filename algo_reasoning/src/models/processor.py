@@ -6,7 +6,6 @@ import math
 
 ######################
 
-#TODO: Implement other Processor Architectures
 
 class PGN(nn.Module):
     """Pointer Graph Networks (Veličković et al., NeurIPS 2020)."""
@@ -358,3 +357,68 @@ class SpecFormer(nn.Module):
             h, edge_fts = conv(h, edge_fts, bases)
 
         return h, edge_fts
+    
+class MLP(nn.Module):
+    def __init__(self, in_size, out_size, dropout=0.0):
+        super(MLP, self).__init__()
+        self.lin1 = nn.Linear(in_size, in_size)
+        self.lin2 = nn.Linear(in_size, out_size)
+        self.dropout = nn.Dropout(p=dropout)
+        self.act = nn.ReLU()
+
+    def forward(self, x):
+        x = self.act(self.lin11(x))
+        x = self.dropout(x)
+        return self.lin2(x)
+
+class gfNN(nn.Module):
+    def __init__(self, in_size, out_size, activation=nn.ReLU(), layer_norm=True):   
+        super().__init__()
+
+        self.in_size = in_size
+        self.out_size = out_size
+        self.activation = activation
+        self.layer_norm = layer_norm
+
+        if self.layer_norm:
+            self.norm = nn.LayerNorm(out_size)
+
+        self.nodes_proj = nn.Sequential(nn.Linear(2*in_size, in_size), nn.ReLU())
+        self.edges_proj = nn.Linear(in_size, in_size)
+        self.graph_proj = nn.Linear(in_size, in_size)
+
+        self.mlp = MLP(in_size, out_size)
+        self.edges_mlp = MLP(in_size, out_size)
+
+
+    def spectral_decomposition(self, z, adj_matrix):
+        degrees = torch.sum(adj_matrix, dim=1)
+        degree_matrix = torch.stack([torch.diag(degrees[d]) for d in range(degrees.size(0))], dim=0)
+        laplacian = degree_matrix - adj_matrix
+        
+        result = torch.linalg.eigh(laplacian)
+        eigenvalues = result.eigenvalues
+        eigenvectors = result.eigenvectors
+
+        return eigenvectors.transpose(-2, -1)@z, eigenvectors, eigenvalues
+    
+    def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_mat):
+        z = torch.concat([node_fts, hidden], dim=-1)
+
+        z = self.nodes_proj(z)
+        edge_fts = self.edges_proj(edge_fts)
+        graph_fts = self.graph_proj(graph_fts).unsqueeze(-1)
+
+        fourier_z, eig_vectors, _ = self.spectral_decomposition(adj_mat)
+
+        z = self.mlp(fourier_z + graph_fts)
+
+        fourier_edges = (eig_vectors.transpose(-2, -1)@edge_fts.transpose(0, 1)).transpose(0, 1) + graph_fts.unsqueeze(-1)
+
+        edge_fts = self.edges_mlp(fourier_edges)
+
+        return z, edge_fts
+
+
+    
+        
