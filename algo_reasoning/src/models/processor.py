@@ -367,7 +367,7 @@ class MLP(nn.Module):
         self.act = nn.ReLU()
 
     def forward(self, x):
-        x = self.act(self.lin11(x))
+        x = self.act(self.lin1(x))
         x = self.dropout(x)
         return self.lin2(x)
 
@@ -391,7 +391,7 @@ class gfNN(nn.Module):
         self.edges_mlp = MLP(in_size, out_size)
 
 
-    def spectral_decomposition(self, z, adj_matrix):
+    def spectral_decomposition(self, adj_matrix):
         degrees = torch.sum(adj_matrix, dim=1)
         degree_matrix = torch.stack([torch.diag(degrees[d]) for d in range(degrees.size(0))], dim=0)
         laplacian = degree_matrix - adj_matrix
@@ -400,25 +400,23 @@ class gfNN(nn.Module):
         eigenvalues = result.eigenvalues
         eigenvectors = result.eigenvectors
 
-        return eigenvectors.transpose(-2, -1)@z, eigenvectors, eigenvalues
+        return eigenvectors, eigenvalues
     
     def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_mat):
         z = torch.concat([node_fts, hidden], dim=-1)
 
         z = self.nodes_proj(z)
         edge_fts = self.edges_proj(edge_fts)
-        graph_fts = self.graph_proj(graph_fts).unsqueeze(-1)
+        graph_fts = self.graph_proj(graph_fts).unsqueeze(1)
 
-        fourier_z, eig_vectors, _ = self.spectral_decomposition(adj_mat)
+        eig_vectors, _ = self.spectral_decomposition(adj_mat)
+
+        fourier_z = eig_vectors.transpose(-2, -1)@z
 
         z = self.mlp(fourier_z + graph_fts)
 
-        fourier_edges = (eig_vectors.transpose(-2, -1)@edge_fts.transpose(0, 1)).transpose(0, 1) + graph_fts.unsqueeze(-1)
+        fourier_edges = (eig_vectors.transpose(-2, -1)@edge_fts.transpose(0, 1)).transpose(0, 1) + graph_fts.unsqueeze(1)
 
         edge_fts = self.edges_mlp(fourier_edges)
 
         return z, edge_fts
-
-
-    
-        
