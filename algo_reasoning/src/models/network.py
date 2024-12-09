@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from .encoder import Encoder
 from .decoder import Decoder
-from .processor import PGN, MPNN, GAT, FullGAT, SpecFormer
+from .processor import PGN, MPNN, GAT, FullGAT, SpecFormer, gfNN
 from algo_reasoning.src.data import AlgorithmicData, AlgorithmicOutput
 from algo_reasoning.src.specs import SPECS, CATEGORIES_DIMENSIONS, Type
 
@@ -42,7 +42,7 @@ class EncodeProcessDecode(torch.nn.Module):
             self.decoders[algorithm] = Decoder(algorithm, hidden_dim=3*hidden_dim, edge_dim=decoder_edge_dim, graph_dim=hidden_dim, decode_hints=decode_hints)
 
         if pretrained_processor is None:
-            self.processor = SpecFormer(hidden_dim, hidden_dim) #,nb_triplet_fts=nb_triplet_fts)
+            self.processor = gfNN(hidden_dim, hidden_dim) #,nb_triplet_fts=nb_triplet_fts)
         else:
             self.processor = pretrained_processor
 

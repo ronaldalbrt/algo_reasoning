@@ -233,9 +233,9 @@ class MPNN(PGN):
         adj_mat = torch.ones_like(adj_mat)
         return super().forward(node_fts, edge_fts, graph_fts, hidden, adj_mat)
 
-class Conv(nn.Module):
+class SpecFormerConv(nn.Module):
     def __init__(self, hidden_size):
-        super(Conv, self).__init__()
+        super(SpecFormerConv, self).__init__()
 
         self.pre_ffn = nn.Sequential(
             nn.Linear(hidden_size, hidden_size),
@@ -286,7 +286,7 @@ class SpecFormer(nn.Module):
 
         self.decoder = nn.Linear(out_size, nb_heads)
 
-        self.layers = nn.ModuleList([Conv(out_size) for i in range(n_layers)])
+        self.layers = nn.ModuleList([SpecFormerConv(out_size) for i in range(n_layers)])
 
         self.feat_encoder = nn.Sequential(
             nn.Linear(in_size*2, out_size),
@@ -413,10 +413,10 @@ class gfNN(nn.Module):
 
         fourier_z = eig_vectors.transpose(-2, -1)@z
 
-        z = self.mlp(fourier_z + graph_fts)
+        z = self.mlp(fourier_z + graph_fts) + z
 
         fourier_edges = (eig_vectors.transpose(-2, -1)@edge_fts.transpose(0, 1)).transpose(0, 1) + graph_fts.unsqueeze(1)
 
-        edge_fts = self.edges_mlp(fourier_edges)
+        edge_fts = self.edges_mlp(fourier_edges) + edge_fts
 
         return z, edge_fts
