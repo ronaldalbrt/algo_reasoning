@@ -8,8 +8,21 @@ from .processor import PGN, MPNN, GAT, FullGAT, SpecFormer, gfNN
 from algo_reasoning.src.data import AlgorithmicData, AlgorithmicOutput
 from algo_reasoning.src.specs import SPECS, CATEGORIES_DIMENSIONS, Type
 
+def build_processor(processor, hidden_dim, nb_triplet_fts, *args, **kwargs):
+    if processor == 'pgn':
+        return PGN(hidden_dim, hidden_dim, *args, **kwargs, nb_triplet_fts=nb_triplet_fts)
+    elif processor == 'mpnn':
+        return MPNN(hidden_dim, hidden_dim, *args, **kwargs, nb_triplet_fts=nb_triplet_fts)
+    elif processor == 'gat':
+        return GAT(hidden_dim, hidden_dim, *args, **kwargs, nb_triplet_fts=nb_triplet_fts)
+    elif processor == 'fullgat':
+        return FullGAT(hidden_dim, hidden_dim, *args, **kwargs, nb_triplet_fts=nb_triplet_fts)
+    elif processor == 'specformer':
+        return SpecFormer(hidden_dim, hidden_dim, *args, **kwargs)
+    elif processor == 'gfNN':
+        return gfNN(hidden_dim, hidden_dim, *args, **kwargs)
 
-class EncodeProcessDecode(torch.nn.Module):
+class EncodeProcessDecode(nn.Module):
     def __init__(self, 
                 algorithms, 
                 hidden_dim=128, 
@@ -19,6 +32,7 @@ class EncodeProcessDecode(torch.nn.Module):
                 teacher_force_prob=0.0,
                 encode_hints=True,
                 decode_hints=True,
+                processor='gfNN',
                 soft_hints=True,
                 freeze_processor=False,
                 pretrained_processor=None,
@@ -42,7 +56,7 @@ class EncodeProcessDecode(torch.nn.Module):
             self.decoders[algorithm] = Decoder(algorithm, hidden_dim=3*hidden_dim, edge_dim=decoder_edge_dim, graph_dim=hidden_dim, decode_hints=decode_hints)
 
         if pretrained_processor is None:
-            self.processor = gfNN(hidden_dim, hidden_dim) #,nb_triplet_fts=nb_triplet_fts)
+            self.processor = build_processor(processor, hidden_dim, nb_triplet_fts)
         else:
             self.processor = pretrained_processor
 

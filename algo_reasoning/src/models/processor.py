@@ -127,6 +127,8 @@ class PGN(nn.Module):
         return out, tri_msgs
 
 class GAT(nn.Module):
+    """Graph Attention Network (Velickovic et al., ICLR 2018)."""
+    """Adapted from https://github.com/google-deepmind/clrs/blob/master/clrs/_src/processors.py"""
     def __init__(self, in_size, out_size, nb_heads=8, activation=nn.ReLU(), layer_norm=True, residual=True, nb_triplet_fts=8) -> None:
         super().__init__()
         self.nb_heads = nb_heads
@@ -385,7 +387,6 @@ class DeepSets(nn.Module):
         x = x - xm
 
         return self.act(x)
-    
     
 class gfNN(nn.Module):
     def __init__(self, in_size, out_size, activation=nn.ReLU(), layer_norm=True, fourier_equivariance=True):   
