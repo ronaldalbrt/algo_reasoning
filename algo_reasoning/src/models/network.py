@@ -10,17 +10,17 @@ from algo_reasoning.src.specs import SPECS, CATEGORIES_DIMENSIONS, Type
 
 def build_processor(processor, hidden_dim, nb_triplet_fts, *args, **kwargs):
     if processor == 'pgn':
-        return PGN(hidden_dim, hidden_dim, *args, **kwargs, nb_triplet_fts=nb_triplet_fts)
+        return PGN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
     elif processor == 'mpnn':
-        return MPNN(hidden_dim, hidden_dim, *args, **kwargs, nb_triplet_fts=nb_triplet_fts)
+        return MPNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
     elif processor == 'gat':
-        return GAT(hidden_dim, hidden_dim, *args, **kwargs, nb_triplet_fts=nb_triplet_fts)
+        return GAT(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
     elif processor == 'fullgat':
-        return FullGAT(hidden_dim, hidden_dim, *args, **kwargs, nb_triplet_fts=nb_triplet_fts)
+        return FullGAT(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
     elif processor == 'specformer':
         return SpecFormer(hidden_dim, hidden_dim, *args, **kwargs)
     elif processor == 'gfNN':
-        return gfNN(hidden_dim, hidden_dim, *args, **kwargs)
+        return gfNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
 
 class EncodeProcessDecode(nn.Module):
     def __init__(self, 

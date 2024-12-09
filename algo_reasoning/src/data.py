@@ -12,7 +12,6 @@ SPLITS = ["train", "val", "test"]
 SAMPLERS = list(SPECS.keys())
 
 class AlgorithmicData(Data):
-    """A data object for CLRS data."""
     def __init__(self,
                 pos_generator=None, 
                 **kwargs):
@@ -22,7 +21,6 @@ class AlgorithmicData(Data):
             self.pos_generator = pos_generator
 
     def set_inputs(self, inputs, nb_nodes, inplace: bool = True, _strings_id: Optional[torch.Tensor] = None):
-        """Set the inputs of the algorithm being executed."""
         data = self.clone() if not inplace else self
 
         data["inputs"] = AlgorithmicData()
@@ -52,7 +50,6 @@ class AlgorithmicData(Data):
             return data
 
     def set_outputs(self, outputs, inplace: bool = True):
-        """Set the outputs of the algorithm being executed."""
         data = self.clone() if not inplace else self
 
         data["outputs"] = AlgorithmicData()

@@ -389,7 +389,7 @@ class DeepSets(nn.Module):
         return self.act(x)
     
 class gfNN(nn.Module):
-    def __init__(self, in_size, out_size, activation=nn.ReLU(), layer_norm=True, fourier_equivariance=True):   
+    def __init__(self, in_size, out_size, activation=nn.ReLU(), layer_norm=True, fourier_equivariance=True, processor=MPNN, nb_triplet_fts=8, *args, **kwargs):   
         super().__init__()
 
         self.in_size = in_size
@@ -405,11 +405,16 @@ class gfNN(nn.Module):
         self.graph_proj = nn.Linear(in_size, in_size)
 
         if fourier_equivariance:
-            self.out_layer = DeepSets(in_size, out_size)
-            self.out_edges_layer = DeepSets(in_size, out_size)
+            self.fourier_layer = DeepSets(in_size, out_size)
+            self.fourier_edges_layer = DeepSets(in_size, out_size)
         else:
-            self.out_layer = nn.Linear(in_size, out_size)
-            self.out_edges_layer = nn.Linear(in_size, out_size)
+            self.fourier_layer = nn.Linear(in_size, out_size)
+            self.fourier_edges_layer = nn.Linear(in_size, out_size)
+
+        self.node_out = nn.Linear(2*in_size, in_size)
+        self.edge_out = nn.Linear(2*in_size, in_size)
+
+        self.processor = processor(in_size, out_size, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
 
     def spectral_decomposition(self, adj_matrix):
         degrees = torch.sum(adj_matrix, dim=1)
@@ -425,18 +430,19 @@ class gfNN(nn.Module):
     def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_mat):
         z = torch.concat([node_fts, hidden], dim=-1)
 
+        msg, tri_msgs = self.processor(node_fts, edge_fts, graph_fts, hidden, adj_mat)
+
         z = self.nodes_proj(z)
-        edge_fts = self.edges_proj(edge_fts)
-        graph_fts = self.graph_proj(graph_fts).unsqueeze(1)
+        edge_z = self.edges_proj(edge_fts)
 
         eig_vectors, _ = self.spectral_decomposition(adj_mat)
 
         fourier_z = eig_vectors.transpose(-2, -1)@z
 
-        z = self.out_layer(fourier_z + graph_fts) + self.out_layer(z + graph_fts)
+        z = torch.concat([self.fourier_layer(fourier_z), msg], dim=-1)
 
-        fourier_edges = (eig_vectors.transpose(-2, -1)@edge_fts.transpose(0, 1)).transpose(0, 1) + graph_fts.unsqueeze(1)
+        fourier_edges = (eig_vectors.transpose(-2, -1)@edge_z.transpose(0, 1)).transpose(0, 1)
 
-        edge_fts = self.out_edges_layer(fourier_edges) + self.out_edges_layer(edge_fts + graph_fts.unsqueeze(1))
+        edge_z = torch.concat([self.fourier_edges_layer(fourier_edges), tri_msgs], dim=-1)
 
-        return z, edge_fts
+        return self.node_out(z), self.edge_out(edge_z)
