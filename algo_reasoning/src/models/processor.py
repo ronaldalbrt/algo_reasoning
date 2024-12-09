@@ -388,7 +388,7 @@ class DeepSets(nn.Module):
     
     
 class gfNN(nn.Module):
-    def __init__(self, in_size, out_size, activation=nn.ReLU(), layer_norm=True):   
+    def __init__(self, in_size, out_size, activation=nn.ReLU(), layer_norm=True, fourier_equivariance=True):   
         super().__init__()
 
         self.in_size = in_size
@@ -403,9 +403,12 @@ class gfNN(nn.Module):
         self.edges_proj = nn.Linear(in_size, in_size)
         self.graph_proj = nn.Linear(in_size, in_size)
 
-        self.out_layer = DeepSets(in_size, out_size)
-        self.out_edges_layer = DeepSets(in_size, out_size)
-
+        if fourier_equivariance:
+            self.out_layer = DeepSets(in_size, out_size)
+            self.out_edges_layer = DeepSets(in_size, out_size)
+        else:
+            self.out_layer = nn.Linear(in_size, out_size)
+            self.out_edges_layer = nn.Linear(in_size, out_size)
 
     def spectral_decomposition(self, adj_matrix):
         degrees = torch.sum(adj_matrix, dim=1)
@@ -429,10 +432,10 @@ class gfNN(nn.Module):
 
         fourier_z = eig_vectors.transpose(-2, -1)@z
 
-        z = self.out_layer(fourier_z + graph_fts) + z
+        z = self.out_layer(fourier_z + graph_fts) + self.out_layer(z + graph_fts)
 
         fourier_edges = (eig_vectors.transpose(-2, -1)@edge_fts.transpose(0, 1)).transpose(0, 1) + graph_fts.unsqueeze(1)
 
-        edge_fts = self.out_edges_layer(fourier_edges) + edge_fts
+        edge_fts = self.out_edges_layer(fourier_edges) + self.out_edges_layer(edge_fts + graph_fts.unsqueeze(1))
 
         return z, edge_fts
