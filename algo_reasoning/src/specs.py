@@ -167,15 +167,7 @@ SPECS = types.MappingProxyType({
         'j': (Stage.HINT, Location.NODE, Type.MASK_ONE),
         'largest': (Stage.HINT, Location.NODE, Type.MASK_ONE),
         'heap_size': (Stage.HINT, Location.NODE, Type.MASK_ONE),
-        'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL)# Probing util functions for the algorithms
-# For the original implementation, please refer to: https://github.com/google-deepmind/clrs
-
-# This implementation is pretty much the same as the original one, 
-# but with some minor changes in the way the data is handled to better fit the Dataset in torch framework format.
-# As the original implementation is made in the Haiku framework, which is a JAX-based framework,
-
-# Modifications were made by Ronald Albert (https://www.pesc.coppe.ufrj.br/index.php/pt-BR/pessoas/details/18/2955), throughout the course of his Master's degree in Computer Science 
-# at the Federal University of Rio de Janeiro (UFRJ), Brazil.
+        'phase': (Stage.HINT, Location.GRAPH, Type.CATEGORICAL)
     },
     'quicksort': {
         'pos': (Stage.INPUT, Location.NODE, Type.SCALAR),
