@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from .encoder import Encoder
 from .decoder import Decoder
-from .processor import PGN, MPNN, GAT, FullGAT, SpecFormer, gfNN
+from .processor import PGN, MPNN, GAT, FullGAT, SpecFormer, S2GNN, SpectralMPNN
 from algo_reasoning.src.data import AlgorithmicData, AlgorithmicOutput
 from algo_reasoning.src.specs import SPECS, CATEGORIES_DIMENSIONS, Type
 
@@ -19,8 +19,10 @@ def build_processor(processor, hidden_dim, nb_triplet_fts, *args, **kwargs):
         return FullGAT(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
     elif processor == 'specformer':
         return SpecFormer(hidden_dim, hidden_dim, *args, **kwargs)
-    elif processor == 'gfNN':
-        return gfNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
+    elif processor == 's2gnn':
+        return S2GNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
+    elif processor == 'spectralmpnn':
+        return SpectralMPNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
 
 class EncodeProcessDecode(nn.Module):
     def __init__(self, 
@@ -32,7 +34,7 @@ class EncodeProcessDecode(nn.Module):
                 teacher_force_prob=0.0,
                 encode_hints=True,
                 decode_hints=True,
-                processor='gfNN',
+                processor='spectralmpnn',
                 soft_hints=True,
                 freeze_processor=False,
                 pretrained_processor=None,
