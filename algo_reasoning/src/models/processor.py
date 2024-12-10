@@ -476,15 +476,17 @@ class SpectralMPNN(nn.Module):
         self.activation = activation
         self.layer_norm = layer_norm
         self.nb_tiplet_fts = nb_triplet_fts
+        self.constant = 100
 
         if self.layer_norm:
             self.norm = nn.LayerNorm(out_size)
 
         self.nodes_q = nn.Linear(2*in_size, in_size)
-        self.nodes_k = nn.Linear(2*in_size, in_size)
         self.nodes_v = nn.Linear(2*in_size, in_size)
         self.edges_proj = nn.Linear(in_size, in_size)
         self.graph_proj = nn.Linear(in_size, in_size)
+
+        self.eig_w = nn.Linear(out_size + 1, out_size)
         
         self.fourier_layer = DeepSetsLayer(in_size, out_size)
         self.mha = nn.MultiheadAttention(out_size, nb_heads, dropout=dropout, batch_first=True)
@@ -527,6 +529,15 @@ class SpectralMPNN(nn.Module):
         if self.gated:
             nn.init.constant_(self.gate3.weight, -3)
 
+    def eig_encoder(self, e):
+        ee = e * self.constant
+        div = torch.exp(torch.arange(0, self.out_size, 2)/self.out_size * -math.log(10000)).to(e.device)
+        
+        pe = ee.unsqueeze(-1) * div
+        eeig = torch.cat((e.unsqueeze(-1), torch.sin(pe), torch.cos(pe)), dim=-1)
+
+        return self.eig_w(eeig)
+
     def get_triplet_msgs(self, node_fts, edge_fts, graph_fts):
         """Triplet messages, as done by Dudzik and Velickovic (2022)."""
         tri_1 = self.t_1(node_fts)
@@ -551,15 +562,16 @@ class SpectralMPNN(nn.Module):
         z = torch.concat([node_fts, hidden], dim=-1)
         
         nodes_q = self.nodes_q(z) 
-        nodes_k = self.nodes_k(z)
         nodes_v = self.nodes_v(z)
         edges_msg = self.edges_proj(edge_fts)
         graph_msg = self.graph_proj(graph_fts)
 
-        eig_vectors, _ = spectral_decomposition(adj_matrix) # (B, N, N)
+        eig_vectors, eig_values = spectral_decomposition(adj_matrix) # (B, N, N)
+        eig = self.eig_encoder(eig_values)
+
         fourier_z = self.fourier_layer(eig_vectors.transpose(-2, -1)@nodes_q)
 
-        nodes_aggr, _ = self.mha(fourier_z, nodes_k, nodes_v)
+        nodes_aggr, _ = self.mha(eig, fourier_z, nodes_v)
 
         msgs = nodes_aggr[:, None, :, :] + edges_msg + graph_msg[:, None, None, :] # (B, N, N, H)
 
