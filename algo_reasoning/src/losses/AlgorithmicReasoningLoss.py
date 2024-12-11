@@ -10,7 +10,7 @@ from algo_reasoning.src.utils import multivariatenormal_log_pdf, normal_log_pdf
 REGULARIZATION_TYPES = ["constant_eigen",  "independence_term", "irm_penalty"]
     
 class AlgorithmicReasoningLoss(nn.Module):
-    def __init__(self, hint_loss_weight=0.1, reg_weight=0.1, reg_type="constant_eigen"):
+    def __init__(self, hint_loss_weight=1, reg_weight=0.1, reg_type="constant_eigen"):
         super().__init__()
         self.hint_loss = (hint_loss_weight > 0.0)
         self.hint_loss_weight = hint_loss_weight
