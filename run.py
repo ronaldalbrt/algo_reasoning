@@ -46,7 +46,9 @@ ap.add_argument('--lr', default=1e-3, type=float,
                 help="Initial Learning Rate for ADAM Optimizer")
 ap.add_argument('--grad_clip', default=1, type=float,
                 help="Gradient clipping value")
-ap.add_argument('--regularization_weight', default=1, type=float,
+ap.add_argument('--processor_model', default="spectralmpnn", type=str,
+                help="Processor's model for algorithmic reasoning")
+ap.add_argument('--regularization_weight', default=0.0, type=float,
                 help="Weight attributed to the regularization term.")
 ap.add_argument('--model_name', default="quickselect", type=str,
                 help="Model's name")
@@ -96,6 +98,7 @@ if __name__ == '__main__':
 
     checkpoint_module = args.checkpoint_module if args.checkpoint_module != "" else None
 
+    processor_model = args.processor_model
     processor = load_pretrained_processor(args.pretrained_processor)
     algorithm_args = load_algorithm_args(args.algorithms_args)
 
@@ -114,8 +117,7 @@ if __name__ == '__main__':
     train_dataloader = DataLoader(train_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=True, worker_init_fn=worker_init_fn)
     val_dataloader = DataLoader(val_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=True, worker_init_fn=worker_init_fn)
 
-    model = EncodeProcessDecode(args.algorithms, freeze_processor=args.freeze_processor, pretrained_processor=processor)
-
+    model = EncodeProcessDecode(args.algorithms, processor=processor_model, freeze_processor=args.freeze_processor, pretrained_processor=processor)
     loss_fn = AlgorithmicReasoningLoss(reg_weight=args.regularization_weight)
 
     optim_method=AdamW
