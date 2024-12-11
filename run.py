@@ -26,7 +26,7 @@ def list_of_ints(arg):
     return [int(i) for i in arg.split(',')]
 
 ap = argparse.ArgumentParser(description='Training Parser Options')
-ap.add_argument('--algorithms', default=CLRS_30_ALGS, type=list_of_strings, 
+ap.add_argument('--algorithms', default=["quickselect"], type=list_of_strings, 
                 help="Algorithms for the model to be trained on.")
 ap.add_argument('--nb_nodes', default='4, 7, 11, 13, 16', type=list_of_ints,
                 help="Number of nodes in the graphs")
@@ -48,9 +48,9 @@ ap.add_argument('--grad_clip', default=1, type=float,
                 help="Gradient clipping value")
 ap.add_argument('--regularization_weight', default=1, type=float,
                 help="Weight attributed to the regularization term.")
-ap.add_argument('--model_name', default="Generalist", type=str,
+ap.add_argument('--model_name', default="quickselect", type=str,
                 help="Model's name")
-ap.add_argument('--version_name', default='', type=str,
+ap.add_argument('--version_name', default='eval_test', type=str,
                 help="Experiment's version name")
 ap.add_argument('--checkpoint_path', default="checkpoints/", type=str,
                 help="Path for checkpoints folder")

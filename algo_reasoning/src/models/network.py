@@ -34,7 +34,7 @@ class EncodeProcessDecode(nn.Module):
                 teacher_force_prob=0.0,
                 encode_hints=True,
                 decode_hints=True,
-                processor='spectralmpnn',
+                processor='mpnn',
                 soft_hints=True,
                 freeze_processor=False,
                 pretrained_processor=None,
