@@ -21,7 +21,7 @@ def _preprocess_y(y, algorithm, key, type_, nb_nodes):
     return preprocesed_y.long(), num_classes
 
 def _scalar_score(pred, y):
-    return torch.mean(F.mse_loss(pred, y, reduction='none'))
+    return torch.mean(F.mse_loss(pred, y, reduction='none')).item()
 
 def _multiclass_metrics(pred, y, num_classes, task, average="micro", ignore_index=None):
     """
@@ -60,7 +60,37 @@ def _multiclass_metrics(pred, y, num_classes, task, average="micro", ignore_inde
         'recall': rec(pred, y).item()
         }
 
-def eval_function(pred, batch, average="micro"):
+def _eval_on_values(value, y, type_, output_metrics, algorithm, key, average, nb_nodes):
+    if type_ == Type.SCALAR:
+            score = _scalar_score(value, y)
+            if "scalar_score" in output_metrics.keys():
+                output_metrics["scalar_score"].append(score)
+            else:
+                output_metrics["scalar_score"] = [score]
+
+    else:
+        ignore_index = None
+        if torch.any(y == OutputClass.MASKED):
+                ignore_index = OutputClass.MASKED
+
+        treated_y, num_classes = _preprocess_y(y, algorithm, key, type_, nb_nodes=nb_nodes)
+
+        task = "binary" if type_ == Type.MASK else "multiclass"
+        
+        if value.dim() > 1:
+            value = value.transpose(1, -1)
+        
+        score = _multiclass_metrics(value, treated_y, num_classes, task, average=average, ignore_index=ignore_index)
+
+        for score_key in score.keys():
+            if score_key in output_metrics.keys():
+                output_metrics[score_key].append(score[score_key])
+            else:
+                output_metrics[score_key] = [score[score_key]]
+
+    return output_metrics
+
+def eval_function(pred, batch, average="micro", eval_hints=True):
     algorithm = batch.algorithm
     specs = SPECS[algorithm]
     nb_nodes = batch.inputs.pos.shape[1]
@@ -69,34 +99,17 @@ def eval_function(pred, batch, average="micro"):
     for key, value in pred.outputs:
         _, _, type_ = specs[key]
 
-        if type_ == Type.SCALAR:
-            score = _scalar_score(value, batch.outputs[key])
-            if "scalar_score" in output_metrics.keys():
-                output_metrics["scalar_score"].append(score)
-            else:
-                output_metrics["scalar_score"] = [score]
+        output_metrics = _eval_on_values(value, batch.outputs[key], type_, output_metrics, algorithm, key, average, nb_nodes)
 
-        else:
-            y = batch.outputs[key]
+    if eval_hints:
+        for key, value in pred.hints:
+            _, _, type_ = specs[key]
 
-            ignore_index = None
-            if torch.any(y == OutputClass.MASKED):
-                 ignore_index = OutputClass.MASKED
+            # Flatten the tensors over batches and trajectories
+            y = batch.hints[key].flatten(end_dim=1)
+            value = value.flatten(end_dim=1)
 
-            treated_y, num_classes = _preprocess_y(y, algorithm, key, type_, nb_nodes=nb_nodes)
-
-            task = "binary" if type_ == Type.MASK else "multiclass"
-            
-            if value.dim() > 1:
-                value = value.transpose(1, -1)
-            
-            score = _multiclass_metrics(value, treated_y, num_classes, task, average=average, ignore_index=ignore_index)
-
-            for score_key in score.keys():
-                if score_key in output_metrics.keys():
-                    output_metrics[score_key].append(score[score_key])
-                else:
-                    output_metrics[score_key] = [score[score_key]]
+            output_metrics = _eval_on_values(value, y, type_, output_metrics, algorithm, key, average, nb_nodes)
 
     for score_key in output_metrics:
         output_metrics[score_key] = sum(output_metrics[score_key])/len(output_metrics[score_key])
