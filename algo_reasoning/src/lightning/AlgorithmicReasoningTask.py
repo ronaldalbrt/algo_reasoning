@@ -25,10 +25,14 @@ class AlgorithmicReasoningTask(L.LightningModule):
 
         if calculate_metrics:
             metrics_r = eval_function(preds.detach().cpu(), batch.detach().cpu())
+            metrics_output = eval_function(preds.detach().cpu(), batch.detach().cpu(), eval_hints=False)
+            metrics_output = {k+'_output': v for k, v in metrics_output.items()}
             
             metrics_r["loss"] = loss
 
-            return {f'{prefix}_{k}': v for k, v in metrics_r.items()}
+            metrics = {**metrics_r, **metrics_output}
+
+            return {f'{prefix}_{k}': v for k, v in metrics.items()}
         
         return loss
 
