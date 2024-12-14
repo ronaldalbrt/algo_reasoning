@@ -385,9 +385,9 @@ class SpectralFilter(nn.Module):
         attn_weights = torch.matmul(z_q, z_k.transpose(1, 2))
         coefs = torch.softmax(attn_weights, dim=-1)
 
-        filtered_eig = torch.diag_embed(torch.bmm(coefs, eig_values.unsqueeze(-1)).squeeze())
+        filtered_eig = torch.bmm(coefs, eig_vectors.transpose(-2, -1)@z)
 
-        out = self.out_lin(eig_vectors@(filtered_eig@(eig_vectors.transpose(-2, -1)@z)))
+        out = self.out_lin(eig_vectors@filtered_eig)
         
         return out
 
