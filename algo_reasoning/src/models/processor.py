@@ -367,7 +367,30 @@ class SpecFormer(nn.Module):
             h, edge_fts = conv(h, edge_fts, bases)
 
         return h, edge_fts
+
+class SpectralFilter(nn.Module):
+    def __init__(self, in_size, out_size):   
+        super().__init__()
+
+        self.att_1 = nn.Linear(in_size, out_size)
+        self.att_2 = nn.Linear(in_size, out_size)
+
+        self.out_lin = nn.Linear(in_size, out_size)
+
     
+    def forward(self, z, eig_values, eig_vectors):
+        z_q = self.att_1(z)
+        z_k = self.att_2(z)
+
+        attn_weights = torch.matmul(z_q, z_k.transpose(1, 2))
+        coefs = torch.softmax(attn_weights, dim=-1)
+
+        filtered_eig = torch.diag_embed(torch.bmm(coefs, eig_values.unsqueeze(-1)).squeeze())
+
+        out = self.out_lin(eig_vectors@(filtered_eig@(eig_vectors.transpose(-2, -1)@z)))
+        
+        return out
+
 class MLP(nn.Module):
     def __init__(self, in_size, out_size, dropout=0.0):
         super(MLP, self).__init__()
@@ -464,47 +487,41 @@ class SpectralMPNN(nn.Module):
     def __init__(self, in_size, out_size, 
                 activation=nn.ReLU(), 
                 layer_norm=True,
-                dropout=0.0, 
-                nb_heads=8,
                 nb_triplet_fts=8, 
                 gated=True,
                 *args, **kwargs):   
         super().__init__()
 
         self.in_size = in_size
+        self.mid_channels = out_size
         self.out_size = out_size
         self.activation = activation
         self.layer_norm = layer_norm
-        self.nb_tiplet_fts = nb_triplet_fts
+        self.gated = gated
+        self.nb_triplet_fts = nb_triplet_fts
 
         if self.layer_norm:
             self.norm = nn.LayerNorm(out_size)
 
-        self.nodes_q = nn.Linear(2*in_size, in_size)
-        self.nodes_k = nn.Linear(2*in_size, in_size)
-        self.nodes_v = nn.Linear(2*in_size, in_size)
-        self.edges_proj = nn.Linear(in_size, in_size)
-        self.graph_proj = nn.Linear(in_size, in_size)
+        # Message MLPs
+        self.m_1 = SpectralFilter(in_size*2, self.mid_channels)
+        self.m_2 = SpectralFilter(in_size*2, self.mid_channels)
+        self.m_e = nn.Linear(in_size, self.mid_channels)
+        self.m_g = nn.Linear(in_size, self.mid_channels)
         
-        self.fourier_layer = DeepSetsLayer(in_size, out_size)
-        self.mha = nn.MultiheadAttention(out_size, nb_heads, dropout=dropout, batch_first=True)
-
-        # Output MLP
-        self.o1 = nn.Linear(out_size, out_size) # skip connection
-        self.o2 = nn.Linear(in_size, out_size)
-
+        if self.layer_norm:
+            self.norm = nn.LayerNorm(out_size)
+        
         self.msg_mlp = nn.Sequential(
-            self.activation,
-            nn.Linear(in_size, in_size),
-            self.activation,
-            nn.Linear(in_size, in_size)
+            nn.ReLU(),
+            nn.Linear(self.mid_channels, self.mid_channels),
+            nn.ReLU(),
+            nn.Linear(self.mid_channels, self.mid_channels)
         )
 
-        self.nb_triplet_fts = nb_triplet_fts
-        self.gated = gated
-        
-        self.node_out = nn.Linear(2*in_size, in_size)
-        self.edge_out = nn.Linear(2*in_size, in_size)  
+        # Output MLP
+        self.o1 = nn.Linear(in_size*2, out_size) # skip connection
+        self.o2 = nn.Linear(self.mid_channels, out_size)
 
         if self.nb_triplet_fts is not None:
             self.t_1 = nn.Linear(in_size*2, nb_triplet_fts)
@@ -518,7 +535,7 @@ class SpectralMPNN(nn.Module):
 
         if self.gated:
             self.gate1 = nn.Linear(in_size*2, out_size)
-            self.gate2 = nn.Linear(out_size, out_size)
+            self.gate2 = nn.Linear(self.mid_channels, out_size)
             self.gate3 = nn.Linear(out_size, out_size)
 
         self.reset_parameters()
@@ -545,29 +562,24 @@ class SpectralMPNN(nn.Module):
             tri_e_2[:, :, None, :, :]   +  # + (B, N, 1, N, H)
             tri_e_3[:, None, :, :, :]   +  # + (B, 1, N, N, H)
             tri_g[:, None, None, None, :]  # + (B, 1, 1, 1, H)
-        )     
+        )    
     
     def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
         z = torch.concat([node_fts, hidden], dim=-1)
+
+        eig_vectors, eig_values = spectral_decomposition(adj_matrix)
         
-        nodes_q = self.nodes_q(z) 
-        nodes_k = self.nodes_k(z)
-        nodes_v = self.nodes_v(z)
-        edges_msg = self.edges_proj(edge_fts)
-        graph_msg = self.graph_proj(graph_fts)
+        msg_1 = self.m_1(z, eig_values, eig_vectors)
+        msg_2 = self.m_2(z, eig_values, eig_vectors)
+        msg_e = self.m_e(edge_fts)
+        msg_g = self.m_g(graph_fts)
 
-        eig_vectors, _ = spectral_decomposition(adj_matrix) # (B, N, N)
-        fourier_z = self.fourier_layer(eig_vectors.transpose(-2, -1)@nodes_q)
-
-        nodes_aggr, _ = self.mha(fourier_z, nodes_k, nodes_v)
-
-        msgs = nodes_aggr[:, None, :, :] + edges_msg + graph_msg[:, None, None, :] # (B, N, N, H)
-
+        msgs = msg_1[:, None, :, :] + msg_2[:, :, None, :] + msg_e + msg_g[:, None, None, :] # (B, N, N, H)
         msgs = self.msg_mlp(msgs)
-        msgs = torch.amax(msgs, dim=1) # (B, N, H)
         
         tri_msgs = None
         if self.nb_triplet_fts is not None:
+            # Triplet messages, as done by Dudzik and Velickovic (2022)
             triplets = self.get_triplet_msgs(z, edge_fts, graph_fts)
             
             tri_msgs = self.o3(torch.amax(triplets, dim=1))  # (B, N, N, H)
@@ -577,8 +589,9 @@ class SpectralMPNN(nn.Module):
             if self.layer_norm:
                 tri_msgs = self.norm(tri_msgs)
 
+        msgs = torch.amax(msgs, dim=1) # (B, N, H)
 
-        h_1 = self.o1(nodes_aggr)
+        h_1 = self.o1(z)
         h_2 = self.o2(msgs)
         out = h_1 + h_2
 
