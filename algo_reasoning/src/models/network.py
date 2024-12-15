@@ -21,6 +21,8 @@ def build_processor(processor, hidden_dim, nb_triplet_fts, *args, **kwargs):
         return SpecFormer(hidden_dim, hidden_dim, *args, **kwargs)
     elif processor == 's2gnn':
         return S2GNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
+    elif processor == 'gfnn':
+        return S2GNN(hidden_dim, hidden_dim, *args, **kwargs)
     elif processor == 'spectralmpnn':
         return SpectralMPNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
 
@@ -39,7 +41,8 @@ class EncodeProcessDecode(nn.Module):
                 freeze_processor=False,
                 pretrained_processor=None,
                 nb_triplet_fts=8,
-                seed=None):
+                seed=None,
+                *args, **kwargs):
         super().__init__()
         self.msg_passing_steps = msg_passing_steps
         self.hidden_dim = hidden_dim
@@ -58,7 +61,7 @@ class EncodeProcessDecode(nn.Module):
             self.decoders[algorithm] = Decoder(algorithm, hidden_dim=3*hidden_dim, edge_dim=decoder_edge_dim, graph_dim=hidden_dim, decode_hints=decode_hints)
 
         if pretrained_processor is None:
-            self.processor = build_processor(processor, hidden_dim, nb_triplet_fts)
+            self.processor = build_processor(processor, hidden_dim, nb_triplet_fts, *args, **kwargs)
         else:
             self.processor = pretrained_processor
 

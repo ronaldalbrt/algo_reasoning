@@ -48,6 +48,8 @@ ap.add_argument('--grad_clip', default=1, type=float,
                 help="Gradient clipping value")
 ap.add_argument('--processor_model', default="spectralmpnn", type=str,
                 help="Processor's model for algorithmic reasoning")
+ap.add_argument('--mpnn_architecture', default='mpnn', type=str,
+                help="If the processor model is an spectralmpnn, the architecture of the MPNN")
 ap.add_argument('--regularization_weight', default=0.0, type=float,
                 help="Weight attributed to the regularization term.")
 ap.add_argument('--model_name', default="quickselect", type=str,
@@ -117,7 +119,12 @@ if __name__ == '__main__':
     train_dataloader = DataLoader(train_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=True, worker_init_fn=worker_init_fn)
     val_dataloader = DataLoader(val_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=True, worker_init_fn=worker_init_fn)
 
-    model = EncodeProcessDecode(args.algorithms, processor=processor_model, freeze_processor=args.freeze_processor, pretrained_processor=processor)
+    model = EncodeProcessDecode(args.algorithms, 
+                                processor=processor_model, 
+                                freeze_processor=args.freeze_processor, 
+                                pretrained_processor=processor, 
+                                message_passing=args.mpnn_architecture)
+    
     loss_fn = AlgorithmicReasoningLoss(reg_weight=args.regularization_weight)
 
     optim_method=AdamW
