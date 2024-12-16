@@ -512,8 +512,11 @@ class gfNN(nn.Module):
         self.edges_proj = nn.Linear(in_size, in_size)
         self.graph_proj = nn.Linear(in_size, in_size)
 
-        self.mlp = MLP(in_size, out_size)
-        self.edges_mlp = MLP(in_size, out_size)
+        self.deepsets = DeepSetsLayer(in_size, out_size)
+        self.edges_deepsets = DeepSetsLayer(in_size, out_size)
+
+        self.mlp = DeepSetsLayer(in_size, out_size)
+        self.edges_mlp = DeepSetsLayer(in_size, out_size)
 
     
     def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_mat):
@@ -526,10 +529,10 @@ class gfNN(nn.Module):
         eig_vectors, _ = spectral_decomposition(adj_mat)
         fourier_z = eig_vectors.transpose(-2, -1)@z
 
-        z = self.mlp(fourier_z + graph_fts)
+        z = self.deepsets(fourier_z + graph_fts) + self.mlp(z)
 
         fourier_edges = (eig_vectors.transpose(-2, -1)@edge_fts.transpose(0, 1)).transpose(0, 1) + graph_fts.unsqueeze(1)
-        edge_fts = self.edges_mlp(fourier_edges)
+        edge_fts = self.edges_deepsets(fourier_edges) + self.edges_mlp(fourier_edges)
 
         return z, edge_fts
 
