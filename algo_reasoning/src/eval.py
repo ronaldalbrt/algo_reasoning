@@ -15,7 +15,7 @@ def _preprocess_y(y, algorithm, key, type_, nb_nodes):
         num_classes = nb_nodes
         preprocesed_y = torch.argmax(preprocesed_y, dim=-1)
 
-    elif type_ == Type.POINTER:
+    elif type_ in [Type.POINTER, Type.PERMUTATION_POINTER]:
         num_classes = nb_nodes
         
     return preprocesed_y.long(), num_classes

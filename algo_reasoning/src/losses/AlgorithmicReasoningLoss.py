@@ -62,7 +62,7 @@ class AlgorithmicReasoningLoss(nn.Module):
 
             return (-torch.sum(losses, dim=dim_to_reduce) / torch.sum(truth*mask == OutputClass.POSITIVE, dim=dim_to_reduce))
         
-        elif type_ == Type.POINTER:
+        elif type_ in [Type.POINTER, Type.PERMUTATION_POINTER]:
             dim_to_reduce = dim_to_reduce[:-1]
 
             _cross_entropy = F.cross_entropy(
