@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .encoder import Encoder
-from .decoder import Decoder, log_sinkhorn
+from .decoder import Decoder
 from .processor import PGN, MPNN, GAT, FullGAT, SpecFormer, S2GNN, SpectralMPNN
 from algo_reasoning.src.data import AlgorithmicData, AlgorithmicOutput
 from algo_reasoning.src.specs import SPECS, CATEGORIES_DIMENSIONS, Type
@@ -90,10 +90,6 @@ class EncodeProcessDecode(nn.Module):
             
             elif type_ == Type.MASK:
                 new_value = torch.sigmoid(value) if self.soft_hints else torch.sigmoid(value).long().float()
-
-            elif type_ == Type.PERMUTATION_POINTER:
-                new_value = torch.exp(log_sinkhorn(value, steps=5, temperature=0.1, gumbel_noise=False)) if self.soft_hints else F.one_hot(torch.argmax(value, dim=-1), batch_nb_nodes).float()
-
             else:
                 new_value = value
 

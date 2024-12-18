@@ -1,24 +1,8 @@
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch
 from algo_reasoning.src.specs import Stage, Location, Type, SPECS, CATEGORIES_DIMENSIONS
 from algo_reasoning.src.data import AlgorithmicData
 
-
-def log_sinkhorn(x, steps, temperature, gumbel_noise=False):
-    if gumbel_noise:
-        noise = -torch.log(-torch.log(torch.rand(x.size(), device=x.device) + 1e-12) + 1e-12)
-        
-        x += noise
-    
-    x /= temperature
-    x = x - 1e6 * torch.eye(x.size(-1), device=x.device)
-
-    for _ in range(steps):
-        x = F.log_softmax(x, dim=-1)
-        x = F.log_softmax(x, dim=-2)
-
-    return x
 
 ## Node decoders
 class NodeBaseDecoder(nn.Module):
@@ -136,7 +120,6 @@ _DECODER_MAP = {
     ('node', 'mask_one'): NodeBaseDecoder,
     ('node', 'categorical'): NodeBaseDecoder,
     ('node', 'pointer'): NodePointerDecoder,
-    ('node', 'permutation_pointer'): NodePointerDecoder,
     ('edge', 'scalar'): EdgeBaseDecoder,
     ('edge', 'mask'): EdgeBaseDecoder,
     ('edge', 'mask_one'): EdgeBaseDecoder,
@@ -186,25 +169,8 @@ class Decoder(nn.Module):
                 continue
             
             if stage == Stage.OUTPUT:
-                out = self.decoder[k](node_fts, edge_fts, graph_fts)
-
-                if type_ == Type.PERMUTATION_POINTER:
-                    if self.training:  
-                        out = log_sinkhorn(out, steps=10, temperature=0.1, gumbel_noise=True)
-                    else:
-                        out = log_sinkhorn(out, steps=10, temperature=0.1, gumbel_noise=False)
-
-                outputs[k] = out
+                outputs[k] = self.decoder[k](node_fts, edge_fts, graph_fts)
             elif stage == Stage.HINT:
-                hint = self.decoder[k](node_fts, edge_fts, graph_fts).unsqueeze(1)
-
-                if type_ == Type.PERMUTATION_POINTER:
-                    if self.training:  
-                        hint = log_sinkhorn(hint, steps=10, temperature=0.1, gumbel_noise=True)
-                    else:
-                        hint = log_sinkhorn(hint, steps=10, temperature=0.1, gumbel_noise=False)
-
-                hints[k] = hint
-
+                hints[k] = self.decoder[k](node_fts, edge_fts, graph_fts).unsqueeze(1)
 
         return AlgorithmicData(inputs=AlgorithmicData(), hints=AlgorithmicData().from_dict(hints), length=-1, outputs=AlgorithmicData().from_dict(outputs), algorithm=self.algorithm)

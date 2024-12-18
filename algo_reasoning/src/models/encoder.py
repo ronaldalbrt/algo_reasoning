@@ -7,7 +7,7 @@ _Tensor = torch.Tensor
 
 def preprocess(data:_Tensor, type_:str, nb_nodes) -> _Tensor:
     if type_ != Type.CATEGORICAL:
-        if type_ in [Type.POINTER, Type.PERMUTATION_POINTER]:
+        if type_ == Type.POINTER:
             data = F.one_hot(data.long(), nb_nodes).unsqueeze(-1).to(torch.float32)
         else:
             data = data.unsqueeze(-1)
@@ -67,10 +67,10 @@ class Encoder(nn.Module):
 
             encoding = self.encoder[k](input)
 
-            if (loc == Location.NODE and type_ not in [Type.POINTER, Type.PERMUTATION_POINTER]) or (loc == Location.GRAPH and type_ == Type.POINTER):
+            if (loc == Location.NODE and type_ != Type.POINTER) or (loc == Location.GRAPH and type_ == Type.POINTER):
                 node_hidden += encoding
 
-            elif loc == Location.EDGE or (loc == Location.NODE and type_ in [Type.POINTER, Type.PERMUTATION_POINTER]):
+            elif loc == Location.EDGE or (loc == Location.NODE and type_ == Type.POINTER):
                 if loc == Location.EDGE and type_ == Type.POINTER:
                     encoding2 = self.encoder[k+"_2"](input)
 
@@ -81,7 +81,7 @@ class Encoder(nn.Module):
             elif loc == Location.GRAPH and type_ != Type.POINTER:
                 graph_hidden += encoding
 
-            if loc == Location.NODE and type_ in [Type.POINTER, Type.PERMUTATION_POINTER]:
+            if loc == Location.NODE and type_ == Type.POINTER:
                 input = input.squeeze(-1)
                 adj_mat += ((input + input.permute((0, 2, 1))) > 0.5)
                 
