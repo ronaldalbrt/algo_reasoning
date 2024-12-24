@@ -536,130 +536,6 @@ class gfNN(nn.Module):
 
         return z, edge_fts
 
-# class SpectralMPNN(nn.Module):
-#     def __init__(self, in_size, out_size, 
-#                 activation=nn.ReLU(), 
-#                 layer_norm=True,
-#                 nb_triplet_fts=8, 
-#                 gated=True,
-#                 *args, **kwargs):   
-#         super().__init__()
-
-#         self.in_size = in_size
-#         self.mid_channels = out_size
-#         self.out_size = out_size
-#         self.activation = activation
-#         self.layer_norm = layer_norm
-#         self.gated = gated
-#         self.nb_triplet_fts = nb_triplet_fts
-
-#         if self.layer_norm:
-#             self.norm = nn.LayerNorm(out_size)
-
-#         # Message MLPs
-#         self.m_1 = SpectralFilter(in_size*2, self.mid_channels)
-#         self.m_2 = SpectralFilter(in_size*2, self.mid_channels)
-#         self.m_e = nn.Linear(in_size, self.mid_channels)
-#         self.m_g = nn.Linear(in_size, self.mid_channels)
-        
-#         if self.layer_norm:
-#             self.norm = nn.LayerNorm(out_size)
-        
-#         self.msg_mlp = nn.Sequential(
-#             nn.ReLU(),
-#             nn.Linear(self.mid_channels, self.mid_channels),
-#             nn.ReLU(),
-#             nn.Linear(self.mid_channels, self.mid_channels)
-#         )
-
-#         # Output MLP
-#         self.o1 = nn.Linear(in_size*2, out_size) # skip connection
-#         self.o2 = nn.Linear(self.mid_channels, out_size)
-
-#         if self.nb_triplet_fts is not None:
-#             self.t_1 = nn.Linear(in_size*2, nb_triplet_fts)
-#             self.t_2 = nn.Linear(in_size*2, nb_triplet_fts)
-#             self.t_3 = nn.Linear(in_size*2, nb_triplet_fts)
-#             self.t_e_1 = nn.Linear(in_size, nb_triplet_fts)
-#             self.t_e_2 = nn.Linear(in_size, nb_triplet_fts)
-#             self.t_e_3 = nn.Linear(in_size, nb_triplet_fts)
-#             self.t_g = nn.Linear(in_size, nb_triplet_fts)
-#             self.o3 = nn.Linear(nb_triplet_fts, out_size)
-
-#         if self.gated:
-#             self.gate1 = nn.Linear(in_size*2, out_size)
-#             self.gate2 = nn.Linear(self.mid_channels, out_size)
-#             self.gate3 = nn.Linear(out_size, out_size)
-
-#         self.reset_parameters()
-
-#     def reset_parameters(self):
-#         if self.gated:
-#             nn.init.constant_(self.gate3.weight, -3)
-
-#     def get_triplet_msgs(self, node_fts, edge_fts, graph_fts):
-#         """Triplet messages, as done by Dudzik and Velickovic (2022)."""
-#         tri_1 = self.t_1(node_fts)
-#         tri_2 = self.t_2(node_fts)
-#         tri_3 = self.t_1(node_fts)
-#         tri_e_1 = self.t_e_1(edge_fts)
-#         tri_e_2 = self.t_e_2(edge_fts)
-#         tri_e_3 = self.t_e_3(edge_fts)
-#         tri_g = self.t_g(graph_fts)
-
-#         return (
-#             tri_1[:, :, None, None, :]  +  #   (B, N, 1, 1, H)
-#             tri_2[:, None, :, None, :]  +  # + (B, 1, N, 1, H)
-#             tri_3[:, None, None, :, :]  +  # + (B, 1, 1, N, H)
-#             tri_e_1[:, :, :, None, :]   +  # + (B, N, N, 1, H)
-#             tri_e_2[:, :, None, :, :]   +  # + (B, N, 1, N, H)
-#             tri_e_3[:, None, :, :, :]   +  # + (B, 1, N, N, H)
-#             tri_g[:, None, None, None, :]  # + (B, 1, 1, 1, H)
-#         )    
-    
-#     def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
-#         z = torch.concat([node_fts, hidden], dim=-1)
-
-#         eig_vectors, eig_values = spectral_decomposition(adj_matrix)
-        
-#         msg_1 = self.m_1(z, eig_values, eig_vectors)
-#         msg_2 = self.m_2(z, eig_values, eig_vectors)
-#         msg_e = self.m_e(edge_fts)
-#         msg_g = self.m_g(graph_fts)
-
-#         msgs = msg_1[:, None, :, :] + msg_2[:, :, None, :] + msg_e + msg_g[:, None, None, :] # (B, N, N, H)
-#         msgs = self.msg_mlp(msgs)
-        
-#         tri_msgs = None
-#         if self.nb_triplet_fts is not None:
-#             # Triplet messages, as done by Dudzik and Velickovic (2022)
-#             triplets = self.get_triplet_msgs(z, edge_fts, graph_fts)
-            
-#             tri_msgs = self.o3(torch.amax(triplets, dim=1))  # (B, N, N, H)
-#             if self.activation is not None:
-#                 tri_msgs = self.activation(tri_msgs)
-
-#             if self.layer_norm:
-#                 tri_msgs = self.norm(tri_msgs)
-
-#         msgs = torch.amax(msgs, dim=1) # (B, N, H)
-
-#         h_1 = self.o1(z)
-#         h_2 = self.o2(msgs)
-#         out = h_1 + h_2
-
-#         if self.activation is not None:
-#             out = self.activation(out)
-
-#         if self.layer_norm:
-#             out = self.norm(out)
-
-#         if self.gated:
-#             gate = F.sigmoid(self.gate3(F.relu(self.gate1(z) + self.gate2(msgs))))
-#             out = out * gate + hidden * (1-gate)
-
-#         return out, tri_msgs
-
 class SpectralMPNN(nn.Module):
     def __init__(self, in_size, out_size, 
                 activation=nn.ReLU(), 
@@ -707,3 +583,101 @@ class SpectralMPNN(nn.Module):
         edge_out = self.edges_mlps(torch.concat([edge_out, tri_msgs], dim=-1))
 
         return out, edge_out
+
+class SpectralMPNN2(nn.Module):
+    def __init__(self, in_size, out_size, 
+                activation=nn.ReLU(), 
+                layer_norm=True,
+                nb_heads=8, 
+                *args, **kwargs):   
+        super().__init__()
+
+        self.in_size = in_size
+        self.mid_channels = out_size
+        self.out_size = out_size
+        self.activation = activation
+        self.layer_norm = layer_norm
+        self.nb_heads = nb_heads
+
+        self.m_1 = nn.Linear(in_size*2, self.mid_channels)
+        self.m_2 = nn.Linear(in_size*2, self.mid_channels)
+        self.m_e = nn.Linear(in_size, self.mid_channels)
+        self.m_g = nn.Linear(in_size, self.mid_channels)
+
+        self.msg_mlp = nn.Sequential(
+            nn.ReLU(),
+            nn.Linear(self.mid_channels, self.mid_channels),
+            nn.ReLU(),
+            nn.Linear(self.mid_channels, nb_heads)
+        )
+
+        self.eig_mlp = nn.Sequential(
+            nn.Linear(1, nb_heads),
+            nn.ReLU(),
+            nn.Linear(nb_heads, nb_heads),
+            nn.ReLU()
+        )
+
+        self.feat_encoder = nn.Sequential(
+            nn.Linear(in_size*2, out_size),
+            nn.ReLU(),
+            nn.Linear(out_size, out_size),
+        )
+
+        self.filter_encoder = nn.Sequential(
+            nn.Linear(nb_heads + 1, out_size),
+            nn.LayerNorm(out_size),
+            nn.GELU(),
+            nn.Linear(out_size, out_size),
+            nn.LayerNorm(out_size),
+            nn.GELU(),
+        )
+
+        self.layers = nn.ModuleList([SpecFormerConv(out_size) for i in range(1)])
+
+
+    def spectral_decomposition(self, adj_matrix):
+        degrees = torch.sum(adj_matrix, dim=1)
+        degree_matrix = torch.stack([torch.diag(degrees[d]) for d in range(degrees.size(0))], dim=0)
+        laplacian = degree_matrix - adj_matrix
+        
+        result = torch.linalg.eigh(laplacian)
+        eigenvalues = result.eigenvalues
+        eigenvectors = result.eigenvectors
+
+        return eigenvectors, eigenvalues
+    
+    def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
+        z = torch.concat([node_fts, hidden], dim=-1)
+        eig_vectors, eig_values = self.spectral_decomposition(adj_matrix)
+
+        h = self.feat_encoder(z)
+        
+        msg_1 = self.m_1(z)
+        msg_2 = self.m_2(z)
+        msg_e = self.m_e(edge_fts)
+        msg_g = self.m_g(graph_fts)
+
+        msgs = msg_1[:, None, :, :] + msg_2[:, :, None, :] + msg_e + msg_g[:, None, None, :] # (B, N, N, H)
+        msgs = self.msg_mlp(msgs)
+        msgs = torch.amax(msgs, dim=1)
+
+
+        eig = self.eig_mlp(eig_values.unsqueeze(-1))
+        new_e = msgs * eig
+
+        diag_e = torch.diag_embed(new_e.transpose(-2, -1))
+
+        identity = torch.diag_embed(torch.ones_like(eig_values))
+        bases = [identity]
+        for i in range(self.nb_heads):
+            filters = eig_vectors @ diag_e[:, i, :, :] @ eig_vectors.transpose(-2, -1)
+            bases.append(filters)
+
+        bases = torch.stack(bases, axis=-1) 
+        bases = torch.softmax(self.filter_encoder(bases), dim=-1)
+
+        for conv in self.layers:
+            h, edge_fts = conv(h, edge_fts, bases)
+
+        return h, edge_fts
