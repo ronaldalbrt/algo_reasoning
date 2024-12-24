@@ -532,7 +532,7 @@ class gfNN(nn.Module):
         z = self.deepsets(fourier_z + graph_fts) + self.mlp(z)
 
         fourier_edges = (eig_vectors.transpose(-2, -1)@edge_fts.transpose(0, 1)).transpose(0, 1) + graph_fts.unsqueeze(1)
-        edge_fts = self.edges_deepsets(fourier_edges) + self.edges_mlp(fourier_edges)
+        edge_fts = self.edges_deepsets(fourier_edges) + self.edges_mlp(edge_fts)
 
         return z, edge_fts
 
