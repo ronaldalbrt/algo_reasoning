@@ -683,7 +683,7 @@ class SpectralMPNN(nn.Module):
         elif message_passing == 'pgn':
             self.mpnn = PGN(in_size, out_size, activation=activation, layer_norm=layer_norm, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
 
-        self.gfnn = gfNN(in_size, out_size, activation=activation, layer_norm=layer_norm)
+        self.specformer = SpecFormer(in_size, out_size, activation=activation, layer_norm=layer_norm)
 
         self.out_mlp = nn.Sequential(
             nn.ReLU(),
@@ -701,9 +701,9 @@ class SpectralMPNN(nn.Module):
 
     def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
         mpnn_out, tri_msgs = self.mpnn(node_fts, edge_fts, graph_fts, hidden, adj_matrix)
-        gfnn_out, edge_out = self.gfnn(node_fts, edge_fts, graph_fts, hidden, adj_matrix)
+        specformer_out, edge_out = self.specformer(node_fts, edge_fts, graph_fts, hidden, adj_matrix)
 
-        out = self.out_mlp(torch.concat([mpnn_out, gfnn_out], dim=-1))
+        out = self.out_mlp(torch.concat([mpnn_out, specformer_out], dim=-1))
         edge_out = self.edges_mlps(torch.concat([edge_out, tri_msgs], dim=-1))
 
         return out, edge_out
