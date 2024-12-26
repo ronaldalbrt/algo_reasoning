@@ -294,7 +294,7 @@ class SpecFormer(nn.Module):
         self.mha = nn.MultiheadAttention(out_size, nb_heads, batch_first=True)
         self.ffn = nn.Sequential(nn.Linear(out_size, out_size), nn.ReLU(), nn.Linear(out_size, out_size))
 
-        self.decoder = nn.Linear(out_size, nb_heads)
+        self.decoder = nn.Linear(1, nb_heads)
 
         self.layers = nn.ModuleList([SpecFormerConv(out_size) for i in range(n_layers)])
 
@@ -349,7 +349,7 @@ class SpecFormer(nn.Module):
         ffn_eig = self.ffn(ffn_eig)
         eig = eig + ffn_eig
 
-        new_e = self.decoder(eig).transpose(2, 1)
+        new_e = self.decoder(eig_values.unsqueeze(-1)).transpose(2, 1)
 
         diag_e = torch.diag_embed(new_e)
 
@@ -608,8 +608,10 @@ class SpectralMPNN2(nn.Module):
             nn.ReLU(),
             nn.Linear(self.mid_channels, self.mid_channels),
             nn.ReLU(),
-            nn.Linear(self.mid_channels, nb_heads)
+            nn.Linear(self.mid_channels, out_size)
         )
+
+        self.msg_proj = nn.Linear(out_size, nb_heads)
 
         self.eig_mlp = nn.Sequential(
             nn.Linear(1, nb_heads),
@@ -635,6 +637,8 @@ class SpectralMPNN2(nn.Module):
 
         self.layers = nn.ModuleList([SpecFormerConv(out_size) for i in range(1)])
 
+        self.o1 = nn.Linear(out_size, out_size)
+        self.o2 = nn.Linear(out_size, out_size)
 
     def spectral_decomposition(self, adj_matrix):
         degrees = torch.sum(adj_matrix, dim=1)
@@ -662,10 +666,9 @@ class SpectralMPNN2(nn.Module):
         msgs = self.msg_mlp(msgs)
         msgs = torch.amax(msgs, dim=1)
 
-
-        eig = self.eig_mlp(eig_values.unsqueeze(-1))
-        new_e = msgs * eig
-
+        new_e = self.eig_mlp(eig_values.unsqueeze(-1))
+        new_e = self.msg_proj(msgs) * new_e
+        
         diag_e = torch.diag_embed(new_e.transpose(-2, -1))
 
         identity = torch.diag_embed(torch.ones_like(eig_values))
@@ -675,9 +678,12 @@ class SpectralMPNN2(nn.Module):
             bases.append(filters)
 
         bases = torch.stack(bases, axis=-1) 
-        bases = torch.softmax(self.filter_encoder(bases), dim=-1)
+        bases = self.filter_encoder(bases)
+        bases = adj_matrix.unsqueeze(-1) * torch.softmax(bases, dim=-1)
 
         for conv in self.layers:
             h, edge_fts = conv(h, edge_fts, bases)
 
-        return h, edge_fts
+        out = self.o1(msgs) + self.o2(h)
+
+        return out, edge_fts
