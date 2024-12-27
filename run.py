@@ -26,7 +26,7 @@ def list_of_ints(arg):
     return [int(i) for i in arg.split(',')]
 
 ap = argparse.ArgumentParser(description='Training Parser Options')
-ap.add_argument('--algorithms', default=["quickselect"], type=list_of_strings, 
+ap.add_argument('--algorithms', default=["insertion_sort"], type=list_of_strings, 
                 help="Algorithms for the model to be trained on.")
 ap.add_argument('--nb_nodes', default='4, 7, 11, 13, 16', type=list_of_ints,
                 help="Number of nodes in the graphs")
@@ -46,13 +46,13 @@ ap.add_argument('--lr', default=1e-3, type=float,
                 help="Initial Learning Rate for ADAM Optimizer")
 ap.add_argument('--grad_clip', default=1, type=float,
                 help="Gradient clipping value")
-ap.add_argument('--processor_model', default="spectralmpnn", type=str,
+ap.add_argument('--processor_model', default="spectralmpnn2", type=str,
                 help="Processor's model for algorithmic reasoning")
 ap.add_argument('--regularization_weight', default=0.0, type=float,
                 help="Weight attributed to the regularization term.")
-ap.add_argument('--model_name', default="quickselect", type=str,
+ap.add_argument('--model_name', default="insertion_sort", type=str,
                 help="Model's name")
-ap.add_argument('--version_name', default='eval_test', type=str,
+ap.add_argument('--version_name', default='', type=str,
                 help="Experiment's version name")
 ap.add_argument('--checkpoint_path', default="checkpoints/", type=str,
                 help="Path for checkpoints folder")
