@@ -626,12 +626,7 @@ class SpectralMPNN2(nn.Module):
             nn.Linear(out_size, out_size),
         )
 
-        self.node_ffn = nn.Sequential(
-            nn.Linear(nb_heads, out_size),
-            nn.ReLU(),
-            nn.Linear(out_size, out_size),
-            nn.ReLU()
-        )
+        self.node_proj = nn.Linear(nb_heads, 1)
 
         self.edge_ffn = nn.Sequential(
             nn.Linear(in_size, in_size),
@@ -689,7 +684,7 @@ class SpectralMPNN2(nn.Module):
         for i in range(self.nb_heads):
             heads.append(bases[:, :, :, i]@node_fts)
 
-        out = self.node_ffn(torch.stack(heads, axis=-1))
+        out = self.node_proj(torch.stack(heads, axis=-1)).squeeze()
         edge_fts = self.edge_out(self.edge_ffn(edge_fts) * bases)
 
         out = self.o1(out) + self.o2(msgs)
