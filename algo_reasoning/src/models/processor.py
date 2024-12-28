@@ -680,13 +680,11 @@ class SpectralMPNN2(nn.Module):
         bases = torch.stack(bases, axis=-1) 
         bases = adj_matrix.unsqueeze(-1) * torch.softmax(bases, dim=-1)
 
-        heads = []
-        for i in range(self.nb_heads):
-            heads.append(bases[:, :, :, i]@node_fts)
-
-        out = self.node_proj(torch.stack(heads, axis=-1)).squeeze()
         edge_fts = self.edge_out(self.edge_ffn(edge_fts) * bases)
 
-        out = self.o1(out) + self.o2(msgs)
+        edge_fts_sum = torch.sum(edge_fts, dim=1)
+
+        out = node_fts + edge_fts_sum
+
 
         return out, edge_fts
