@@ -628,14 +628,16 @@ class SpectralMPNN2(nn.Module):
 
         self.node_proj = nn.Linear(nb_heads, 1)
 
-        self.edge_ffn = nn.Sequential(
-            nn.Linear(in_size, in_size),
-            nn.ReLU(),
-            nn.Linear(in_size, nb_heads + 1),
-            nn.ReLU()
+        self.filter_encoder = nn.Sequential(
+            nn.Linear(nb_heads + 1, out_size),
+            nn.LayerNorm(out_size),
+            nn.GELU(),
+            nn.Linear(out_size, out_size),
+            nn.LayerNorm(out_size),
+            nn.GELU(),
         )
 
-        self.edge_out = nn.Linear(nb_heads + 1, out_size)
+        self.layers = nn.ModuleList([SpecFormerConv(out_size) for i in range(1)])
 
         self.o1 = nn.Linear(out_size, out_size)
         self.o2 = nn.Linear(out_size, out_size)
@@ -678,13 +680,12 @@ class SpectralMPNN2(nn.Module):
             bases.append(filters)
 
         bases = torch.stack(bases, axis=-1) 
+        bases =  self.filter_encoder(bases)
         bases = adj_matrix.unsqueeze(-1) * torch.softmax(bases, dim=-1)
 
-        edge_fts = self.edge_out(self.edge_ffn(edge_fts) * bases)
+        for conv in self.layers:
+            h, edge_fts = conv(h, edge_fts, bases)
 
-        edge_fts_sum = torch.sum(edge_fts, dim=1)
-
-        out = node_fts + edge_fts_sum
-
+        out = self.o1(msgs) + self.o2(h)
 
         return out, edge_fts
