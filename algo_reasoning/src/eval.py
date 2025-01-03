@@ -1,3 +1,16 @@
+# Copyright (C) 2024 Ronald Albert ronaldalbert@cos.ufrj.br
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#         http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import torch
 import torch.nn.functional as F
 from torchmetrics.functional import recall, precision, accuracy, auroc, f1_score
@@ -105,7 +118,6 @@ def eval_function(pred, batch, average="micro", eval_hints=True):
         for key, value in pred.hints:
             _, _, type_ = specs[key]
 
-            # Flatten the tensors over batches and trajectories
             y = batch.hints[key].flatten(end_dim=1)
             value = value.flatten(end_dim=1)
 
