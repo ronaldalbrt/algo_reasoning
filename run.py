@@ -91,78 +91,77 @@ def load_pretrained_processor(processor_path):
     return processor
 
 if __name__ == '__main__':
-    for i in range(5):
-        args = ap.parse_args()
+    args = ap.parse_args()
+    
+    nb_nodes = args.nb_nodes
+    seed = args.seed
+
+    checkpoint_module = args.checkpoint_module if args.checkpoint_module != "" else None
+
+    processor_model = args.processor_model
+    processor = load_pretrained_processor(args.pretrained_processor)
+    algorithm_args = load_algorithm_args(args.algorithms_args)
+
+    train_dataset = CLRSDataset(args.algorithms, nb_nodes, args.batch_size, args.train_steps, seed=seed, algorithms_args=algorithm_args)
+    val_dataset = CLRSDataset(args.algorithms, [max(nb_nodes)], args.batch_size, args.val_steps, seed=seed, algorithms_args=algorithm_args)
+
+    def worker_init_fn(w):
+        worker_info = get_worker_info()
         
-        nb_nodes = args.nb_nodes
-        seed = args.seed
+        dataset = worker_info.dataset
+        seed = dataset.seed
+        worker_id = worker_info.id
 
-        checkpoint_module = args.checkpoint_module if args.checkpoint_module != "" else None
+        dataset.reset_generator(worker_id + seed)
 
-        processor_model = args.processor_model
-        processor = load_pretrained_processor(args.pretrained_processor)
-        algorithm_args = load_algorithm_args(args.algorithms_args)
+    train_dataloader = DataLoader(train_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=True, worker_init_fn=worker_init_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=True, worker_init_fn=worker_init_fn)
 
-        train_dataset = CLRSDataset(args.algorithms, nb_nodes, args.batch_size, args.train_steps, seed=seed, algorithms_args=algorithm_args)
-        val_dataset = CLRSDataset(args.algorithms, [max(nb_nodes)], args.batch_size, args.val_steps, seed=seed, algorithms_args=algorithm_args)
+    model = EncodeProcessDecode(args.algorithms, 
+                                processor=processor_model, 
+                                freeze_processor=args.freeze_processor, 
+                                pretrained_processor=processor)
+    
+    loss_fn = AlgorithmicReasoningLoss(reg_weight=args.regularization_weight)
 
-        def worker_init_fn(w):
-            worker_info = get_worker_info()
-            
-            dataset = worker_info.dataset
-            seed = dataset.seed
-            worker_id = worker_info.id
+    optim_method=AdamW
 
-            dataset.reset_generator(worker_id + seed)
-
-        train_dataloader = DataLoader(train_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=True, worker_init_fn=worker_init_fn)
-        val_dataloader = DataLoader(val_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=True, worker_init_fn=worker_init_fn)
-
-        model = EncodeProcessDecode(args.algorithms, 
-                                    processor=processor_model, 
-                                    freeze_processor=args.freeze_processor, 
-                                    pretrained_processor=processor)
-        
-        loss_fn = AlgorithmicReasoningLoss(reg_weight=args.regularization_weight)
-
-        optim_method=AdamW
-
-        if args.checkpoint_module != "":
-            lightning_module = AlgorithmicReasoningTask.load_from_checkpoint(checkpoint_module, model=model, loss_fn=loss_fn)
-        else:
-            lightning_module = AlgorithmicReasoningTask(
-                model=model,
-                loss_fn=loss_fn,
-                optim_method=optim_method,
-                lr=args.lr
-            )
-
-        checkpoint_callback = ModelCheckpoint(
-            monitor='val_loss',
-            dirpath=args.checkpoint_path+f"/{args.model_name}/",
-            filename=args.model_name+f"-{args.version_name+str(i)}"+'-{epoch:02d}-{val_loss:.2f}',
-            every_n_epochs=1
+    if args.checkpoint_module != "":
+        lightning_module = AlgorithmicReasoningTask.load_from_checkpoint(checkpoint_module, model=model, loss_fn=loss_fn)
+    else:
+        lightning_module = AlgorithmicReasoningTask(
+            model=model,
+            loss_fn=loss_fn,
+            optim_method=optim_method,
+            lr=args.lr
         )
 
-        logger = TensorBoardLogger(args.checkpoint_path+"lightning_logs/", name=args.model_name, version=args.version_name+str(i))
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_loss',
+        dirpath=args.checkpoint_path+f"/{args.model_name}/",
+        filename=args.model_name+f"-{args.version_name}"+'-{epoch:02d}-{val_loss:.2f}',
+        every_n_epochs=1
+    )
 
-        trainer = L.Trainer(default_root_dir=args.checkpoint_path, 
-                            max_epochs=args.n_epochs, 
-                            devices=args.devices, 
-                            accelerator=args.accelerator, 
-                            callbacks=[checkpoint_callback],
-                            use_distributed_sampler=False,
-                            gradient_clip_val=args.grad_clip,
-                            logger=logger
-                            )
-        
-        trainer.fit(lightning_module, train_dataloader, val_dataloader, ckpt_path=checkpoint_module)
+    logger = TensorBoardLogger(args.checkpoint_path+"lightning_logs/", name=args.model_name, version=args.version_name)
 
-        # Test with CLRS Original dataset
-        test_dataset = OriginalCLRSDataset(args.algorithms, "test", args.static_dataset_path)
-        test_sampler = CLRSSampler(test_dataset, algorithms=args.algorithms, batch_size=args.batch_size, seed=seed)
-        test_dataloader = DataLoader(test_dataset, batch_sampler=test_sampler, num_workers=args.n_workers, persistent_workers=True, collate_fn=collate)
+    trainer = L.Trainer(default_root_dir=args.checkpoint_path, 
+                        max_epochs=args.n_epochs, 
+                        devices=args.devices, 
+                        accelerator=args.accelerator, 
+                        callbacks=[checkpoint_callback],
+                        use_distributed_sampler=False,
+                        gradient_clip_val=args.grad_clip,
+                        logger=logger
+                        )
+    
+    trainer.fit(lightning_module, train_dataloader, val_dataloader, ckpt_path=checkpoint_module)
 
-        trainer.test(lightning_module, test_dataloader)
+    # Test with CLRS Original dataset
+    test_dataset = OriginalCLRSDataset(args.algorithms, "test", args.static_dataset_path)
+    test_sampler = CLRSSampler(test_dataset, algorithms=args.algorithms, batch_size=args.batch_size, seed=seed)
+    test_dataloader = DataLoader(test_dataset, batch_sampler=test_sampler, num_workers=args.n_workers, persistent_workers=True, collate_fn=collate)
+
+    trainer.test(lightning_module, test_dataloader)
 
 
