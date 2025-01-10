@@ -17,7 +17,7 @@ import numpy as np
 import torch
 from torch_geometric.data import Data, Batch
 from torch.utils.data import Dataset, Sampler
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Tuple
 
 from algo_reasoning.src.specs import SPECS
 from datasets import load_dataset
@@ -26,15 +26,38 @@ SPLITS = ["train", "val", "test"]
 SAMPLERS = list(SPECS.keys())
 
 class AlgorithmicData(Data):
+    """
+    --------------------------------------------------------------------------------------------------------------------------
+    AlgorithmicData is a class that represents the data of an algorithmic task.
+    --------------------------------------------------------------------------------------------------------------------------
+    Args:
+        pos_generator (torch.Generator, optional): A torch.Generator object to generate random permutations of the position tensor. Defaults to None.
+    --------------------------------------------------------------------------------------------------------------------------
+    """
     def __init__(self,
-                pos_generator=None, 
+                pos_generator: Optional[torch.Generator] = None, 
                 **kwargs):
         super().__init__(**kwargs)
 
         if pos_generator is not None:
             self.pos_generator = pos_generator
 
-    def set_inputs(self, inputs, nb_nodes, inplace: bool = True, _strings_id: Optional[torch.Tensor] = None):
+    def set_inputs(self, 
+                   inputs: Dict[str, torch.Tensor],
+                   nb_nodes: int, 
+                   inplace: bool = True, 
+                   _strings_id: Optional[torch.Tensor] = None) -> Optional['AlgorithmicData']:
+        """
+        --------------------------------------------------------------------------------------------------------------------------
+        Set the inputs of the algorithm being executed.
+        --------------------------------------------------------------------------------------------------------------------------
+        Args:
+            inputs (dict): The inputs of the algorithm.
+            nb_nodes (int): The number of nodes in the graph.
+            inplace (bool, optional): Whether to set the inputs inplace or not. Defaults to True.
+            _strings_id (torch.Tensor, optional): A tensor containing the indices of the strings in the graph. Defaults to None.
+        --------------------------------------------------------------------------------------------------------------------------
+        """
         data = self.clone() if not inplace else self
 
         data["inputs"] = AlgorithmicData()
@@ -63,7 +86,18 @@ class AlgorithmicData(Data):
         if not inplace:
             return data
 
-    def set_outputs(self, outputs, inplace: bool = True):
+    def set_outputs(self, 
+                    outputs: Dict[str, torch.Tensor],
+                    inplace: bool = True) -> Optional['AlgorithmicData']:
+        """
+        --------------------------------------------------------------------------------------------------------------------------
+        Set the outputs of the algorithm being executed.
+        --------------------------------------------------------------------------------------------------------------------------
+        Args:
+            outputs (dict): The outputs of the algorithm.
+            inplace (bool, optional): Whether to set the outputs inplace or not. Defaults to True.
+        --------------------------------------------------------------------------------------------------------------------------
+        """
         data = self.clone() if not inplace else self
 
         data["outputs"] = AlgorithmicData()
@@ -75,7 +109,9 @@ class AlgorithmicData(Data):
         if not inplace:
             return data
 
-    def increase_hints(self, hints, inplace: bool = True):
+    def increase_hints(self, 
+                       hints : Dict[str, torch.Tensor],
+                       inplace: bool = True) -> Optional['AlgorithmicData']:
         """Set the hints of the algorithm being executed."""
         data = self.clone() if not inplace else self
         
@@ -93,8 +129,18 @@ class AlgorithmicData(Data):
         if not inplace:
             return data
 
-    def concat(self, other, inplace: bool = False):
-        """Concatenate two AlgorithmicData objects."""
+    def concat(self, 
+               other: 'AlgorithmicData', 
+               inplace: bool = False) -> Optional['AlgorithmicData']:
+        """
+        --------------------------------------------------------------------------------------------------------------------------
+        Concatenate two AlgorithmicData objects.
+        --------------------------------------------------------------------------------------------------------------------------
+        Args:
+            other (AlgorithmicData): The other AlgorithmicData object to concatenate.
+            inplace (bool, optional): Whether to concatenate the objects inplace or not. Defaults to False.
+        --------------------------------------------------------------------------------------------------------------------------
+        """
         data = self.clone() if not inplace else self
 
         for key, value in other.items():
@@ -114,8 +160,18 @@ class AlgorithmicData(Data):
         if not inplace:
             return data
 
-    def unsqueeze(self, dim, inplace: bool = False):
-        """Unsqueeze all data in AlgorithmicData objects."""
+    def unsqueeze(self, 
+                dim: Optional[Union[int, List[int]]] = None,
+                inplace: bool = False) -> Optional['AlgorithmicData']:
+        """
+        --------------------------------------------------------------------------------------------------------------------------
+        Unsqueeze all data in AlgorithmicData objects.
+        --------------------------------------------------------------------------------------------------------------------------
+        Args:
+            dim (int): The dimension to unsqueeze.
+            inplace (bool, optional): Whether to unsqueeze the objects inplace or not. Defaults to False.
+        --------------------------------------------------------------------------------------------------------------------------
+        """
         data = self.clone() if not inplace else self
 
         for key, value in data.items():
@@ -127,8 +183,18 @@ class AlgorithmicData(Data):
         if not inplace:
             return data
     
-    def squeeze(self, dim: Optional[Union[int, List[int]]] = None, inplace: bool = False):
-        """Squeeze all data in AlgorithmicData objects."""
+    def squeeze(self, 
+                dim: Optional[Union[int, List[int]]] = None, 
+                inplace: bool = False) -> Optional['AlgorithmicData']:
+        """
+        --------------------------------------------------------------------------------------------------------------------------
+        Squeeze all data in AlgorithmicData objects.
+        --------------------------------------------------------------------------------------------------------------------------
+        Args:
+            dim (int, optional): The dimension to squeeze. Defaults to None.
+            inplace (bool, optional): Whether to squeeze the objects inplace or not. Defaults to False.
+        --------------------------------------------------------------------------------------------------------------------------
+        """
         squeeze_fn = lambda x: x.squeeze(dim) if dim is not None else x.squeeze()
 
         data = self.clone() if not inplace else self
@@ -144,8 +210,15 @@ class AlgorithmicData(Data):
         if not inplace:
             return data
     
-    def to_dict(self):
-        """Convert AlgorithmicData to a dictionary."""
+    def to_dict(self) -> Dict[str, torch.Tensor]:
+        """
+        --------------------------------------------------------------------------------------------------------------------------
+        Convert AlgorithmicData to a dictionary.
+        --------------------------------------------------------------------------------------------------------------------------
+        Args:
+            None
+        --------------------------------------------------------------------------------------------------------------------------
+        """
         data_dict = dict()
 
         for key, value in self.items():
@@ -156,8 +229,15 @@ class AlgorithmicData(Data):
         
         return data_dict
     
-    def tolist(self):
-        """Convert AlgorithmicData tensors to list."""
+    def tolist(self) -> 'AlgorithmicData':
+        """
+        --------------------------------------------------------------------------------------------------------------------------
+        Convert tensors in AlgorithmicData to a list.
+        --------------------------------------------------------------------------------------------------------------------------
+        Args:
+            None
+        --------------------------------------------------------------------------------------------------------------------------
+        """
         data = self.clone()
         for key, value in self.items():
             if isinstance(value, AlgorithmicData):
@@ -173,7 +253,21 @@ class AlgorithmicData(Data):
         return data
 
 class OriginalCLRSDataset(Dataset):
-    def __init__(self, algorithms, split, data_folder="tmp/CLRS30"):
+    """
+    --------------------------------------------------------------------------------------------------------------------------
+    Dataset for the Original CLRSDataset, with this class execution samples are generated on the fly, and the original
+    samples from https://github.com/google-deepmind/clrs are used
+    --------------------------------------------------------------------------------------------------------------------------
+    Args:
+        algorithms (List[str]): The algorithms to sample from.
+        split (str): The split to sample from.
+        data_folder (str, optional): The folder to store the data. Defaults to "tmp/CLRS30".
+    --------------------------------------------------------------------------------------------------------------------------
+    """
+    def __init__(self, 
+                algorithms: List[str], 
+                split: str, 
+                data_folder: str = "tmp/CLRS30"):
         self.algorithms = algorithms
         self.split = split
         self.data_folder = data_folder
@@ -207,7 +301,7 @@ class OriginalCLRSDataset(Dataset):
     def __len__(self):
         return self.curr_length
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         algorithm = None
         data_idx = 0
 
@@ -221,7 +315,24 @@ class OriginalCLRSDataset(Dataset):
         return torch.load(f"{self.data_folder}/{algorithm}/{self.split}/{data_idx}", weights_only=False)
 
 class CLRSSampler(Sampler[List[int]]):
-    def __init__(self, dataset, algorithms, batch_size, replacement=False, seed=None):
+    """
+    --------------------------------------------------------------------------------------------------------------------------
+    CLRSSampler for sampling from the Original Dataset.
+    --------------------------------------------------------------------------------------------------------------------------
+    Args:
+        dataset (OriginalCLRSDataset): The dataset to sample from.
+        algorithms (List[str]): The algorithms to sample from.
+        batch_size (int): The batch size.
+        replacement (bool, optional): Whether to sample with replacement or not. Defaults to False.
+        seed (int, optional): The seed for the random generator. Defaults to None.
+    --------------------------------------------------------------------------------------------------------------------------
+    """
+    def __init__(self, 
+                dataset: OriginalCLRSDataset, 
+                algorithms: List[str], 
+                batch_size: int, 
+                replacement: bool = False, 
+                seed: Optional[int] = None):
         super().__init__()
         self.dataset = dataset
         self.algorithms = algorithms
@@ -275,6 +386,11 @@ class CLRSSampler(Sampler[List[int]]):
                 yield (self.algo_start_idx[batch] + idx_order[alg][idx_min:idx_max]).tolist()
 
 class AlgorithmicOutput(Data):
+    """
+    --------------------------------------------------------------------------------------------------------------------------
+    AlgorithmicOutput is a class that represents the output of an algorithmic task.
+    --------------------------------------------------------------------------------------------------------------------------
+    """
     def __init__(self, **kwargs):
         super(AlgorithmicOutput, self).__init__(**kwargs)
 
@@ -282,7 +398,15 @@ class AlgorithmicOutput(Data):
         assert "hidden_embeddings" in kwargs, "hidden_embeddings key must be provided to AlgorithmicOutput."
 
 def idx_batched_data(idx: int, batched_data: AlgorithmicData) -> AlgorithmicData:
-    """Get itens at idx for batched data."""
+    """
+    --------------------------------------------------------------------------------------------------------------------------
+    Get itens at idx for batched data.
+    --------------------------------------------------------------------------------------------------------------------------
+    Args:
+        idx (int): The index to get the data from.
+        batched_data (AlgorithmicData): The batched data.
+    --------------------------------------------------------------------------------------------------------------------------
+    """
     inputs_dict = {k: v[idx] for k, v in batched_data.inputs.items()}
     inputs = AlgorithmicData(**inputs_dict)
 
@@ -305,18 +429,22 @@ def idx_batched_data(idx: int, batched_data: AlgorithmicData) -> AlgorithmicData
         length=length,
     )
 
-def _batch_hints(hints, hint_lengths):
-    """Batches a trajectory of hints samples along the time axis per probe.
+def _batch_hints(hints: List[AlgorithmicData], 
+                hint_lengths: torch.Tensor) -> Tuple[AlgorithmicData, int]:
+    """
+    --------------------------------------------------------------------------------------------------------------------------
+    Batches a trajectory of hints samples along the time axis per probe.
 
     Unlike i/o, hints have a variable-length time dimension. Before batching, each
     trajectory is padded to the maximum trajectory length.
-
+    --------------------------------------------------------------------------------------------------------------------------
     Args:
-    hints: A hint trajectory of `DataPoints`s indexed by time then probe
-
+        hints: A hint trajectory of `DataPoints`s indexed by time then probe
+        hint_lengths: A tensor of shape (num probes,) containing the length of each trajectory.
+    --------------------------------------------------------------------------------------------------------------------------
     Returns:
-    A |num probes| list of `DataPoint`s with the time axis stacked into `data`,
-    and a |sample| list containing the length of each trajectory.
+        A |num probes| list of `DataPoint`s with the time axis stacked into `data`, and a |sample| list containing the length of each trajectory.
+    --------------------------------------------------------------------------------------------------------------------------
     """
     max_length = torch.max(hint_lengths).long()
 
@@ -334,8 +462,18 @@ def _batch_hints(hints, hint_lengths):
         
     return batched_hints, max_length
 
-def collate(batch):
-    """Collate a batch of data points."""
+def collate(batch: List[AlgorithmicData]) -> Batch:
+    """
+    --------------------------------------------------------------------------------------------------------------------------
+    Collate a batch of AlgorithmicData objects.
+    --------------------------------------------------------------------------------------------------------------------------
+    Args:
+        batch (List[AlgorithmicData]): The batch of AlgorithmicData objects.
+    --------------------------------------------------------------------------------------------------------------------------
+    Returns:
+        Batch: A single AlgorithmicData object with an aditional dimension with size equal to the len(batch).
+    ----------------------------------------------------------------------------------------------------------------
+    """
     for data in batch:
         assert isinstance(data, AlgorithmicData), f"Data must be of type AlgorithmicData, got {type(data)}."
         
@@ -354,8 +492,20 @@ def collate(batch):
     batch.max_length = max_length
     return batch
 
-def _preprocess(data_point, algorithm=None):
-    """Convert sampled inputs into DataPoints."""
+def _preprocess(data_point: Dict[str, torch.Tensor], 
+                algorithm: str = None) -> AlgorithmicData:
+    """
+    --------------------------------------------------------------------------------------------------------------------------
+    Convert the dictionaries from HuggingFace into AlgorithmicData objects.
+    --------------------------------------------------------------------------------------------------------------------------
+    Args:
+        data_point (dict): The data point to convert.
+        algorithm (str, optional): The algorithm to convert the data point to. Defaults to None.
+    --------------------------------------------------------------------------------------------------------------------------
+    Returns:
+        AlgorithmicData: The converted data point.
+    ----------------------------------------------------------------------------------------------------------------
+    """
     inputs = AlgorithmicData()
     outputs = AlgorithmicData()
     hints = AlgorithmicData()
@@ -379,12 +529,20 @@ def _preprocess(data_point, algorithm=None):
     return AlgorithmicData(inputs=inputs, hints=hints, length=length, outputs=outputs, max_length=max_length, algorithm=algorithm)
 
 
-def get_dataset(algorithm, split):
-    """Load the CLRS dataset from hugging face for the given algorithm or list of algorithms and split.
-    
+def get_dataset(
+        algorithm: str, 
+        split: str) -> List[AlgorithmicData]:
+    """
+    --------------------------------------------------------------------------------------------------------------------------
+    Load the CLRS dataset from hugging face for the given algorithm or list of algorithms and split.
+    --------------------------------------------------------------------------------------------------------------------------
     Args:
         algorithm (str): The algorithm to get the dataset for.
         split (str): The split to get the dataset for.
+    --------------------------------------------------------------------------------------------------------------------------
+    Returns:
+        List[AlgorithmicData]: The list of AlgorithmicData objects.
+    ----------------------------------------------------------------------------------------------------------------
     """
     if algorithm not in SAMPLERS:
         raise ValueError(f"Unknown algorithm '{algorithm}'. Available algorithms are {list(SAMPLERS)}.")
