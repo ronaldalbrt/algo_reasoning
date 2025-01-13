@@ -15,6 +15,9 @@ import torch
 import torch.nn.functional as F
 from torchmetrics.functional import recall, precision, accuracy, auroc, f1_score
 from algo_reasoning.src.specs import Type, OutputClass, SPECS, CATEGORIES_DIMENSIONS
+from algo_reasoning.src.data import AlgorithmicData
+
+from typing import Dict
 
 def _preprocess_y(y, algorithm, key, type_, nb_nodes):
     num_classes = 2
@@ -38,16 +41,16 @@ def _scalar_score(pred, y):
 
 def _multiclass_metrics(pred, y, num_classes, task, average="micro", ignore_index=None):
     """
-    # -------------------------------------------------------------------------------------------------
-    # Calculates the multiclass metrics for the model
-    # -------------------------------------------------------------------------------------------------
-    # Args:
-    # pred (torch.Tensor): the probability output of the model.
-    # y (torch.Tensor): the ground truth labels.
-    # -------------------------------------------------------------------------------------------------
-    # Returns: 
-    #   The metrics dictionary (keys: roc_auc, acc, f1, precision, recall)
-    # -------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------------------------
+    Calculates the multiclass metrics for the model
+    -------------------------------------------------------------------------------------------------
+    Args:
+        pred (torch.Tensor): the probability output of the model.
+        y (torch.Tensor): the ground truth labels.
+    -------------------------------------------------------------------------------------------------
+    Returns: 
+        The metrics dictionary (keys: roc_auc, acc, f1, precision, recall)
+    -------------------------------------------------------------------------------------------------
     """
     def roc_auc(pred, y):
         return auroc(pred, y, task=task, num_classes=num_classes, ignore_index=ignore_index)
@@ -73,7 +76,32 @@ def _multiclass_metrics(pred, y, num_classes, task, average="micro", ignore_inde
         'recall': rec(pred, y).item()
         }
 
-def _eval_on_values(value, y, type_, output_metrics, algorithm, key, average, nb_nodes):
+def _eval_on_values(value:torch.Tensor, 
+                    y:torch.Tensor, 
+                    type_:Type, 
+                    output_metrics:Dict[str, float],
+                    algorithm:str, 
+                    key:str, 
+                    average:str, 
+                    nb_nodes:int):
+    """
+    -------------------------------------------------------------------------------------------------
+    Evaluates the model's output on a given value.
+    -------------------------------------------------------------------------------------------------
+    Args:
+        value (torch.Tensor): the model's output.
+        y (torch.Tensor): the ground truth labels.
+        type_ (Type): the type of the output.
+        output_metrics (Dict[str, float]): the metrics dictionary.
+        algorithm (str): the algorithm being evaluated.
+        key (str): the key of the output.
+        average (str): the averaging strategy to use for the metrics.
+        nb_nodes (int): the number of nodes in the graph.
+    -------------------------------------------------------------------------------------------------
+    Returns:
+        The updated metrics dictionary.
+    -------------------------------------------------------------------------------------------------
+    """
     if type_ == Type.SCALAR:
             score = _scalar_score(value, y)
             if "scalar_score" in output_metrics.keys():
@@ -103,7 +131,24 @@ def _eval_on_values(value, y, type_, output_metrics, algorithm, key, average, nb
 
     return output_metrics
 
-def eval_function(pred, batch, average="micro", eval_hints=True):
+def eval_function(pred:AlgorithmicData, 
+                batch:AlgorithmicData, 
+                average:str = "micro", 
+                eval_hints:bool = True):
+    """
+    -------------------------------------------------------------------------------------------------
+    Evaluates the model's predictions on a batch.
+    -------------------------------------------------------------------------------------------------
+    Args:
+        pred (AlgorithmicData): the model's predictions.
+        batch (AlgorithmicData): the batch to evaluate.
+        average (str): the averaging strategy to use for the metrics.
+        eval_hints (bool): whether to evaluate the hints.
+    -------------------------------------------------------------------------------------------------
+    Returns: 
+        The metrics dictionary (keys: roc_auc, acc, f1, precision, recall)
+    -------------------------------------------------------------------------------------------------
+    """
     algorithm = batch.algorithm
     specs = SPECS[algorithm]
     nb_nodes = batch.inputs.pos.shape[1]
