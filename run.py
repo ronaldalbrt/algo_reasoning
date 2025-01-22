@@ -15,7 +15,6 @@ import argparse
 import yaml
 from lightning.pytorch.callbacks import ModelCheckpoint
 
-torch.set_float32_matmul_precision('highest')
 # Suppress the warning of the wandb
 os.environ['WANDB_CONSOLE'] = 'off'
 
