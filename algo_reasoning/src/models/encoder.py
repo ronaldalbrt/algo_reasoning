@@ -75,18 +75,18 @@ class Encoder(nn.Module):
             _, loc, type_ = SPECS[self.algorithm][k]
             
             if not self.soft_hint or hint_step is None:
-                input = preprocess(value, type_, nb_nodes)
+                _input = preprocess(value, type_, nb_nodes)
             else:
-                input = value.unsqueeze(-1) if type_ != Type.CATEGORICAL else value
+                _input = value.unsqueeze(-1) if type_ != Type.CATEGORICAL else value
 
-            encoding = self.encoder[k](input)
+            encoding = self.encoder[k](_input)
 
             if (loc == Location.NODE and type_ != Type.POINTER) or (loc == Location.GRAPH and type_ == Type.POINTER):
                 node_hidden += encoding
 
             elif loc == Location.EDGE or (loc == Location.NODE and type_ == Type.POINTER):
                 if loc == Location.EDGE and type_ == Type.POINTER:
-                    encoding2 = self.encoder[k+"_2"](input)
+                    encoding2 = self.encoder[k+"_2"](_input)
 
                     edge_hidden += torch.mean(encoding, dim=1) + torch.mean(encoding2, dim=2)
                 else:
@@ -96,12 +96,12 @@ class Encoder(nn.Module):
                 graph_hidden += encoding
 
             if loc == Location.NODE and type_ == Type.POINTER:
-                input = input.squeeze(-1)
-                adj_mat += ((input + input.permute((0, 2, 1))) > 0.5)
+                _input = _input.squeeze(-1)
+                adj_mat += ((_input + _input.permute((0, 2, 1))) > 0.5)
                 
             elif loc == Location.EDGE and type_ == Type.MASK:
-                input = input.squeeze(-1)
-                adj_mat += ((input + input.permute((0, 2, 1))) > 0.0)
+                _input = _input.squeeze(-1)
+                adj_mat += ((_input + _input.permute((0, 2, 1))) > 0.0)
 
         return node_hidden, edge_hidden, graph_hidden, (adj_mat > 0.).to(torch.float)
 
@@ -113,7 +113,7 @@ class Encoder(nn.Module):
             batch_size = 1
         nb_nodes = batch.inputs.pos.shape[1]
         device = batch.inputs.pos.device
-        adj_mat = (torch.eye(nb_nodes, device=device)[None, :, :]).repeat(batch_size, 1, 1)
+        adj_mat = (torch.eye(nb_nodes, device=device)[None, :, :]).repeat(batch_size, 1, 1).bool()
         node_hidden = torch.zeros((batch_size, nb_nodes, self.hidden_dim), device=device)
         edge_hidden = torch.zeros((batch_size, nb_nodes, nb_nodes, self.hidden_dim), device=device)
         graph_hidden = torch.zeros((batch_size, self.hidden_dim), device=device)
@@ -124,7 +124,7 @@ class Encoder(nn.Module):
             node_hidden, edge_hidden, graph_hidden, adj_mat = self._encode_AlgorithmicData(hints, node_hidden, edge_hidden, graph_hidden, adj_mat, nb_nodes, 
                                                                                     hint_step=hint_step)
 
-        return node_hidden, edge_hidden, graph_hidden, adj_mat
+        return node_hidden, edge_hidden, graph_hidden, adj_mat.float()
     
 
     
