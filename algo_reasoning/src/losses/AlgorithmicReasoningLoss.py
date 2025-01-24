@@ -34,14 +34,12 @@ class AlgorithmicReasoningLoss(nn.Module):
             self.regularizer = lambda emb: torch.mean(torch.abs(torch.sum(emb, dim=2)/(torch.norm(emb, dim=2)*(math.sqrt(emb.size(2))))))
 
     def _calculate_loss(self, mask, truth, pred, type_, nb_nodes):
-        dim_to_reduce = list(range(1, pred.dim()))
-
         if type_ == Type.SCALAR:
-            return torch.mean(F.mse_loss(pred, truth, reduction='none') * mask, dim=dim_to_reduce)
+            return torch.mean(F.mse_loss(pred, truth, reduction='none') * mask)
         
         elif type_ == Type.MASK:
             masked_truth = (truth != OutputClass.MASKED)
-            return torch.mean(F.binary_cross_entropy_with_logits(pred, truth, reduction='none') * mask * masked_truth, dim=dim_to_reduce)
+            return torch.mean(F.binary_cross_entropy_with_logits(pred, truth, reduction='none') * mask * masked_truth)
         
         elif type_ in [Type.MASK_ONE, Type.CATEGORICAL]:
             masked_truth = truth * (truth != OutputClass.MASKED)
@@ -49,22 +47,20 @@ class AlgorithmicReasoningLoss(nn.Module):
             logsoftmax_pred = F.log_softmax(pred, dim=-1)
             losses = logsoftmax_pred*mask*masked_truth
 
-            return (-torch.sum(losses, dim=dim_to_reduce) / torch.sum(truth*mask == OutputClass.POSITIVE, dim=dim_to_reduce))
+            return (-torch.sum(losses) / torch.sum(truth*mask == OutputClass.POSITIVE))
         
         elif type_ == Type.POINTER:
-            dim_to_reduce = dim_to_reduce[:-1]
-
-            _cross_entropy = F.cross_entropy(
+            
+            return torch.mean(
+                F.cross_entropy(
                     pred.transpose(-1, 1), 
                     F.one_hot(truth.long(), nb_nodes).float().transpose(-1, 1), 
-                    reduction='none').transpose(1, -1) * mask.squeeze(-1)
-
-            return torch.mean(_cross_entropy, dim=dim_to_reduce)
+                    reduction='none').transpose(1, -1) * mask.squeeze(-1))
         
         else:
             raise NotImplementedError
     
-    def forward(self, pred, batch, hidden=None, cur_epoch=None):
+    def forward(self, pred, batch, hidden=None):
         algorithm = batch.algorithm
         specs = SPECS[algorithm]
         nb_nodes = batch.inputs.pos.shape[1]
@@ -112,6 +108,6 @@ class AlgorithmicReasoningLoss(nn.Module):
         else:
             reg_loss = 0.0
         
-        loss = output_loss.mean() + reg_weight*reg_loss
+        loss = output_loss + reg_weight*reg_loss
             
         return loss
