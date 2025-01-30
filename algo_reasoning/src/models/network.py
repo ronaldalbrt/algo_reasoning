@@ -41,7 +41,7 @@ def build_processor(processor, hidden_dim, nb_triplet_fts, *args, **kwargs):
         return SpectralMPNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
     elif processor == 'spectralmpnn2':
         return SpectralMPNN2(hidden_dim, hidden_dim, *args, **kwargs)
-    elif processor == 'spectralmpnn2':
+    elif processor == 'chebconv':
         return ChebyshevGraphConv(hidden_dim, hidden_dim, *args, **kwargs)
 
 class EncodeProcessDecode(nn.Module):
