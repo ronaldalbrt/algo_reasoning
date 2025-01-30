@@ -621,7 +621,7 @@ class ChebyshevGraphConv(nn.Module):
 
         # ChebNet normalization of the laplacian matrix
         lap = normalized_laplacian(adj_matrix)
-        eigval_max = torch.linalg_matrix.norm(lap, ord=2)
+        eigval_max = torch.linalg.matrix_norm(lap, ord=2)
         cheb_lap = (2 * lap / eigval_max) - torch.eye(adj_matrix.size(1), device=adj_matrix.device) 
 
         h = self.feat_encoder(z)
