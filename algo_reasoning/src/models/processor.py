@@ -38,7 +38,7 @@ def normalized_laplacian(adj_matrix):
 
     # A_{sym} = D^{-0.5} * A * D^{-0.5}
     normalized_adj = degrees_inv_sqrt@adj_matrix@degrees_inv_sqrt
-    normalized_laplacian = torch.eye(adj_matrix.size(1), device=adj_matrix.device) - normalized_adj
+    normalized_laplacian = torch.eye(adj_matrix.size(1), device=adj_matrix.device).unsqueeze(0) - normalized_adj
 
     return normalized_laplacian
 
@@ -622,7 +622,7 @@ class ChebyshevGraphConv(nn.Module):
         # ChebNet normalization of the laplacian matrix
         lap = normalized_laplacian(adj_matrix)
         eigval_max = torch.linalg.matrix_norm(lap, ord=2)
-        cheb_lap = (2 * lap / eigval_max) - torch.eye(adj_matrix.size(1), device=adj_matrix.device) 
+        cheb_lap = (2 * lap / eigval_max[:, None, None]) - torch.eye(adj_matrix.size(1), device=adj_matrix.device).unsqueeze(0)
 
         h = self.feat_encoder(z)
 
@@ -653,9 +653,9 @@ class ChebyshevGraphConv(nn.Module):
         cheb_node_feat = torch.stack(cheb_node_feat, dim=1)
         cheb_edge_feat = torch.stack(cheb_edge_feat, dim=1)
 
-        node_fts = torch.einsum('bnij,njk->bik', torch.bmm(cheb_node_feat, msgs), self.node_weights)
+        node_fts = torch.einsum('bnij,bnij->bij', cheb_node_feat, torch.einsum('bij,njk->bnik', msgs, self.node_weights))
         edge_fts = torch.einsum('bnijl,nlk->bijk', cheb_edge_feat, self.edge_weights)
         
-        out = self.o1(msgs) + self.o2(h)
+        out = self.o1(msgs) + self.o2(node_fts)
 
         return out, edge_fts
