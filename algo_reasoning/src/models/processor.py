@@ -34,10 +34,10 @@ def normalized_laplacian(adj_matrix):
     degrees_inv_sqrt = torch.pow(degrees, -0.5)
     degrees_inv_sqrt[torch.isinf(degrees_inv_sqrt)] = 0.
 
-    degree_matrix = torch.stack([torch.diag(degrees[d]) for d in range(degrees.size(0))], dim=0)
+    degrees_inv_sqrt = torch.stack([torch.diag(degrees[d]) for d in range(degrees.size(0))], dim=0)
 
     # A_{sym} = D^{-0.5} * A * D^{-0.5}
-    normalized_adj = degree_matrix.dot(adj_matrix).dot(degree_matrix)
+    normalized_adj = degrees_inv_sqrt@adj_matrix@degrees_inv_sqrt
     normalized_laplacian = torch.eye(adj_matrix.size(1), device=adj_matrix.device) - normalized_adj
 
     return normalized_laplacian
