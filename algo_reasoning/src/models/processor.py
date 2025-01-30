@@ -609,7 +609,7 @@ class ChebyshevGraphConv(nn.Module):
             cheb_poly_feat.append(node_fts)
 
         elif self.K == 1:
-            cheb_poly_feat.append(x)
+            cheb_poly_feat.append(node_fts)
 
             cheb_poly_feat.append(torch.mm(cheb_lap, node_fts))
         else:
