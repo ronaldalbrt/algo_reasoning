@@ -611,10 +611,10 @@ class ChebyshevGraphConv(nn.Module):
         elif self.K == 1:
             cheb_poly_feat.append(x)
 
-            cheb_poly_feat.append(torch.mm(cheb_lap, x))
+            cheb_poly_feat.append(torch.mm(cheb_lap, node_fts))
         else:
             # x_1 = gso * x
-            cheb_poly_feat.append(torch.mm(cheb_lap, x))
+            cheb_poly_feat.append(torch.mm(cheb_lap, node_fts))
             # x_k = 2 * gso * x_{k-1} - x_{k-2}
             for k in range(2, self.K):
                 cheb_poly_feat.append(torch.mm(2 * cheb_lap, cheb_poly_feat[k - 1]) - cheb_poly_feat[k - 2])
