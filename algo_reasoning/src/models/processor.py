@@ -579,7 +579,7 @@ class SpectralMPNN2(nn.Module):
 
 
 class ChebyshevGraphConv(nn.Module):  
-    def __init__(self, in_size, out_size, K = 3, activation=nn.ReLU(), layer_norm=True):
+    def __init__(self, in_size, out_size, K = 3):
         super(ChebyshevGraphConv, self).__init__()
         self.K = K
         self.in_size = in_size
