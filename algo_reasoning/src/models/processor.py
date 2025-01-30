@@ -29,6 +29,19 @@ def spectral_decomposition(adj_matrix):
 
     return eigenvectors, eigenvalues
 
+def normalized_laplacian(adj_matrix):
+    degrees = torch.sum(adj_matrix, dim=1)
+    degrees_inv_sqrt = torch.pow(degrees, -0.5)
+    degrees_inv_sqrt[torch.isinf(degrees_inv_sqrt)] = 0.
+
+    degree_matrix = torch.stack([torch.diag(degrees[d]) for d in range(degrees.size(0))], dim=0)
+
+    # A_{sym} = D^{-0.5} * A * D^{-0.5}
+    normalized_adj = degree_matrix.dot(adj_matrix).dot(degree_matrix)
+    normalized_laplacian = torch.eye(adj_matrix.size(1), device=adj_matrix.device) - normalized_adj
+
+    return normalized_laplacian
+
 class PGN(nn.Module):
     """Pointer Graph Networks (Veličković et al., NeurIPS 2020)."""
     """Adapted from https://github.com/google-deepmind/clrs/blob/master/clrs/_src/processors.py"""
@@ -382,29 +395,6 @@ class SpecFormer(nn.Module):
 
         return h, edge_fts
 
-class SpectralFilter(nn.Module):
-    def __init__(self, in_size, out_size):   
-        super().__init__()
-
-        self.att_1 = nn.Linear(in_size, out_size)
-        self.att_2 = nn.Linear(in_size, out_size)
-
-        self.out_lin = nn.Linear(in_size, out_size)
-
-    
-    def forward(self, z, eig_values, eig_vectors):
-        z_q = self.att_1(z)
-        z_k = self.att_2(z)
-
-        attn_weights = torch.matmul(z_q, z_k.transpose(1, 2))
-        coefs = torch.softmax(attn_weights, dim=-1)
-
-        filtered_eig = torch.diag_embed(torch.bmm(coefs, eig_values.unsqueeze(-1)).squeeze())
-
-        out = self.out_lin(eig_vectors@(filtered_eig@(eig_vectors.transpose(-2, -1)@z)))
-        
-        return out
-
 class MLP(nn.Module):
     def __init__(self, in_size, out_size, dropout=0.0):
         super(MLP, self).__init__()
@@ -432,123 +422,6 @@ class DeepSetsLayer(nn.Module):
         x = x - xm
 
         return self.act(x)
-    
-class S2GNN(nn.Module):
-    """S2GNN (Simon Geisler, et al. (2024). )"""
-    """
-        The model implemented is ideally the same as the one in the paper, but the implementation is slightly different 
-        from the one proposed, so as to better match Neural Algorithmic Alignment.
-    """
-    def __init__(self, in_size, out_size, activation=nn.ReLU(), layer_norm=True, fourier_equivariance=True, processor=MPNN, nb_triplet_fts=8, *args, **kwargs):   
-        super().__init__()
-
-        self.in_size = in_size
-        self.out_size = out_size
-        self.activation = activation
-        self.layer_norm = layer_norm
-
-        if self.layer_norm:
-            self.norm = nn.LayerNorm(out_size)
-
-        self.nodes_proj = nn.Sequential(nn.Linear(2*in_size, in_size), nn.ReLU())
-        self.edges_proj = nn.Linear(in_size, in_size)
-        self.graph_proj = nn.Linear(in_size, in_size)
-
-        if fourier_equivariance:
-            self.fourier_layer = DeepSetsLayer(in_size, out_size)
-            self.fourier_edges_layer = DeepSetsLayer(in_size, out_size)
-        else:
-            self.fourier_layer = nn.Linear(in_size, out_size)
-            self.fourier_edges_layer = nn.Linear(in_size, out_size)
-
-        self.node_out = nn.Linear(2*in_size, in_size)
-        self.edge_out = nn.Linear(2*in_size, in_size)
-
-        self.processor = processor(in_size, out_size, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
-
-    def spectral_decomposition(self, adj_matrix):
-        degrees = torch.sum(adj_matrix, dim=1)
-        degree_matrix = torch.stack([torch.diag(degrees[d]) for d in range(degrees.size(0))], dim=0)
-        laplacian = degree_matrix - adj_matrix
-        
-        result = torch.linalg.eigh(laplacian)
-        eigenvalues = result.eigenvalues
-        eigenvectors = result.eigenvectors
-
-        return eigenvectors, eigenvalues
-    
-    def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_mat):
-        z = torch.concat([node_fts, hidden], dim=-1)
-
-        msg, tri_msgs = self.processor(node_fts, edge_fts, graph_fts, hidden, adj_mat)
-
-        z = self.nodes_proj(z)
-        edge_z = self.edges_proj(edge_fts)
-
-        eig_vectors, _ = self.spectral_decomposition(adj_mat)
-
-        fourier_z = eig_vectors.transpose(-2, -1)@z
-
-        z = torch.concat([self.fourier_layer(fourier_z), msg], dim=-1)
-
-        fourier_edges = (eig_vectors.transpose(-2, -1)@edge_z.transpose(0, 1)).transpose(0, 1)
-
-        edge_z = torch.concat([self.fourier_edges_layer(fourier_edges), tri_msgs], dim=-1)
-
-        return self.node_out(z), self.edge_out(edge_z)
-
-class MLP(nn.Module):
-    def __init__(self, in_size, out_size, dropout=0.0):
-        super(MLP, self).__init__()
-        self.lin1 = nn.Linear(in_size, in_size)
-        self.lin2 = nn.Linear(in_size, out_size)
-        self.dropout = nn.Dropout(p=dropout)
-        self.act = nn.ReLU()
-
-    def forward(self, x):
-        x = self.act(self.lin1(x))
-        x = self.dropout(x)
-        return self.lin2(x)
-
-class gfNN(nn.Module):
-    def __init__(self, in_size, out_size, activation=nn.ReLU(), layer_norm=True):   
-        super().__init__()
-
-        self.in_size = in_size
-        self.out_size = out_size
-        self.activation = activation
-        self.layer_norm = layer_norm
-
-        if self.layer_norm:
-            self.norm = nn.LayerNorm(out_size)
-
-        self.nodes_proj = nn.Sequential(nn.Linear(2*in_size, in_size), nn.ReLU())
-        self.edges_proj = nn.Linear(in_size, in_size)
-        self.graph_proj = nn.Linear(in_size, in_size)
-
-        self.deepsets = DeepSetsLayer(in_size, out_size)
-        self.edges_deepsets = DeepSetsLayer(in_size, out_size)
-
-        self.mlp = DeepSetsLayer(in_size, out_size)
-        self.edges_mlp = DeepSetsLayer(in_size, out_size)
-
-    
-    def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_mat):
-        z = torch.concat([node_fts, hidden], dim=-1)
-
-        z = self.nodes_proj(z)
-        edge_fts = self.edges_proj(edge_fts)
-        graph_fts = self.graph_proj(graph_fts).unsqueeze(1)
-
-        eig_vectors, _ = spectral_decomposition(adj_mat)
-        fourier_z = eig_vectors.transpose(-2, -1)@z
-
-        z = self.deepsets(fourier_z + graph_fts) + self.mlp(z)
-
-        fourier_edges = (eig_vectors.transpose(-2, -1)@edge_fts.transpose(0, 1)).transpose(0, 1) + graph_fts.unsqueeze(1)
-        edge_fts = self.edges_deepsets(fourier_edges) + self.edges_mlp(edge_fts)
-
-        return z, edge_fts
 
 class SpectralMPNN(nn.Module):
     def __init__(self, in_size, out_size, 
@@ -703,3 +576,56 @@ class SpectralMPNN2(nn.Module):
         out = self.o1(msgs) + self.o2(h)
 
         return out, edge_fts
+
+
+class ChebyshevGraphConv(nn.Module):  
+    def __init__(self, in_size, out_size, K = 3, bias=True, activation=nn.ReLU(), layer_norm=True):
+        super(ChebyshevGraphConv, self).__init__()
+        self.K = K
+
+        self.thetas = nn.Parameter(torch.FloatTensor(K, in_size, out_size))
+        if bias:
+            self.bias = nn.Parameter(torch.FloatTensor(out_size))
+        else:
+            self.register_parameter('bias', None)
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        if self.bias is not None:
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(self.bias, -bound, bound)
+
+    def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
+        # ChebNet normalization of the laplacian matrix
+        lap = normalized_laplacian(adj_matrix)
+        eigval_max = torch.norm(lap, p=2)
+        cheb_lap = 2 * cheb_lap / eigval_max - torch.eye(adj_matrix.size(1), device=adj_matrix.device) 
+
+        cheb_poly_feat = []
+        if self.K == 0:
+            cheb_poly_feat.append(node_fts)
+
+        elif self.K == 1:
+            cheb_poly_feat.append(x)
+
+            cheb_poly_feat.append(torch.mm(cheb_lap, x))
+        else:
+            # x_1 = gso * x
+            cheb_poly_feat.append(torch.mm(cheb_lap, x))
+            # x_k = 2 * gso * x_{k-1} - x_{k-2}
+            for k in range(2, self.K):
+                cheb_poly_feat.append(torch.mm(2 * cheb_lap, cheb_poly_feat[k - 1]) - cheb_poly_feat[k - 2])
+        
+        feature = torch.stack(cheb_poly_feat, dim=0)
+
+        cheb_graph_conv = torch.einsum('bij,bjk->ik', feature, self.weight)
+
+        if self.bias is not None:
+            cheb_graph_conv = torch.add(input=cheb_graph_conv, other=self.bias, alpha=1)
+        else:
+            cheb_graph_conv = cheb_graph_conv
+
+        return cheb_graph_conv
