@@ -579,15 +579,36 @@ class SpectralMPNN2(nn.Module):
 
 
 class ChebyshevGraphConv(nn.Module):  
-    def __init__(self, in_size, out_size, K = 3, bias=True, activation=nn.ReLU(), layer_norm=True):
+    def __init__(self, in_size, out_size, K = 3, activation=nn.ReLU(), layer_norm=True):
         super(ChebyshevGraphConv, self).__init__()
         self.K = K
+        self.in_size = in_size
+        self.mid_channels = out_size
+        self.out_size = out_size
 
-        self.thetas = nn.Parameter(torch.FloatTensor(K, in_size, out_size))
-        if bias:
-            self.bias = nn.Parameter(torch.FloatTensor(out_size))
-        else:
-            self.register_parameter('bias', None)
+        self.m_1 = nn.Linear(in_size*2, self.mid_channels)
+        self.m_2 = nn.Linear(in_size*2, self.mid_channels)
+        self.m_e = nn.Linear(in_size, self.mid_channels)
+        self.m_g = nn.Linear(in_size, self.mid_channels)
+
+        self.msg_mlp = nn.Sequential(
+            nn.ReLU(),
+            nn.Linear(self.mid_channels, self.mid_channels),
+            nn.ReLU(),
+            nn.Linear(self.mid_channels, out_size)
+        )
+
+        self.node_weights = nn.Parameter(torch.FloatTensor(K, in_size, out_size))
+        self.edge_weights = nn.Parameter(torch.FloatTensor(K, in_size, out_size))
+
+        self.feat_encoder = nn.Sequential(
+            nn.Linear(in_size*2, out_size),
+            nn.ReLU(),
+            nn.Linear(out_size, out_size),
+        )
+
+        self.o1 = nn.Linear(out_size, out_size)
+        self.o2 = nn.Linear(out_size, out_size)
 
         self.reset_parameters()
 
@@ -599,33 +620,45 @@ class ChebyshevGraphConv(nn.Module):
             nn.init.uniform_(self.bias, -bound, bound)
 
     def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
+        z = torch.concat([node_fts, hidden], dim=-1)
+
         # ChebNet normalization of the laplacian matrix
         lap = normalized_laplacian(adj_matrix)
         eigval_max = torch.norm(lap, p=2)
         cheb_lap = 2 * cheb_lap / eigval_max - torch.eye(adj_matrix.size(1), device=adj_matrix.device) 
 
-        cheb_poly_feat = []
-        if self.K == 0:
-            cheb_poly_feat.append(node_fts)
+        h = self.feat_encoder(z)
 
-        elif self.K == 1:
-            cheb_poly_feat.append(node_fts)
+        msg_1 = self.m_1(z)
+        msg_2 = self.m_2(z)
+        msg_e = self.m_e(edge_fts)
+        msg_g = self.m_g(graph_fts)
 
-            cheb_poly_feat.append(torch.mm(cheb_lap, node_fts))
-        else:
-            # x_1 = gso * x
-            cheb_poly_feat.append(torch.mm(cheb_lap, node_fts))
-            # x_k = 2 * gso * x_{k-1} - x_{k-2}
+        msgs = msg_1[:, None, :, :] + msg_2[:, :, None, :] + msg_e + msg_g[:, None, None, :] # (B, N, N, H)
+        msgs = self.msg_mlp(msgs)
+        msgs = torch.amax(msgs, dim=1)
+
+        cheb_node_feat = []
+        cheb_edge_feat = []
+
+        cheb_node_feat.append(h)
+        cheb_edge_feat.append(edge_fts)
+
+        if self.K > 0:
+            cheb_node_feat.append(torch.bmm(cheb_lap, h)) # B x N x D
+            cheb_edge_feat.append(cheb_lap.unsqueeze(-1) * edge_fts) # B x N x N x D 
+            
             for k in range(2, self.K):
-                cheb_poly_feat.append(torch.mm(2 * cheb_lap, cheb_poly_feat[k - 1]) - cheb_poly_feat[k - 2])
+                cheb_node_feat.append(torch.bmm(2 * cheb_lap, cheb_node_feat[k - 1]) - cheb_node_feat[k - 2])
+                cheb_edge_feat.append(((2 * cheb_lap.unsqueeze(-1)) * cheb_edge_feat[k - 1]) - cheb_edge_feat[k - 2])
+                
+
+        cheb_node_feat = torch.stack(cheb_node_feat, dim=1)
+        cheb_edge_feat = torch.stack(cheb_edge_feat, dim=1)
+
+        node_fts = torch.einsum('bnij,njk->bik', torch.bmm(cheb_node_feat, msgs), self.node_weights)
+        edge_fts = torch.einsum('bnijl,nlk->bijk', cheb_edge_feat, self.edge_weights)
         
-        feature = torch.stack(cheb_poly_feat, dim=0)
+        out = self.o1(msgs) + self.o2(h)
 
-        cheb_graph_conv = torch.einsum('bij,bjk->ik', feature, self.weight)
-
-        if self.bias is not None:
-            cheb_graph_conv = torch.add(input=cheb_graph_conv, other=self.bias, alpha=1)
-        else:
-            cheb_graph_conv = cheb_graph_conv
-
-        return cheb_graph_conv
+        return out, edge_fts
