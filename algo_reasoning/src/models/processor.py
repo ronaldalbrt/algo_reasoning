@@ -528,6 +528,8 @@ class SpectralMPNN2(nn.Module):
 
         self.o1 = nn.Linear(out_size, out_size)
         self.o2 = nn.Linear(out_size, out_size)
+        self.o3 = nn.Linear(2*in_size, out_size)
+
 
     def spectral_decomposition(self, adj_matrix):
         degrees = torch.sum(adj_matrix, dim=1)
@@ -575,7 +577,7 @@ class SpectralMPNN2(nn.Module):
 
         out = self.o1(msgs) + self.o2(h) 
 
-        out = out + z
+        out = out + self.o3(z)
 
         return out, edge_fts
 
