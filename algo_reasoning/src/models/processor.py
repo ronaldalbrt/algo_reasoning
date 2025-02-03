@@ -573,7 +573,9 @@ class SpectralMPNN2(nn.Module):
         for conv in self.layers:
             h, edge_fts = conv(h, edge_fts, bases)
 
-        out = self.o1(msgs) + self.o2(h)
+        out = self.o1(msgs) + self.o2(h) 
+
+        out = out + z
 
         return out, edge_fts
 
