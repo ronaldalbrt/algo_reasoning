@@ -19,14 +19,15 @@ from lightning.pytorch.utilities import grad_norm
 
 
 class AlgorithmicReasoningTask(L.LightningModule):
-    def __init__(self, model, loss_fn, optim_method, lr):
+    def __init__(self, model, loss_fn, optim_method, *args, **kwargs):
         super().__init__()
         self.save_hyperparameters(ignore=['model','loss_fn'])
         
         self.model = model
         self.loss_fn = loss_fn
         self.optim_method = optim_method
-        self.lr = lr
+        self.lr = kwargs.get('lr', 1e-3)
+        self.weight_decay = kwargs.get('weight_decay', 1e-2)
 
     def _batch_loss(self, batch, calculate_metrics=False, prefix="val"):
         input_batch = batch.clone()
@@ -78,5 +79,6 @@ class AlgorithmicReasoningTask(L.LightningModule):
         self.log_dict(norms)
 
     def configure_optimizers(self):
-        optimizer = self.optim_method(self.model.parameters(), lr=self.lr)
+        optimizer = self.optim_method(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        print(optimizer.state_dict)
         return optimizer

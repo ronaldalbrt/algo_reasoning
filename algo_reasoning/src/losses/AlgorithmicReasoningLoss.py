@@ -16,19 +16,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
-from torch import autograd
 
 from algo_reasoning.src.specs import SPECS, Type, OutputClass
     
 class AlgorithmicReasoningLoss(nn.Module):
-    def __init__(self, hint_loss_weight=0.1, reg_weight=0.0):
+    def __init__(self, *args, **kwargs):
         super().__init__()
-        self.hint_loss = (hint_loss_weight > 0.0)
-        self.hint_loss_weight = hint_loss_weight
-        self.reg_weight = reg_weight
+        self.hint_loss_weight = kwargs.get('hint_loss_weight', 0.1)
+        
+        self.hint_loss = (self.hint_loss_weight > 0.0)
+        self.reg_weight = kwargs.get('reg_weight', 0.0)
         self.reg_term = self.reg_weight > 0.0
-
-        self.dummy_w =  nn.Parameter(torch.tensor(1.))
         
         if self.reg_term:
             self.regularizer = lambda emb: torch.mean(torch.abs(torch.sum(emb, dim=2)/(torch.norm(emb, dim=2)*(math.sqrt(emb.size(2))))))
