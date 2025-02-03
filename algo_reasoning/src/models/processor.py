@@ -581,7 +581,6 @@ class SpectralMPNN2(nn.Module):
 
         return out, edge_fts
 
-
 class ChebyshevGraphConv(nn.Module):  
     def __init__(self, in_size, out_size, K = 3):
         super(ChebyshevGraphConv, self).__init__()
@@ -623,7 +622,6 @@ class ChebyshevGraphConv(nn.Module):
     def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
         z = torch.concat([node_fts, hidden], dim=-1)
 
-        # ChebNet normalization of the laplacian matrix
         lap = normalized_laplacian(adj_matrix)
         eigval_max = torch.linalg.matrix_norm(lap, ord=2)
         cheb_lap = (2 * lap / eigval_max[:, None, None]) - torch.eye(adj_matrix.size(1), device=adj_matrix.device).unsqueeze(0)

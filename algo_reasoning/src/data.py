@@ -21,6 +21,7 @@ from typing import List, Optional, Union, Dict, Tuple
 
 from algo_reasoning.src.specs import SPECS
 from datasets import load_dataset
+from dotenv import load_dotenv
 
 SPLITS = ["train", "val", "test"]
 SAMPLERS = list(SPECS.keys())
@@ -550,7 +551,8 @@ def get_dataset(
     if split not in SPLITS:
         raise ValueError(f"Unknown split '{split}'. Available splits are {list(SPLITS)}.")
     
-    # check if the dataset is already downloaded
-    huggingface_dataset = load_dataset("ronaldalbrt/CLRS30", data_files=f"{algorithm}/{split}.json", split="train")
+    load_dotenv()
+    token = os.environ["HUGGINGFACE_TOKEN"] if "HUGGINGFACE_TOKEN" in os.environ else None
+    huggingface_dataset = load_dataset("ronaldalbrt/CLRS30", data_files=f"{algorithm}/{split}.json", split="train", token=token)
 
     return [_preprocess(dp, algorithm=algorithm) for dp in huggingface_dataset]
