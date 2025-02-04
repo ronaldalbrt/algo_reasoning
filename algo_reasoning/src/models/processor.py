@@ -486,6 +486,9 @@ class SpectralMPNN2(nn.Module):
         self.layer_norm = layer_norm
         self.nb_heads = nb_heads
 
+        if self.layer_norm:
+            self.norm = nn.LayerNorm(out_size)
+
         self.m_1 = nn.Linear(in_size*2, self.mid_channels)
         self.m_2 = nn.Linear(in_size*2, self.mid_channels)
         self.m_e = nn.Linear(in_size, self.mid_channels)
@@ -528,7 +531,6 @@ class SpectralMPNN2(nn.Module):
 
         self.o1 = nn.Linear(out_size, out_size)
         self.o2 = nn.Linear(out_size, out_size)
-        self.o3 = nn.Linear(2*in_size, out_size)
 
 
     def spectral_decomposition(self, adj_matrix):
@@ -577,7 +579,8 @@ class SpectralMPNN2(nn.Module):
 
         out = self.o1(msgs) + self.o2(h) 
 
-        out = out + self.o3(z)
+        if self.layer_norm:
+            out = self.norm(out)
 
         return out, edge_fts
 
