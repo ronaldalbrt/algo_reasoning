@@ -80,5 +80,5 @@ class AlgorithmicReasoningTask(L.LightningModule):
 
     def configure_optimizers(self):
         optimizer = self.optim_method(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
-        print(optimizer.state_dict)
+        
         return optimizer
