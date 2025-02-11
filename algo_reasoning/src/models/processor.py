@@ -559,10 +559,9 @@ class SpectralMPNN2(nn.Module):
         msgs = self.msg_mlp(msgs)
         msgs = torch.amax(msgs, dim=1)
 
-        new_e = self.eig_mlp(eig_values.unsqueeze(-1))
-        new_e = self.msg_proj(msgs) * new_e
+        msgs_proj = self.msg_proj(msgs)
         
-        diag_e = torch.diag_embed(new_e.transpose(-2, -1))
+        diag_e = torch.diag_embed(msgs_proj.transpose(-2, -1))
 
         identity = torch.diag_embed(torch.ones_like(eig_values))
         bases = [identity]
