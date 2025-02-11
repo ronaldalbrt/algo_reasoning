@@ -6,7 +6,6 @@ from algo_reasoning.src.lightning.AlgorithmicReasoningTask import AlgorithmicRea
 from algo_reasoning.src.specs import CLRS_30_ALGS
 
 import os
-import torch
 from torch.optim import AdamW
 import lightning as L
 from lightning.pytorch.loggers import TensorBoardLogger
@@ -25,7 +24,7 @@ def list_of_ints(arg):
     return [int(i) for i in arg.split(',')]
 
 ap = argparse.ArgumentParser(description='Training Parser Options')
-ap.add_argument('--algorithms', default=["insertion_sort"], type=list_of_strings, 
+ap.add_argument('--algorithms', default=["dfs"], type=list_of_strings, 
                 help="Algorithms for the model to be trained on.")
 ap.add_argument('--nb_nodes', default='4, 7, 11, 13, 16', type=list_of_ints,
                 help="Number of nodes in the graphs")
@@ -39,7 +38,7 @@ ap.add_argument('--val_steps', default=32, type=int,
                 help="Number of validation steps per algorithm")
 ap.add_argument('--test_steps', default=32, type=int,
                 help="Number of test steps per algorithm")
-ap.add_argument('--n_workers', default=8, type=int,
+ap.add_argument('--n_workers', default=0, type=int,
                 help="Number of Data Loading Workers")
 ap.add_argument('--lr', default=1e-3, type=float,
                 help="Initial Learning Rate for ADAM Optimizer")
@@ -47,7 +46,7 @@ ap.add_argument('--grad_clip', default=1, type=float,
                 help="Gradient clipping value")
 ap.add_argument('--weight_decay', default=1e-2, type=float,
                 help="Weight decay value for the optimizer")
-ap.add_argument('--processor_model', default="spectralmpnn2", type=str,
+ap.add_argument('--processor_model', default="spectralmpnn", type=str,
                 help="Processor's model for algorithmic reasoning")
 ap.add_argument('--regularization_weight', default=0.0, type=float,
                 help="Weight attributed to the regularization term.")
@@ -59,7 +58,7 @@ ap.add_argument('--checkpoint_path', default="checkpoints/", type=str,
                 help="Path for checkpoints folder")
 ap.add_argument("--checkpoint_module", default="", type=str,
                 help="Path for checkpoint module stored by lightning")
-ap.add_argument("--accelerator", default="gpu", type=str,
+ap.add_argument("--accelerator", default="cpu", type=str,
                 help="Device for the model to be trained on")
 ap.add_argument("--devices", default=1, type=str,
                 help="Number of devices used for training")
@@ -100,8 +99,8 @@ if __name__ == '__main__':
 
         dataset.reset_generator(worker_id + seed)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=True, worker_init_fn=worker_init_fn)
-    val_dataloader = DataLoader(val_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=True, worker_init_fn=worker_init_fn)
+    train_dataloader = DataLoader(train_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=False, worker_init_fn=worker_init_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=False, worker_init_fn=worker_init_fn)
 
     model = EncodeProcessDecode(args.algorithms, 
                                 processor=processor_model)
@@ -150,7 +149,7 @@ if __name__ == '__main__':
     # Test with CLRS Original dataset
     test_dataset = OriginalCLRSDataset(args.algorithms, "test", args.static_dataset_path)
     test_sampler = CLRSSampler(test_dataset, algorithms=args.algorithms, batch_size=args.batch_size, seed=seed)
-    test_dataloader = DataLoader(test_dataset, batch_sampler=test_sampler, num_workers=args.n_workers, persistent_workers=True, collate_fn=collate)
+    test_dataloader = DataLoader(test_dataset, batch_sampler=test_sampler, num_workers=args.n_workers, persistent_workers=False, collate_fn=collate)
 
     trainer.test(lightning_module, test_dataloader)
 

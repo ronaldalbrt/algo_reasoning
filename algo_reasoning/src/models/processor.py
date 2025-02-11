@@ -427,54 +427,6 @@ class SpectralMPNN(nn.Module):
     def __init__(self, in_size, out_size, 
                 activation=nn.ReLU(), 
                 layer_norm=True,
-                nb_triplet_fts=8, 
-                gated=True,
-                message_passing='mpnn',
-                *args, **kwargs):   
-        super().__init__()
-
-        self.in_size = in_size
-        self.mid_channels = out_size
-        self.out_size = out_size
-        self.activation = activation
-        self.layer_norm = layer_norm
-        self.gated = gated
-        self.nb_triplet_fts = nb_triplet_fts
-
-        if message_passing == 'mpnn':
-            self.mpnn = MPNN(in_size, out_size, activation=activation, layer_norm=layer_norm, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
-        elif message_passing == 'pgn':
-            self.mpnn = PGN(in_size, out_size, activation=activation, layer_norm=layer_norm, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
-
-        self.specformer = SpecFormer(in_size, out_size, activation=activation, layer_norm=layer_norm)
-
-        self.out_mlp = nn.Sequential(
-            nn.ReLU(),
-            nn.Linear(2*out_size, out_size),
-            nn.ReLU(),
-            nn.Linear(out_size, out_size)
-        )
-
-        self.edges_mlps = nn.Sequential(
-            nn.ReLU(),
-            nn.Linear(2*out_size, out_size),
-            nn.ReLU(),
-            nn.Linear(out_size, out_size)
-        )
-
-    def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_matrix):
-        mpnn_out, tri_msgs = self.mpnn(node_fts, edge_fts, graph_fts, hidden, adj_matrix)
-        specformer_out, edge_out = self.specformer(node_fts, edge_fts, graph_fts, hidden, adj_matrix)
-
-        out = self.out_mlp(torch.concat([mpnn_out, specformer_out], dim=-1))
-        edge_out = self.edges_mlps(torch.concat([edge_out, tri_msgs], dim=-1))
-
-        return out, edge_out
-
-class SpectralMPNN2(nn.Module):
-    def __init__(self, in_size, out_size, 
-                activation=nn.ReLU(), 
-                layer_norm=True,
                 nb_heads=8, 
                 *args, **kwargs):   
         super().__init__()
