@@ -58,7 +58,7 @@ ap.add_argument('--checkpoint_path', default="checkpoints/", type=str,
                 help="Path for checkpoints folder")
 ap.add_argument("--checkpoint_module", default="", type=str,
                 help="Path for checkpoint module stored by lightning")
-ap.add_argument("--accelerator", default="cpu", type=str,
+ap.add_argument("--accelerator", default="gpu", type=str,
                 help="Device for the model to be trained on")
 ap.add_argument("--devices", default=1, type=str,
                 help="Number of devices used for training")
