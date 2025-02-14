@@ -7,4 +7,7 @@ An extensible python package for Neural Algorithmic Reasoning under the PyTorch 
 
 The package follows the framework implemented in [The CLRS Algorithmic Reasoning Benchmark](https://github.com/google-deepmind/clrs)
 
-![NAR_arch](images/NAR_arch_dark.jpg)
+
+## Framework for algorithmic simulation.
+
+<img src="images/NAR_arch_dark.jpg" alt="NAR_arch" style="width:500px;"/>
