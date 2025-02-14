@@ -42,6 +42,22 @@ def normalized_laplacian(adj_matrix):
 
     return normalized_laplacian
 
+def largest_singularvalue(A, n_it=1000):
+    curr_x = torch.randn((A.size(0), A.size(-1)), device=A.device)
+    curr_x = curr_x/torch.norm(curr_x,  dim=-1, keepdim=True)
+
+    prev_x = torch.zeros((A.size(0), A.size(-1)), device=A.device)
+    for i in range(n_it): 
+        prev_x = torch.clone(curr_x)
+         
+        curr_x = torch.bmm(A, curr_x.unsqueeze(-1)).squeeze()
+        curr_x = curr_x/torch.norm(curr_x, dim=-1, keepdim=True)
+
+
+
+    return torch.norm(torch.bmm(A, curr_x.unsqueeze(-1)).squeeze(),  dim=-1)
+
+
 class PGN(nn.Module):
     """Pointer Graph Networks (Veličković et al., NeurIPS 2020)."""
     """Adapted from https://github.com/google-deepmind/clrs/blob/master/clrs/_src/processors.py"""
