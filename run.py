@@ -24,7 +24,7 @@ def list_of_ints(arg):
     return [int(i) for i in arg.split(',')]
 
 ap = argparse.ArgumentParser(description='Training Parser Options')
-ap.add_argument('--algorithms', default=["dfs"], type=list_of_strings, 
+ap.add_argument('--algorithms', default=["floyd_warshall"], type=list_of_strings, 
                 help="Algorithms for the model to be trained on.")
 ap.add_argument('--nb_nodes', default='4, 7, 11, 13, 16', type=list_of_ints,
                 help="Number of nodes in the graphs")
