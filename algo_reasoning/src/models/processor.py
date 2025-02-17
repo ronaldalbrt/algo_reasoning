@@ -31,10 +31,9 @@ def spectral_decomposition(adj_matrix):
 
 def normalized_laplacian(adj_matrix):
     degrees = torch.sum(adj_matrix, dim=1)
-    degrees_inv_sqrt = torch.pow(degrees, -0.5)
-    degrees_inv_sqrt[torch.isinf(degrees_inv_sqrt)] = 0.
+    degrees_inv_sqrt = torch.where(degrees == 0, 1, torch.rsqrt(degrees))
 
-    degrees_inv_sqrt = torch.stack([torch.diag(degrees[d]) for d in range(degrees.size(0))], dim=0)
+    degrees_inv_sqrt = torch.stack([torch.diag(degrees_inv_sqrt[d]) for d in range(degrees.size(0))], dim=0)
 
     # A_{sym} = D^{-0.5} * A * D^{-0.5}
     normalized_adj = degrees_inv_sqrt@adj_matrix@degrees_inv_sqrt
@@ -435,12 +434,13 @@ class SpectralMPNN(nn.Module):
         return out, edge_fts
 
 class ChebyshevGraphConv(nn.Module):  
-    def __init__(self, in_size, out_size, K = 3):
+    def __init__(self, in_size, out_size, K = 3, eps=1e-05):
         super(ChebyshevGraphConv, self).__init__()
         self.K = K
         self.in_size = in_size
         self.mid_channels = out_size
         self.out_size = out_size
+        self.eps = eps
 
         self.m_1 = nn.Linear(in_size*2, self.mid_channels)
         self.m_2 = nn.Linear(in_size*2, self.mid_channels)
@@ -477,7 +477,7 @@ class ChebyshevGraphConv(nn.Module):
 
         lap = normalized_laplacian(adj_matrix)
         eigval_max = torch.linalg.matrix_norm(lap, ord=2)
-        cheb_lap = (2 * lap / eigval_max[:, None, None]) - torch.eye(adj_matrix.size(1), device=adj_matrix.device).unsqueeze(0)
+        cheb_lap = (2 * lap / (eigval_max[:, None, None] + self.eps)) - torch.eye(adj_matrix.size(1), device=adj_matrix.device).unsqueeze(0)    
 
         h = self.feat_encoder(z)
 
