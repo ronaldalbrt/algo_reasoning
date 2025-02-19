@@ -38,7 +38,6 @@ from algo_reasoning.src.algorithms.graphs import dfs, bfs, topological_sort, art
 
 Algorithm = Callable[..., Any]
 
-# TODO: Implement test script for Sampler classes
 class BaseAlgorithmSampler:
     """Sampler abstract base class."""
 
