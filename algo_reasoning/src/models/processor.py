@@ -382,6 +382,7 @@ class SpectralMPNN(nn.Module):
 
         self.o1 = nn.Linear(out_size, out_size)
         self.o2 = nn.Linear(out_size, out_size)
+        self.o3 = nn.Linear(2*in_size, out_size)
 
 
     def spectral_decomposition(self, adj_matrix):
@@ -428,6 +429,8 @@ class SpectralMPNN(nn.Module):
 
         out = self.o1(msgs) + self.o2(h) 
 
+        out = out + self.o3(z)
+
         if self.layer_norm:
             out = self.norm(out)
 
@@ -465,6 +468,7 @@ class ChebyshevGraphConv(nn.Module):
 
         self.o1 = nn.Linear(out_size, out_size)
         self.o2 = nn.Linear(out_size, out_size)
+        self.o3 = nn.Linear(2*in_size, out_size)
 
         self.reset_parameters()
 
@@ -508,9 +512,11 @@ class ChebyshevGraphConv(nn.Module):
         cheb_node_feat = torch.stack(cheb_node_feat, dim=1)
         cheb_edge_feat = torch.stack(cheb_edge_feat, dim=1)
 
-        node_fts = torch.einsum('bnij,bnij->bij', cheb_node_feat, torch.einsum('bij,njk->bnik', msgs, self.node_weights))
-        edge_fts = torch.einsum('bnijl,nlk->bijk', cheb_edge_feat, self.edge_weights)
+        node_out = torch.einsum('bnij,bnij->bij', cheb_node_feat, torch.einsum('bij,njk->bnik', msgs, self.node_weights))
+        edge_out = torch.einsum('bnijl,nlk->bijk', cheb_edge_feat, self.edge_weights)
         
-        out = self.o1(msgs) + self.o2(node_fts)
+        out = self.o1(msgs) + self.o2(node_out)
 
-        return out, edge_fts
+        out = out + self.o3(z)
+
+        return out, edge_out
