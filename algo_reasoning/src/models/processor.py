@@ -437,18 +437,22 @@ class SpectralMPNN(nn.Module):
         return out, edge_fts
 
 class ChebyshevGraphConv(nn.Module):  
-    def __init__(self, in_size, out_size, K = 3, eps=1e-05):
+    def __init__(self, in_size, out_size, K = 3, eps=1e-05, layer_norm=True):
         super(ChebyshevGraphConv, self).__init__()
         self.K = K
         self.in_size = in_size
         self.mid_channels = out_size
         self.out_size = out_size
         self.eps = eps
+        self.layer_norm = layer_norm
 
         self.m_1 = nn.Linear(in_size*2, self.mid_channels)
         self.m_2 = nn.Linear(in_size*2, self.mid_channels)
         self.m_e = nn.Linear(in_size, self.mid_channels)
         self.m_g = nn.Linear(in_size, self.mid_channels)
+
+        if self.layer_norm:
+            self.norm = nn.LayerNorm(out_size)
 
         self.msg_mlp = nn.Sequential(
             nn.ReLU(),
@@ -518,5 +522,8 @@ class ChebyshevGraphConv(nn.Module):
         out = self.o1(msgs) + self.o2(node_out)
 
         out = out + self.o3(z)
+
+        if self.layer_norm:
+            out = self.norm(out)
 
         return out, edge_out
