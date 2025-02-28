@@ -10,4 +10,6 @@ The package follows the framework implemented in [The CLRS Algorithmic Reasoning
 
 ## Framework for algorithmic simulation.
 
-<img src="images/NAR_arch_dark.jpg" alt="NAR_arch" style="width:500px;"/>
+<div align="center">
+    <img src="images/NAR_arch_dark.jpg" alt="NAR_arch" style="width:500px;"/>
+</div>
