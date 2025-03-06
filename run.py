@@ -6,6 +6,7 @@ from algo_reasoning.src.lightning.AlgorithmicReasoningTask import AlgorithmicRea
 from algo_reasoning.src.specs import CLRS_30_ALGS
 
 import os
+import torch
 from torch.optim import AdamW
 import lightning as L
 from lightning.pytorch.loggers import TensorBoardLogger
@@ -15,6 +16,8 @@ import yaml
 from lightning.pytorch.callbacks import ModelCheckpoint
 
 # Suppress the warning of the wandb
+# Use high precision matrix multiplication for performance on CUDA devices
+torch.set_float32_matmul_precision("high")
 os.environ['WANDB_CONSOLE'] = 'off'
 
 def list_of_strings(arg):
