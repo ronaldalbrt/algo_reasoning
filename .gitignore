@@ -193,3 +193,5 @@ checkpoints/
 .vscode/
 
 results/
+
+notebooks/
