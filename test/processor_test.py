@@ -116,7 +116,7 @@ class ProcessorTest(unittest.TestCase):
         self.assertEqual(node_fts.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
         self.assertEqual(edge_fts.shape, (self.batch_size, self.nb_nodes, self.nb_nodes, self.hidden_dim))
     
-    def test_spectral_mpnn(self):
+    def test_spectralmpnn(self):
         """Test SpectralMPNN."""
         model = SpectralMPNN(self.hidden_dim, self.hidden_dim)
         out, edge_fts = model(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
@@ -124,6 +124,15 @@ class ProcessorTest(unittest.TestCase):
         # Check output shapes
         self.assertEqual(out.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
         self.assertEqual(edge_fts.shape, (self.batch_size, self.nb_nodes, self.nb_nodes, self.hidden_dim))
+
+        # Test processor with no edge feature.
+        model_no_triplet = SpectralMPNN(self.hidden_dim, self.hidden_dim, nb_triplet_fts=None)
+        out, edge_fts = model_no_triplet(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
+        
+        # Check edge features are none when nb_triplet_fts = None
+        self.assertEqual(out.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
+        self.assertIsNone(edge_fts)
+
     
     def test_chebyshev_graph_conv(self):
         """Test ChebyshevGraphConv."""
@@ -142,6 +151,15 @@ class ProcessorTest(unittest.TestCase):
         model_k5 = ChebyshevGraphConv(self.hidden_dim, self.hidden_dim, K=5)
         out_k5, _ = model_k5(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
         self.assertEqual(out_k5.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
+
+
+        # Test processor with no edge feature.
+        model_no_triplet = ChebyshevGraphConv(self.hidden_dim, self.hidden_dim, nb_triplet_fts=None)
+        out, edge_fts = model_no_triplet(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
+        
+        # Check edge features are none when nb_triplet_fts = None
+        self.assertEqual(out.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
+        self.assertIsNone(edge_fts)
 
 if __name__ == '__main__':
     unittest.main()
