@@ -301,8 +301,9 @@ class DeepSetsLayer(nn.Module):
         return self.act(x)
 
 class SpecFormerConv(nn.Module):
-    def __init__(self, hidden_size):
+    def __init__(self, hidden_size, edge_feat=True):
         super(SpecFormerConv, self).__init__()
+        self.edge_feat = edge_feat
 
         self.pre_ffn = nn.Sequential(
             nn.Linear(hidden_size, hidden_size),
@@ -319,11 +320,14 @@ class SpecFormerConv(nn.Module):
         )
 
     def forward(self, node_fts, edge_fts, bases):
-        edge_fts = self.pre_ffn(edge_fts) * bases
-
-        edge_fts_sum = torch.sum(edge_fts, dim=1)
-
-        node_fts = node_fts + edge_fts_sum
+        if self.edge_feat:
+            edge_fts = self.pre_ffn(edge_fts) * bases
+            edge_fts_sum = torch.sum(edge_fts, dim=1)
+            node_fts = node_fts + edge_fts_sum
+        else:
+            edge_fts = None
+            node_fts = torch.einsum('bijd,bid->bjd', bases, node_fts)
+        
         y = self.ffn(node_fts)
         node_fts = node_fts + y
 
@@ -334,6 +338,7 @@ class SpectralMPNN(nn.Module):
                 activation=nn.ReLU(), 
                 layer_norm=True,
                 nb_heads=8, 
+                nb_triplet_fts=8,
                 *args, **kwargs):   
         super().__init__()
 
@@ -343,6 +348,7 @@ class SpectralMPNN(nn.Module):
         self.activation = activation
         self.layer_norm = layer_norm
         self.nb_heads = nb_heads
+        self.edge_feat = nb_triplet_fts is not None
 
         if self.layer_norm:
             self.norm = nn.LayerNorm(out_size)
@@ -378,7 +384,7 @@ class SpectralMPNN(nn.Module):
             nn.GELU(),
         )
 
-        self.layers = nn.ModuleList([SpecFormerConv(out_size) for i in range(1)])
+        self.conv = SpecFormerConv(out_size, edge_feat=self.edge_feat)
 
         self.o1 = nn.Linear(out_size, out_size)
         self.o2 = nn.Linear(out_size, out_size)
@@ -424,8 +430,7 @@ class SpectralMPNN(nn.Module):
         bases =  self.filter_encoder(bases)
         bases = adj_matrix.unsqueeze(-1) * torch.softmax(bases, dim=-1)
 
-        for conv in self.layers:
-            h, edge_fts = conv(h, edge_fts, bases)
+        h, edge_fts = self.conv(h, edge_fts, bases)
 
         out = self.o1(msgs) + self.o2(h) 
 
@@ -437,7 +442,13 @@ class SpectralMPNN(nn.Module):
         return out, edge_fts
 
 class ChebyshevGraphConv(nn.Module):  
-    def __init__(self, in_size, out_size, K = 3, eps=1e-05, layer_norm=True):
+    def __init__(self, 
+                in_size, 
+                out_size, 
+                K = 3, 
+                eps=1e-05, 
+                nb_triplet_fts=8,
+                layer_norm=True):
         super(ChebyshevGraphConv, self).__init__()
         self.K = K
         self.in_size = in_size
@@ -445,6 +456,7 @@ class ChebyshevGraphConv(nn.Module):
         self.out_size = out_size
         self.eps = eps
         self.layer_norm = layer_norm
+        self.edge_feat = nb_triplet_fts is not None
 
         self.m_1 = nn.Linear(in_size*2, self.mid_channels)
         self.m_2 = nn.Linear(in_size*2, self.mid_channels)
@@ -502,23 +514,30 @@ class ChebyshevGraphConv(nn.Module):
         cheb_edge_feat = []
 
         cheb_node_feat.append(h)
-        cheb_edge_feat.append(edge_fts)
+        if self.edge_feat:
+            cheb_edge_feat.append(edge_fts)
 
         if self.K > 0:
             cheb_node_feat.append(torch.bmm(cheb_lap, h)) # B x N x D
-            cheb_edge_feat.append(cheb_lap.unsqueeze(-1) * edge_fts) # B x N x N x D 
+            if self.edge_feat:
+                cheb_edge_feat.append(cheb_lap.unsqueeze(-1) * edge_fts) # B x N x N x D 
             
             for k in range(2, self.K):
                 cheb_node_feat.append(torch.bmm(2 * cheb_lap, cheb_node_feat[k - 1]) - cheb_node_feat[k - 2])
-                cheb_edge_feat.append(((2 * cheb_lap.unsqueeze(-1)) * cheb_edge_feat[k - 1]) - cheb_edge_feat[k - 2])
+                if self.edge_feat:
+                    cheb_edge_feat.append(((2 * cheb_lap.unsqueeze(-1)) * cheb_edge_feat[k - 1]) - cheb_edge_feat[k - 2])
                 
 
         cheb_node_feat = torch.stack(cheb_node_feat, dim=1)
-        cheb_edge_feat = torch.stack(cheb_edge_feat, dim=1)
+        if self.edge_feat:
+            cheb_edge_feat = torch.stack(cheb_edge_feat, dim=1)
 
         node_out = torch.einsum('bnij,bnij->bij', cheb_node_feat, torch.einsum('bij,njk->bnik', msgs, self.node_weights))
-        edge_out = torch.einsum('bnijl,nlk->bijk', cheb_edge_feat, self.edge_weights)
-        
+        if self.edge_feat:
+            edge_out = torch.einsum('bnijl,nlk->bijk', cheb_edge_feat, self.edge_weights)
+        else:
+            edge_out = None
+
         out = self.o1(msgs) + self.o2(node_out)
 
         out = out + self.o3(z)

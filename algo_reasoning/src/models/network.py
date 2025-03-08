@@ -32,9 +32,9 @@ def build_processor(processor, hidden_dim, nb_triplet_fts, *args, **kwargs):
     elif processor == 'fullgat':
         return FullGAT(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
     elif processor == 'spectralmpnn':
-        return SpectralMPNN(hidden_dim, hidden_dim, *args, **kwargs)
+        return SpectralMPNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
     elif processor == 'chebconv':
-        return ChebyshevGraphConv(hidden_dim, hidden_dim, *args, **kwargs)
+        return ChebyshevGraphConv(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
 
 class EncodeProcessDecode(nn.Module):
     def __init__(self, 
