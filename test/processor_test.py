@@ -152,7 +152,6 @@ class ProcessorTest(unittest.TestCase):
         out_k5, _ = model_k5(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
         self.assertEqual(out_k5.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
 
-
         # Test processor with no edge feature.
         model_no_triplet = ChebyshevGraphConv(self.hidden_dim, self.hidden_dim, nb_triplet_fts=None)
         out, edge_fts = model_no_triplet(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
