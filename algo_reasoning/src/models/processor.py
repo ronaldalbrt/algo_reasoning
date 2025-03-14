@@ -339,6 +339,7 @@ class SpectralMPNN(nn.Module):
                 layer_norm=True,
                 nb_heads=8, 
                 nb_triplet_fts=8,
+                message_passing=True
                 *args, **kwargs):   
         super().__init__()
 
@@ -348,10 +349,14 @@ class SpectralMPNN(nn.Module):
         self.activation = activation
         self.layer_norm = layer_norm
         self.nb_heads = nb_heads
+        self.message_passing = message_passing
         self.edge_feat = nb_triplet_fts is not None
 
         if self.layer_norm:
             self.norm = nn.LayerNorm(out_size)
+
+        if not self.message_passing:
+            self.filter_lin = nn.Linear(in_size*2, self.mid_channels)
 
         self.m_1 = nn.Linear(in_size*2, self.mid_channels)
         self.m_2 = nn.Linear(in_size*2, self.mid_channels)
@@ -408,18 +413,23 @@ class SpectralMPNN(nn.Module):
 
         h = self.feat_encoder(z)
         
-        msg_1 = self.m_1(z)
-        msg_2 = self.m_2(z)
-        msg_e = self.m_e(edge_fts)
-        msg_g = self.m_g(graph_fts)
+        if self.message_passing:
+            msg_1 = self.m_1(z)
+            msg_2 = self.m_2(z)
+            msg_e = self.m_e(edge_fts)
+            msg_g = self.m_g(graph_fts)
 
-        msgs = msg_1[:, None, :, :] + msg_2[:, :, None, :] + msg_e + msg_g[:, None, None, :] # (B, N, N, H)
-        msgs = self.msg_mlp(msgs)
-        msgs = torch.amax(msgs, dim=1)
+            msgs = msg_1[:, None, :, :] + msg_2[:, :, None, :] + msg_e + msg_g[:, None, None, :] # (B, N, N, H)
+            msgs = self.msg_mlp(msgs)
+            msgs = torch.amax(msgs, dim=1)
 
-        msgs_proj = self.msg_proj(msgs)
+            msgs_proj = self.msg_proj(msgs) # (B, N, H)
+            filter_params = msgs_proj
+        else:
+            filter_params = self.filter_lin(z)
         
-        diag_e = torch.diag_embed(msgs_proj.transpose(-2, -1))
+         
+        diag_e = torch.diag_embed(filter_params.transpose(-2, -1))
         identity = torch.diag_embed(torch.ones_like(eig_values))
         bases = [identity]
         for i in range(self.nb_heads):
@@ -448,7 +458,8 @@ class ChebyshevGraphConv(nn.Module):
                 K = 3, 
                 eps=1e-05, 
                 nb_triplet_fts=8,
-                layer_norm=True):
+                layer_norm=True,
+                message_passing=True):
         super(ChebyshevGraphConv, self).__init__()
         self.K = K
         self.in_size = in_size
@@ -457,6 +468,7 @@ class ChebyshevGraphConv(nn.Module):
         self.eps = eps
         self.layer_norm = layer_norm
         self.edge_feat = nb_triplet_fts is not None
+        self.message_passing = message_passing
 
         self.m_1 = nn.Linear(in_size*2, self.mid_channels)
         self.m_2 = nn.Linear(in_size*2, self.mid_channels)
@@ -465,6 +477,9 @@ class ChebyshevGraphConv(nn.Module):
 
         if self.layer_norm:
             self.norm = nn.LayerNorm(out_size)
+
+        if not self.message_passing:
+            self.filter_lin = nn.Linear(in_size*2, self.mid_channels)
 
         self.msg_mlp = nn.Sequential(
             nn.ReLU(),
@@ -510,6 +525,22 @@ class ChebyshevGraphConv(nn.Module):
         msgs = self.msg_mlp(msgs)
         msgs = torch.amax(msgs, dim=1)
 
+
+        if self.message_passing:
+            msg_1 = self.m_1(z)
+            msg_2 = self.m_2(z)
+            msg_e = self.m_e(edge_fts)
+            msg_g = self.m_g(graph_fts)
+
+            msgs = msg_1[:, None, :, :] + msg_2[:, :, None, :] + msg_e + msg_g[:, None, None, :] # (B, N, N, H)
+            msgs = self.msg_mlp(msgs)
+            msgs = torch.amax(msgs, dim=1)
+
+            msgs_proj = self.msg_proj(msgs) # (B, N, H)
+            filter_params = msgs_proj
+        else:
+            filter_params = self.filter_lin(z)
+
         cheb_node_feat = []
         cheb_edge_feat = []
 
@@ -532,7 +563,7 @@ class ChebyshevGraphConv(nn.Module):
         if self.edge_feat:
             cheb_edge_feat = torch.stack(cheb_edge_feat, dim=1)
 
-        node_out = torch.einsum('bnij,bnij->bij', cheb_node_feat, torch.einsum('bij,njk->bnik', msgs, self.node_weights))
+        node_out = torch.einsum('bnij,bnij->bij', cheb_node_feat, torch.einsum('bij,njk->bnik', filter_params, self.node_weights))
         if self.edge_feat:
             edge_out = torch.einsum('bnijl,nlk->bijk', cheb_edge_feat, self.edge_weights)
         else:
