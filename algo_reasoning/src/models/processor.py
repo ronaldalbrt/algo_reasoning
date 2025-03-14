@@ -339,7 +339,7 @@ class SpectralMPNN(nn.Module):
                 layer_norm=True,
                 nb_heads=8, 
                 nb_triplet_fts=8,
-                message_passing=True
+                message_passing=True,
                 *args, **kwargs):   
         super().__init__()
 
@@ -536,8 +536,7 @@ class ChebyshevGraphConv(nn.Module):
             msgs = self.msg_mlp(msgs)
             msgs = torch.amax(msgs, dim=1)
 
-            msgs_proj = self.msg_proj(msgs) # (B, N, H)
-            filter_params = msgs_proj
+            filter_params = msgs
         else:
             filter_params = self.filter_lin(z)
 
