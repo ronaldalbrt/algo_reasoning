@@ -118,12 +118,21 @@ class ProcessorTest(unittest.TestCase):
     
     def test_spectralmpnn(self):
         """Test SpectralMPNN."""
-        model = SpectralMPNN(self.hidden_dim, self.hidden_dim)
+        # Test with message passing
+        model = SpectralMPNN(self.hidden_dim, self.hidden_dim, message_passing=True)
         out, edge_fts = model(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
         
         # Check output shapes
         self.assertEqual(out.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
         self.assertEqual(edge_fts.shape, (self.batch_size, self.nb_nodes, self.nb_nodes, self.hidden_dim))
+
+        # Test without message passing
+        model_no_mp = SpectralMPNN(self.hidden_dim, self.hidden_dim, message_passing=False)
+        out_no_mp, edge_fts_no_mp = model_no_mp(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
+        
+        # Check output shapes remain the same without message passing
+        self.assertEqual(out_no_mp.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
+        self.assertEqual(edge_fts_no_mp.shape, (self.batch_size, self.nb_nodes, self.nb_nodes, self.hidden_dim))
 
         # Test processor with no edge feature.
         model_no_triplet = SpectralMPNN(self.hidden_dim, self.hidden_dim, nb_triplet_fts=None)
@@ -133,15 +142,23 @@ class ProcessorTest(unittest.TestCase):
         self.assertEqual(out.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
         self.assertIsNone(edge_fts)
 
-    
     def test_chebyshev_graph_conv(self):
         """Test ChebyshevGraphConv."""
-        model = ChebyshevGraphConv(self.hidden_dim, self.hidden_dim, K=3)
+        # Test with message passing
+        model = ChebyshevGraphConv(self.hidden_dim, self.hidden_dim, K=3, message_passing=True)
         out, edge_fts = model(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
         
         # Check output shapes
         self.assertEqual(out.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
         self.assertEqual(edge_fts.shape, (self.batch_size, self.nb_nodes, self.nb_nodes, self.hidden_dim))
+
+        # Test without message passing
+        model_no_mp = ChebyshevGraphConv(self.hidden_dim, self.hidden_dim, K=3, message_passing=False)
+        out_no_mp, edge_fts_no_mp = model_no_mp(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
+        
+        # Check output shapes remain the same without message passing
+        self.assertEqual(out_no_mp.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
+        self.assertEqual(edge_fts_no_mp.shape, (self.batch_size, self.nb_nodes, self.nb_nodes, self.hidden_dim))
         
         # Test with different K values
         model_k1 = ChebyshevGraphConv(self.hidden_dim, self.hidden_dim, K=1)
