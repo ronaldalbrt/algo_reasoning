@@ -69,11 +69,13 @@ ap.add_argument("--seed", default=7, type=int,
                 help="Seed for the random number generator")
 ap.add_argument("--algorithms_args", default="algorithm_args/default.yaml", type=str,
                 help="Path for the algorithms' arguments file")
+ap.add_argument("--model_args", default="", type=str,
+                help="Path for the model arguments file")
 ap.add_argument('--static_dataset_path', default="tmp/CLRS30", type=str,
                 help="Path to the dataset folder")
 
 
-def load_algorithm_args(args_file):
+def load_args(args_file):
     with open(args_file, 'r') as f:
         args = yaml.safe_load(f)
 
@@ -88,7 +90,8 @@ if __name__ == '__main__':
     checkpoint_module = args.checkpoint_module if args.checkpoint_module != "" else None
 
     processor_model = args.processor_model
-    algorithm_args = load_algorithm_args(args.algorithms_args)
+    algorithm_args = load_args(args.algorithms_args) if args.algorithms_args != "" else None
+    model_args = load_args(args.model_args) if args.model_args != "" else None
 
     train_dataset = CLRSDataset(args.algorithms, nb_nodes, args.batch_size, args.train_steps, seed=seed, algorithms_args=algorithm_args)
     val_dataset = CLRSDataset(args.algorithms, [max(nb_nodes)], args.batch_size, args.val_steps, seed=seed, algorithms_args=algorithm_args)
@@ -106,7 +109,9 @@ if __name__ == '__main__':
     val_dataloader = DataLoader(val_dataset, batch_size=None, num_workers=args.n_workers, persistent_workers=False, worker_init_fn=worker_init_fn)
 
     model = EncodeProcessDecode(args.algorithms, 
-                                processor=processor_model)
+                                processor=processor_model,
+                                seed=seed,
+                                **model_args)
     
     task_params = {
         'lr': args.lr,
