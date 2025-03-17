@@ -442,7 +442,7 @@ class SpectralMPNN(nn.Module):
 
         h, edge_fts = self.conv(h, edge_fts, bases)
 
-        out = self.o1(msgs) + self.o2(h) 
+        out = self.o1(filter_params) + self.o2(h) 
 
         out = out + self.o3(z)
 
@@ -516,16 +516,6 @@ class ChebyshevGraphConv(nn.Module):
 
         h = self.feat_encoder(z)
 
-        msg_1 = self.m_1(z)
-        msg_2 = self.m_2(z)
-        msg_e = self.m_e(edge_fts)
-        msg_g = self.m_g(graph_fts)
-
-        msgs = msg_1[:, None, :, :] + msg_2[:, :, None, :] + msg_e + msg_g[:, None, None, :] # (B, N, N, H)
-        msgs = self.msg_mlp(msgs)
-        msgs = torch.amax(msgs, dim=1)
-
-
         if self.message_passing:
             msg_1 = self.m_1(z)
             msg_2 = self.m_2(z)
@@ -568,7 +558,7 @@ class ChebyshevGraphConv(nn.Module):
         else:
             edge_out = None
 
-        out = self.o1(msgs) + self.o2(node_out)
+        out = self.o1(filter_params) + self.o2(node_out)
 
         out = out + self.o3(z)
 
