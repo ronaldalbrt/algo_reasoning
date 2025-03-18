@@ -356,7 +356,7 @@ class SpectralMPNN(nn.Module):
             self.norm = nn.LayerNorm(out_size)
 
         if not self.message_passing:
-            self.filter_lin = nn.Linear(in_size*2, self.mid_channels)
+            self.filter_lin = nn.Linear(in_size*2, out_size)
 
         self.m_1 = nn.Linear(in_size*2, self.mid_channels)
         self.m_2 = nn.Linear(in_size*2, self.mid_channels)
@@ -442,7 +442,7 @@ class SpectralMPNN(nn.Module):
 
         h, edge_fts = self.conv(h, edge_fts, bases)
 
-        out = self.o1(filter_params) + self.o2(h) 
+        out = self.o1(msgs) + self.o2(h) if self.message_passing else self.o2(h)
 
         out = out + self.o3(z)
 
