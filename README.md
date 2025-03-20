@@ -18,7 +18,6 @@ This package follows the framework implemented in [The CLRS Algorithmic Reasonin
 ## Features
 
 - **Multiple Processor Architectures**:
-  - Pointer Graph Networks (PGN)
   - Message Passing Neural Networks (MPNN)
   - Graph Attention Networks (GAT)
   - Spectral Message Passing Neural Networks
