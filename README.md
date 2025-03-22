@@ -21,7 +21,7 @@ This package follows the framework implemented in [The CLRS Algorithmic Reasonin
   - Message Passing Neural Networks (MPNN)
   - Graph Attention Networks (GAT)
   - Spectral Message Passing Neural Networks
-  - Chebyshev Graph Convolution Networks
+  - Polynomial SpectralMPNN
 
 - **PyTorch Lightning Integration**: Easy training and evaluation with PyTorch Lightning.
 
