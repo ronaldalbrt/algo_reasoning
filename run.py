@@ -91,7 +91,7 @@ if __name__ == '__main__':
 
     processor_model = args.processor_model
     algorithm_args = load_args(args.algorithms_args) if args.algorithms_args != "" else None
-    model_args = load_args(args.model_args) if args.model_args != "" else None
+    model_args = load_args(args.model_args) if args.model_args != "" else {}
 
     train_dataset = CLRSDataset(args.algorithms, nb_nodes, args.batch_size, args.train_steps, seed=seed, algorithms_args=algorithm_args)
     val_dataset = CLRSDataset(args.algorithms, [max(nb_nodes)], args.batch_size, args.val_steps, seed=seed, algorithms_args=algorithm_args)
