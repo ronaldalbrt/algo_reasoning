@@ -340,6 +340,7 @@ class SpectralMPNN(nn.Module):
                 nb_heads=8, 
                 nb_triplet_fts=8,
                 message_passing=True,
+                gated=False,
                 *args, **kwargs):   
         super().__init__()
 
@@ -349,6 +350,7 @@ class SpectralMPNN(nn.Module):
         self.activation = activation
         self.layer_norm = layer_norm
         self.nb_heads = nb_heads
+        self.gated = gated
         self.message_passing = message_passing
         self.edge_feat = nb_triplet_fts is not None
 
@@ -394,6 +396,11 @@ class SpectralMPNN(nn.Module):
         self.o1 = nn.Linear(out_size, out_size)
         self.o2 = nn.Linear(out_size, out_size)
         self.o3 = nn.Linear(2*in_size, out_size)
+
+        if self.gated:
+            self.gate1 = nn.Linear(in_size*2, out_size)
+            self.gate2 = nn.Linear(out_size, out_size)
+            self.gate3 = nn.Linear(out_size, out_size)
 
 
     def spectral_decomposition(self, adj_matrix):
@@ -449,6 +456,10 @@ class SpectralMPNN(nn.Module):
         if self.layer_norm:
             out = self.norm(out)
 
+        if self.gated:
+            gate = F.sigmoid(self.gate3(F.relu(self.gate1(z) + self.gate2(h))))
+            out = out * gate + hidden * (1-gate)
+
         return out, edge_fts
 
 class ChebyshevGraphConv(nn.Module):  
@@ -459,7 +470,8 @@ class ChebyshevGraphConv(nn.Module):
                 eps=1e-05, 
                 nb_triplet_fts=8,
                 layer_norm=True,
-                message_passing=True):
+                message_passing=True,
+                gated=False):
         super(ChebyshevGraphConv, self).__init__()
         self.K = K
         self.in_size = in_size
@@ -467,6 +479,7 @@ class ChebyshevGraphConv(nn.Module):
         self.out_size = out_size
         self.eps = eps
         self.layer_norm = layer_norm
+        self.gated = gated
         self.edge_feat = nb_triplet_fts is not None
         self.message_passing = message_passing
 
@@ -500,6 +513,11 @@ class ChebyshevGraphConv(nn.Module):
         self.o1 = nn.Linear(out_size, out_size)
         self.o2 = nn.Linear(out_size, out_size)
         self.o3 = nn.Linear(2*in_size, out_size)
+
+        if self.gated:
+            self.gate1 = nn.Linear(in_size*2, out_size)
+            self.gate2 = nn.Linear(out_size, out_size)
+            self.gate3 = nn.Linear(out_size, out_size)
 
         self.reset_parameters()
 
@@ -564,5 +582,9 @@ class ChebyshevGraphConv(nn.Module):
 
         if self.layer_norm:
             out = self.norm(out)
+
+        if self.gated:
+            gate = F.sigmoid(self.gate3(F.relu(self.gate1(z) + self.gate2(node_out))))
+            out = out * gate + hidden * (1-gate)
 
         return out, edge_out
