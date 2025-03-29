@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from algo_reasoning.src.models.processor import (
     PGN, GAT, FullGAT, MPNN, DeepSetsLayer, 
-    SpecFormerConv, SpectralMPNN, ChebyshevGraphConv,
+    SpecFormerConv, SpectralMPNN, PolynomialSpectralMPNN,
     spectral_decomposition, normalized_laplacian, largest_singularvalue
 )
 
@@ -143,9 +143,9 @@ class ProcessorTest(unittest.TestCase):
         self.assertIsNone(edge_fts)
 
     def test_chebyshev_graph_conv(self):
-        """Test ChebyshevGraphConv."""
+        """Test PolynomialSpectralMPNN."""
         # Test with message passing
-        model = ChebyshevGraphConv(self.hidden_dim, self.hidden_dim, K=3, message_passing=True)
+        model = PolynomialSpectralMPNN(self.hidden_dim, self.hidden_dim, K=3, message_passing=True)
         out, edge_fts = model(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
         
         # Check output shapes
@@ -153,7 +153,7 @@ class ProcessorTest(unittest.TestCase):
         self.assertEqual(edge_fts.shape, (self.batch_size, self.nb_nodes, self.nb_nodes, self.hidden_dim))
 
         # Test without message passing
-        model_no_mp = ChebyshevGraphConv(self.hidden_dim, self.hidden_dim, K=3, message_passing=False)
+        model_no_mp = PolynomialSpectralMPNN(self.hidden_dim, self.hidden_dim, K=3, message_passing=False)
         out_no_mp, edge_fts_no_mp = model_no_mp(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
         
         # Check output shapes remain the same without message passing
@@ -161,16 +161,16 @@ class ProcessorTest(unittest.TestCase):
         self.assertEqual(edge_fts_no_mp.shape, (self.batch_size, self.nb_nodes, self.nb_nodes, self.hidden_dim))
         
         # Test with different K values
-        model_k1 = ChebyshevGraphConv(self.hidden_dim, self.hidden_dim, K=1)
+        model_k1 = PolynomialSpectralMPNN(self.hidden_dim, self.hidden_dim, K=1)
         out_k1, _ = model_k1(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
         self.assertEqual(out_k1.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
         
-        model_k5 = ChebyshevGraphConv(self.hidden_dim, self.hidden_dim, K=5)
+        model_k5 = PolynomialSpectralMPNN(self.hidden_dim, self.hidden_dim, K=5)
         out_k5, _ = model_k5(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
         self.assertEqual(out_k5.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
 
         # Test processor with no edge feature.
-        model_no_triplet = ChebyshevGraphConv(self.hidden_dim, self.hidden_dim, nb_triplet_fts=None)
+        model_no_triplet = PolynomialSpectralMPNN(self.hidden_dim, self.hidden_dim, nb_triplet_fts=None)
         out, edge_fts = model_no_triplet(self.node_fts, self.edge_fts, self.graph_fts, self.hidden, self.adj_matrix)
         
         # Check edge features are none when nb_triplet_fts = None

@@ -1,9 +1,9 @@
 run_algorithm () {
-    python run.py --algorithms $1 --model_name $1 --version_name chebconv0 --processor_model chebconv --batch_size $2
-    python run.py --algorithms $1 --model_name $1 --version_name chebconv1 --processor_model chebconv --batch_size $2
-    python run.py --algorithms $1 --model_name $1 --version_name chebconv2 --processor_model chebconv --batch_size $2
-    python run.py --algorithms $1 --model_name $1 --version_name chebconv3 --processor_model chebconv --batch_size $2
-    python run.py --algorithms $1 --model_name $1 --version_name chebconv4 --processor_model chebconv --batch_size $2
+    python run.py --algorithms $1 --model_name $1 --version_name polyspectralmpnn0 --processor_model polyspectralmpnn --batch_size $2
+    python run.py --algorithms $1 --model_name $1 --version_name polyspectralmpnn1 --processor_model polyspectralmpnn --batch_size $2
+    python run.py --algorithms $1 --model_name $1 --version_name polyspectralmpnn2 --processor_model polyspectralmpnn --batch_size $2
+    python run.py --algorithms $1 --model_name $1 --version_name polyspectralmpnn3 --processor_model polyspectralmpnn --batch_size $2
+    python run.py --algorithms $1 --model_name $1 --version_name polyspectralmpnn4 --processor_model polyspectralmpnn --batch_size $2
 }
 
 run_algorithm articulation_points 32

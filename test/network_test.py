@@ -23,7 +23,7 @@ class NetworkTest(unittest.TestCase):
     
     def test_build_processor(self):
         """Test the build_processor function."""
-        processors = ["pgn", "mpnn", "gat", "fullgat", "spectralmpnn", "chebconv"]
+        processors = ["pgn", "mpnn", "gat", "fullgat", "spectralmpnn", "polyspectralmpnn"]
         
         for proc_name in processors:
             processor = build_processor(proc_name, self.hidden_dim, nb_triplet_fts=4)

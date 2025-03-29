@@ -462,7 +462,7 @@ class SpectralMPNN(nn.Module):
 
         return out, edge_fts
 
-class ChebyshevGraphConv(nn.Module):  
+class PolynomialSpectralMPNN(nn.Module):  
     def __init__(self, 
                 in_size, 
                 out_size, 
@@ -472,7 +472,7 @@ class ChebyshevGraphConv(nn.Module):
                 layer_norm=True,
                 message_passing=True,
                 gated=False):
-        super(ChebyshevGraphConv, self).__init__()
+        super(PolynomialSpectralMPNN, self).__init__()
         self.K = K
         self.in_size = in_size
         self.mid_channels = out_size
