@@ -73,6 +73,8 @@ ap.add_argument("--model_args", default="", type=str,
                 help="Path for the model arguments file")
 ap.add_argument('--static_dataset_path', default="tmp/CLRS30", type=str,
                 help="Path to the dataset folder")
+ap.add_argument('--nb_triplet_fts', default=8, type=int,
+                help="Number of triplet features for the model")
 
 
 def load_args(args_file):
@@ -85,6 +87,7 @@ if __name__ == '__main__':
     args = ap.parse_args()
     
     nb_nodes = args.nb_nodes
+    nb_tiplet_fts = args.nb_triplet_fts if args.nb_triplet_fts > 0 else None
     seed = args.seed
 
     checkpoint_module = args.checkpoint_module if args.checkpoint_module != "" else None
@@ -111,6 +114,7 @@ if __name__ == '__main__':
     model = EncodeProcessDecode(args.algorithms, 
                                 processor=processor_model,
                                 seed=seed,
+                                nb_triplet_fts=nb_tiplet_fts,
                                 **model_args)
     
     task_params = {
