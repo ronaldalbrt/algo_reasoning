@@ -120,7 +120,7 @@ If you use this code in your research, please cite:
 
 ```
 @software{albert2024neural,
-  author = {Albert, Ronald},
+  author = {Albert, Ronald and Zaverucha, Gerson and Paes, Aline},
   title = {Neural Algorithmic Reasoning},
   url = {https://github.com/ronaldalbrt/algo_reasoning},
   year = {2024}
