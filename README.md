@@ -18,9 +18,9 @@ This package follows the framework implemented in [The CLRS Algorithmic Reasonin
 ## Features
 
 - **Multiple Processor Architectures**:
-  - Message Passing Neural Networks (MPNN)
-  - Graph Attention Networks (GAT)
-  - Spectral Message Passing Neural Networks
+  - [Message Passing Neural Networks (MPNN)](https://arxiv.org/abs/1704.01212)
+  - [Graph Attention Networks (GAT)](https://arxiv.org/abs/1710.10903)
+  - Spectral Message Passing Neural Networks - SpectralMPNN
   - Polynomial SpectralMPNN
 
 - **PyTorch Lightning Integration**: Easy training and evaluation with PyTorch Lightning.
