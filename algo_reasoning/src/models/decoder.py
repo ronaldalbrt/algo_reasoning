@@ -43,13 +43,13 @@ class NodePointerDecoder(NodeBaseDecoder):
         self.lin3 = nn.Linear(hidden_dim, spec_dim)
 
     def forward(self, x, edge_emb, graph_fts):
-        x_1 = super().forward(x, edge_emb, graph_fts)
-        x_2 = self.lin2(x)
+        x_1 = super().forward(x, edge_emb, graph_fts) # (B, N, H)
+        x_2 = self.lin2(x) # (B, N, H)
 
-        edge_x = self.edge_lin(edge_emb)
+        edge_x = self.edge_lin(edge_emb) # (B, N, N, H)
 
-        x_e = x_2.unsqueeze(-2) + edge_x
-        x_m = torch.maximum(x_1.unsqueeze(-2), x_e.permute(0, 2, 1, 3))
+        x_e = x_2.unsqueeze(-2) + edge_x # (B, N, N, H)
+        x_m = torch.maximum(x_1.unsqueeze(-2), x_e.permute(0, 2, 1, 3)) # (B, N, N, H)
 
         preds = self.lin3(x_m).squeeze(-1) # (B, N, N)
 

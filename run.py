@@ -3,7 +3,6 @@ from algo_reasoning.src.sampler import CLRSDataset
 from algo_reasoning.src.data import OriginalCLRSDataset, CLRSSampler, collate
 from algo_reasoning.src.losses.AlgorithmicReasoningLoss import AlgorithmicReasoningLoss
 from algo_reasoning.src.lightning.AlgorithmicReasoningTask import AlgorithmicReasoningTask
-from algo_reasoning.src.specs import CLRS_30_ALGS
 
 import os
 import torch
@@ -27,7 +26,7 @@ def list_of_ints(arg):
     return [int(i) for i in arg.split(',')]
 
 ap = argparse.ArgumentParser(description='Training Parser Options')
-ap.add_argument('--algorithms', default=["floyd_warshall"], type=list_of_strings, 
+ap.add_argument('--algorithms', default=["dfs"], type=list_of_strings, 
                 help="Algorithms for the model to be trained on.")
 ap.add_argument('--nb_nodes', default='4, 7, 11, 13, 16', type=list_of_ints,
                 help="Number of nodes in the graphs")
