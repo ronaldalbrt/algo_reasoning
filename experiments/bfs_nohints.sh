@@ -1,0 +1,1 @@
+python run.py --algorithms bfs --model_name bfs --version_name nohints --processor_model mpnn --batch_size 32 --model_args model_args/bfs_nohints.yaml 
