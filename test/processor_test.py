@@ -2,7 +2,7 @@ import unittest
 import torch
 import torch.nn as nn
 from algo_reasoning.src.models.processor import (
-    PGN, GAT, FullGAT, MPNN, DeepSetsLayer, 
+    PGN, GAT, FullGAT, MPNN, 
     SpecFormerConv, SpectralMPNN, PolynomialSpectralMPNN,
     spectral_decomposition, normalized_laplacian, largest_singularvalue
 )
@@ -96,14 +96,6 @@ class ProcessorTest(unittest.TestCase):
         # Check output shapes
         self.assertEqual(out.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
         self.assertEqual(tri_msgs.shape, (self.batch_size, self.nb_nodes, self.nb_nodes, self.hidden_dim))
-    
-    def test_deep_sets_layer(self):
-        """Test DeepSetsLayer."""
-        model = DeepSetsLayer(self.hidden_dim, self.hidden_dim)
-        out = model(self.node_fts)
-        
-        # Check output shape
-        self.assertEqual(out.shape, (self.batch_size, self.nb_nodes, self.hidden_dim))
     
     def test_spec_former_conv(self):
         """Test SpecFormerConv."""
