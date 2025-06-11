@@ -285,8 +285,67 @@ class MPNN(PGN):
         adj_mat = torch.ones_like(adj_mat)
         return super().forward(node_fts, edge_fts, graph_fts, hidden, adj_mat)
 
-
 # WIP
+class S2GNN(nn.Module):
+    """S2GNN (Simon Geisler, et al. (2024). )"""
+    """
+        The model implemented is ideally the same as the one in the paper, but the implementation is slightly different 
+        from the one proposed, so as to better match Neural Algorithmic Alignment.
+    """
+    def __init__(self, in_size, out_size, activation=nn.ReLU(), layer_norm=True, processor=MPNN, nb_triplet_fts=8, *args, **kwargs):   
+        super().__init__()
+
+        self.in_size = in_size
+        self.out_size = out_size
+        self.activation = activation
+        self.layer_norm = layer_norm
+
+        if self.layer_norm:
+            self.norm = nn.LayerNorm(out_size)
+
+        self.nodes_proj = nn.Sequential(nn.Linear(2*in_size, in_size), nn.ReLU())
+        self.edges_proj = nn.Linear(in_size, in_size)
+        self.graph_proj = nn.Linear(in_size, in_size)
+
+        self.fourier_layer = nn.Linear(in_size, out_size)
+        self.fourier_edges_layer = nn.Linear(in_size, out_size)
+
+        self.node_out = nn.Linear(2*in_size, in_size)
+        self.edge_out = nn.Linear(2*in_size, in_size)
+
+        self.processor = processor(in_size, out_size, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
+
+    def spectral_decomposition(self, adj_matrix):
+        degrees = torch.sum(adj_matrix, dim=1)
+        degree_matrix = torch.stack([torch.diag(degrees[d]) for d in range(degrees.size(0))], dim=0)
+        laplacian = degree_matrix - adj_matrix
+        
+        result = torch.linalg.eigh(laplacian)
+        eigenvalues = result.eigenvalues
+        eigenvectors = result.eigenvectors
+
+        return eigenvectors, eigenvalues
+    
+    def forward(self, node_fts, edge_fts, graph_fts, hidden, adj_mat):
+        z = torch.concat([node_fts, hidden], dim=-1)
+
+        msg, tri_msgs = self.processor(node_fts, edge_fts, graph_fts, hidden, adj_mat)
+
+        z = self.nodes_proj(z)
+        edge_z = self.edges_proj(edge_fts)
+
+        eig_vectors, _ = self.spectral_decomposition(adj_mat)
+
+        fourier_z = eig_vectors.transpose(-2, -1)@z
+
+        z = self.fourier_layer(fourier_z) + msg
+
+        fourier_edges = (eig_vectors.transpose(-2, -1)@edge_z.transpose(0, 1)).transpose(0, 1)
+
+        edge_z = self.fourier_edges_layer(fourier_edges) + tri_msgs
+
+        return self.node_out(z), self.edge_out(edge_z)
+
 class SpecFormer(nn.Module):
     def __init__(self, in_size, out_size, nb_heads=8, n_layers=1, activation=nn.ReLU(), layer_norm=True, eig_constant=100):   
         super().__init__()
