@@ -310,8 +310,15 @@ class S2GNN(nn.Module):
         self.fourier_layer = nn.Linear(in_size, out_size)
         self.fourier_edges_layer = nn.Linear(in_size, out_size)
 
-        self.node_out = nn.Linear(2*in_size, in_size)
-        self.edge_out = nn.Linear(2*in_size, in_size)
+        self.eig_mlp = nn.Sequential(
+            nn.Linear(1, out_size),
+            nn.ReLU(),
+            nn.Linear(out_size, 1),
+            nn.ReLU()
+        )
+
+        self.node_out = nn.Linear(in_size, in_size)
+        self.edge_out = nn.Linear(in_size, in_size)
 
         self.processor = processor(in_size, out_size, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
 
@@ -334,11 +341,14 @@ class S2GNN(nn.Module):
         z = self.nodes_proj(z)
         edge_z = self.edges_proj(edge_fts)
 
-        eig_vectors, _ = self.spectral_decomposition(adj_mat)
+        eig_vectors, _lambda = self.spectral_decomposition(adj_mat)
+
+        _lambda = self.eig_mlp(_lambda.unsqueeze(-1)).squeeze()
+        Lambda = torch.diag_embed(_lambda) # (B, N, N)
 
         fourier_z = eig_vectors.transpose(-2, -1)@z
 
-        z = self.fourier_layer(fourier_z) + msg
+        z = self.fourier_layer(eig_vectors @ Lambda @ fourier_z) + msg
 
         fourier_edges = (eig_vectors.transpose(-2, -1)@edge_z.transpose(0, 1)).transpose(0, 1)
 

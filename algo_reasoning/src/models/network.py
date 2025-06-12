@@ -18,7 +18,7 @@ import torch.nn.functional as F
 
 from .encoder import Encoder
 from .decoder import Decoder
-from .processor import PGN, MPNN, GAT, FullGAT, SpecFormer, SpectralMPNN, PolynomialSpectralMPNN
+from .processor import PGN, MPNN, GAT, FullGAT, SpecFormer, S2GNN, SpectralMPNN, PolynomialSpectralMPNN
 from algo_reasoning.src.data import AlgorithmicData, AlgorithmicOutput
 from algo_reasoning.src.specs import SPECS, CATEGORIES_DIMENSIONS, Type
 
@@ -33,6 +33,8 @@ def build_processor(processor, hidden_dim, nb_triplet_fts, *args, **kwargs):
         return FullGAT(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
     elif processor == 'specformer':
         return SpecFormer(hidden_dim, hidden_dim, *args, **kwargs)
+    elif processor == 's2gnn':
+        return S2GNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
     elif processor == 'spectralmpnn':
         return SpectralMPNN(hidden_dim, hidden_dim, nb_triplet_fts=nb_triplet_fts, *args, **kwargs)
     elif processor == 'polyspectralmpnn':
