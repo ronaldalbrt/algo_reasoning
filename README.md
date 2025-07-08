@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python package](https://github.com/ronaldalbrt/algo_reasoning/actions/workflows/test.yaml/badge.svg)](https://github.com/ronaldalbrt/algo_reasoning/actions/workflows/test.yaml)
 
-An extensible Python package for Neural Algorithmic Reasoning under the PyTorch framework, developed by [Ronald Albert](https://ronaldalbrt.github.io/), [Gerson Zaverucha](https://www.cos.ufrj.br/~gerson/) e [Aline Paes](http://www2.ic.uff.br/~alinepaes/).
+An extensible Python package for Neural Algorithmic Reasoning under the PyTorch framework, developed by [Ronald Albert](https://ronaldalbrt.github.io/).
 
 ## Overview
 
