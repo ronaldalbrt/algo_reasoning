@@ -39,7 +39,7 @@ This package follows the framework implemented in [The CLRS Algorithmic Reasonin
 ### Install from source
 
 ```bash
-git clone https://github.com/ronaldalbrt/algo_reasoning.git
+git clone git@github.com:ronaldalbrt/algo_reasoning.git
 cd algo_reasoning
 pip install -e .
 ```
