@@ -195,3 +195,6 @@ checkpoints/
 results/
 
 notebooks/
+
+.claude/
+jmlr/
