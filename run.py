@@ -32,10 +32,10 @@ ap.add_argument('--nb_nodes', default='4, 7, 11, 13, 16', type=list_of_ints,
                 help="Number of nodes in the graphs")
 ap.add_argument('--batch_size', default=32, type=int, 
                 help="Number of samples in each training batch")
-ap.add_argument('--n_epochs', default=100, type=int,
-                help="Number of training epochs")
+ap.add_argument('--max_steps', default=10000, type=int,
+                help="Total number of training steps")
 ap.add_argument('--train_steps', default=100, type=int,
-                help='Number of training steps per epoch and algorithm')
+                help='Number of training steps per algorithm per validation cycle')
 ap.add_argument('--val_steps', default=32, type=int,
                 help="Number of validation steps per algorithm")
 ap.add_argument('--test_steps', default=32, type=int,
@@ -139,16 +139,18 @@ if __name__ == '__main__':
     checkpoint_callback = ModelCheckpoint(
         monitor='val_loss',
         dirpath=args.checkpoint_path+f"/{args.model_name}/",
-        filename=args.model_name+f"-{args.version_name}"+'-{epoch:02d}-{val_loss:.2f}',
-        every_n_epochs=1
+        filename=args.model_name+f"-{args.version_name}"+'-{step:05d}-{val_loss:.2f}',
+        every_n_train_steps=args.train_steps * len(args.algorithms)
     )
 
     logger = TensorBoardLogger(args.checkpoint_path+"lightning_logs/", name=args.model_name, version=args.version_name)
 
-    trainer = L.Trainer(default_root_dir=args.checkpoint_path, 
-                        max_epochs=args.n_epochs, 
-                        devices=args.devices, 
-                        accelerator=args.accelerator, 
+    trainer = L.Trainer(default_root_dir=args.checkpoint_path,
+                        max_steps=args.max_steps,
+                        max_epochs=-1,
+                        val_check_interval=args.train_steps * len(args.algorithms),
+                        devices=args.devices,
+                        accelerator=args.accelerator,
                         callbacks=[checkpoint_callback],
                         use_distributed_sampler=False,
                         gradient_clip_val=args.grad_clip,
