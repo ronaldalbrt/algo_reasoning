@@ -682,8 +682,12 @@ class PolynomialSpectralMPNN(nn.Module):
         z = torch.concat([node_fts, hidden], dim=-1)
 
         lap = normalized_laplacian(adj_matrix)
-        eigval_max = torch.linalg.matrix_norm(lap, ord=2)
-        cheb_lap = (2 * lap / (eigval_max[:, None, None] + self.eps)) - torch.eye(adj_matrix.size(1), device=adj_matrix.device).unsqueeze(0)    
+        # The symmetric-normalized Laplacian has spectrum in [0, 2], so its largest
+        # eigenvalue is bounded by 2. Using this constant bound to rescale the
+        # Chebyshev Laplacian avoids an O(n^3) spectral-norm (SVD) computation at
+        # every step, which would otherwise defeat the purpose of the polynomial
+        # (eigendecomposition-free) variant.
+        cheb_lap = lap - torch.eye(adj_matrix.size(1), device=adj_matrix.device).unsqueeze(0)
 
         h = self.feat_encoder(z)
 
